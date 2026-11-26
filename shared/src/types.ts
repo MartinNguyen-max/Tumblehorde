@@ -7,6 +7,7 @@ export type UnitKind = 'commander' | 'swordsman' | 'archer' | 'rider' | 'horse';
 export type SoldierKind = 'swordsman' | 'archer' | 'rider';
 
 export type Order = 'follow' | 'hold' | 'attack';
+export type Weapon = 'sword' | 'spear' | 'bow';
 export type GameMode = 'ffa' | 'teams';
 export type ArmySize = 10 | 20 | 30;
 
@@ -22,6 +23,8 @@ export interface Intent {
   jump: boolean;
   attack: boolean;
   shield: boolean;
+  /** Where a player aims their bow; bots aim at their target instead. */
+  aim: Vec3 | null;
 }
 
 export interface AiMemory {
@@ -55,6 +58,10 @@ export interface Unit {
   /** Set on horses while ridden. */
   riderId: EntityId | null;
   group: number;
+  /** Only commanders can switch; soldiers carry the weapon of their kind. */
+  weapon: Weapon;
+  /** Seconds since this unit last took damage. */
+  sinceHurt: number;
   /** Army that last damaged this unit, for kill credit. */
   lastHitByArmy: number | null;
   invulnerableTimer: number;
@@ -79,6 +86,8 @@ export interface ArmyStats {
 export interface BotBrain {
   orderTimer: number;
   thinkTimer: number;
+  /** Seconds spent facing the enemy without engaging. */
+  standoffTimer: number;
 }
 
 export interface Army {
@@ -104,6 +113,8 @@ export interface Arrow {
   id: EntityId;
   armyId: number;
   shooterId: EntityId;
+  damage: number;
+  knockback: { strength: number; stun: number };
   pos: Vec3;
   vel: Vec3;
   age: number;
@@ -171,10 +182,12 @@ export interface CommanderInput {
   jump: boolean;
   attack: boolean;
   shield: boolean;
+  aim: Vec3 | null;
 }
 
 /** Discrete actions that are not part of the per-frame input. */
 export type Command =
   | { type: 'order'; order: Order; group: number | null }
   | { type: 'split'; groupCount: number }
-  | { type: 'mount' };
+  | { type: 'mount' }
+  | { type: 'weapon'; weapon: Weapon };

@@ -1,4 +1,4 @@
-import { ARMY, NET } from './config.ts';
+import { ARMY, NET, WEAPONS } from './config.ts';
 import { sanitizeCommand, sanitizeInput } from './input.ts';
 import { createMatch } from './setup.ts';
 import type { ActionKind, ArmySize, Command, CommanderInput, GameMode, MatchPhase, MatchSettings, SimEvent } from './types.ts';
@@ -138,7 +138,7 @@ const FLAG_SHIELD = 4;
 const FLAG_INVULNERABLE = 8;
 
 const HEADER_BYTES = 4 + 4 + 1 + 1 + 2 + 2;
-const ALIVE_UNIT_BYTES = 1 + 6 + 2 + 6 + 2 + 1 + 1 + 1 + 2 + 2 + 1 + 1;
+const ALIVE_UNIT_BYTES = 1 + 6 + 2 + 6 + 2 + 1 + 1 + 1 + 2 + 2 + 1 + 1 + 1;
 const DEAD_UNIT_BYTES = 1 + 1;
 const ARROW_BYTES = 4 + 6 + 6;
 
@@ -197,6 +197,7 @@ export function encodeSnapshot(view: MatchView): Uint8Array {
     o += 4;
     d.setUint8(o++, quantizeTimer(u.respawnTimer));
     d.setUint8(o++, u.group);
+    d.setUint8(o++, WEAPONS.indexOf(u.weapon));
   }
   for (const a of view.arrows) {
     d.setUint32(o, a.id);
@@ -278,6 +279,7 @@ export function decodeSnapshot(bytes: Uint8Array, ctx: SnapshotContext): MatchVi
     o += 4;
     const respawnTimer = d.getUint8(o++) / TIMER_SCALE;
     const group = d.getUint8(o++);
+    const weapon = WEAPONS[d.getUint8(o++)] ?? 'sword';
     units.push({
       ...info,
       x,
@@ -299,6 +301,7 @@ export function decodeSnapshot(bytes: Uint8Array, ctx: SnapshotContext): MatchVi
       riderId: rider === NONE ? null : rider,
       respawnTimer,
       group,
+      weapon,
     });
   }
   const arrows: ArrowView[] = [];
@@ -350,5 +353,6 @@ function emptyUnit(info: Roster[number]): UnitView {
     riderId: null,
     respawnTimer: 0,
     group: 0,
+    weapon: 'sword',
   };
 }

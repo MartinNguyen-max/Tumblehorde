@@ -1,7 +1,7 @@
 import { lerp, wrapAngle } from './math.ts';
 import { matchDuration } from './match.ts';
 import { livingSoldiers } from './orders.ts';
-import type { ActionKind, ArmySize, GameMode, MatchPhase, MatchState, Order, Unit, UnitKind } from './types.ts';
+import type { ActionKind, ArmySize, GameMode, MatchPhase, MatchState, Order, Unit, UnitKind, Weapon } from './types.ts';
 
 /** What a client needs to draw a unit. Built from the simulation or decoded from the network. */
 export interface UnitView {
@@ -28,6 +28,7 @@ export interface UnitView {
   riderId: number | null;
   respawnTimer: number;
   group: number;
+  weapon: Weapon;
 }
 
 export interface ArrowView {
@@ -95,6 +96,7 @@ export function unitView(u: Unit): UnitView {
     riderId: u.riderId,
     respawnTimer: u.respawnTimer,
     group: u.group,
+    weapon: u.weapon,
   };
 }
 

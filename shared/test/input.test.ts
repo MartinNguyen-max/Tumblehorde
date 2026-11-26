@@ -4,7 +4,7 @@ import { sanitizeCommand, sanitizeInput } from '../src/input.ts';
 describe('sanitizeInput', () => {
   it('accepts well-formed input', () => {
     expect(sanitizeInput({ moveX: 0.5, moveZ: 0, faceYaw: 1, jump: true, attack: false, shield: false })).toEqual({
-      moveX: 0.5, moveZ: 0, faceYaw: 1, jump: true, attack: false, shield: false,
+      moveX: 0.5, moveZ: 0, faceYaw: 1, jump: true, attack: false, shield: false, aim: null,
     });
   });
 

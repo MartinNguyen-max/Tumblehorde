@@ -1,6 +1,7 @@
 import { staggerThinking } from './ai.ts';
 import { ARMY, FORMATION, MAP, BODY } from './config.ts';
 import { formationSlots } from './formation.ts';
+import { centroid, groupForKind } from './orders.ts';
 import { yawToDir } from './math.ts';
 import { createRandom } from './random.ts';
 import { armySpawnPoint } from './spawn.ts';
@@ -40,6 +41,9 @@ export function createMatch(settings: MatchSettings): MatchState {
   return state;
 }
 
+/** Armies are always commanded as swordsmen, archers and cavalry. */
+const ARMY_GROUPS = ARMY.maxGroups;
+
 function addUnit(state: MatchState, make: (id: number) => Unit): Unit {
   const unit = make(state.units.length);
   state.units.push(unit);
@@ -65,14 +69,21 @@ function createArmy(
     spawn.position.z + forward.z * FORMATION.commanderSpawnAhead,
   );
   const commander = addUnit(state, (id) => createUnit(id, 'commander', armyId, commanderPos, spawn.yaw));
+  const commanderHorse = addUnit(state, (id) => createUnit(id, 'horse', armyId, commanderPos, spawn.yaw));
+  commanderHorse.riderId = commander.id;
+  commander.mountId = commanderHorse.id;
+  commander.pos.y = commanderHorse.pos.y + BODY.saddleHeight;
 
   const kinds = soldierKindsFor(settings.armySize);
   const slots = formationSlots(kinds, spawn.position, spawn.yaw);
   const soldierIds: number[] = [];
+  const soldiers: Unit[] = [];
   kinds.forEach((kind, i) => {
     const slot = slots[i] ?? spawn.position;
     const soldier = addUnit(state, (id) => createUnit(id, kind, armyId, groundPos(slot.x, slot.z), spawn.yaw));
+    soldier.group = groupForKind(kind, ARMY_GROUPS);
     soldierIds.push(soldier.id);
+    soldiers.push(soldier);
     if (kind === 'rider') {
       const horse = addUnit(state, (id) =>
         createUnit(id, 'horse', armyId, groundPos(slot.x, slot.z), spawn.yaw),
@@ -90,13 +101,17 @@ function createArmy(
     isBot,
     commanderId: commander.id,
     soldierIds,
-    groupCount: 1,
-    groupOrders: [{ order: 'hold', anchor: { ...spawn.position }, anchorYaw: spawn.yaw }],
+    groupCount: ARMY_GROUPS,
+    groupOrders: Array.from({ length: ARMY_GROUPS }, (_, g) => ({
+      order: 'hold' as const,
+      anchor: centroid(soldiers.filter((s) => s.group === g)) ?? { ...spawn.position },
+      anchorYaw: spawn.yaw,
+    })),
     eliminated: false,
     forfeited: false,
     disconnectTimer: null,
     stats: { kills: 0, deaths: 0, commanderDeaths: 0 },
-    bot: { orderTimer: 0, thinkTimer: 0 },
+    bot: { orderTimer: 0, thinkTimer: 0, standoffTimer: 0 },
     startingSoldiers: soldierIds.length,
   };
 }

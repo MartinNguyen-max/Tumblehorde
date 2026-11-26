@@ -53,3 +53,13 @@ Decisions made while building v1. None of them replace an earlier line.
 - **Server tick changed from 30 Hz to 20 Hz** (replaces the 30 Hz in "Fixed simulation rates" above). It matches the 20 Hz proposal in `TECH.md`, a snapshot goes out every tick, and clients send input at the same rate so each tick consumes exactly one input.
 - **A stolen horse keeps its army id but fights for its rider's side** (`sideArmyId`). The roster sent to clients never changes during a battle, so a horse's army can't change either.
 - **A silent client stops acting.** If a connected player sends no input for a few ticks (e.g. a hidden tab), their commander stands still instead of repeating the last input.
+
+## 2026-11-26 (after the first playtest)
+
+- **Commanders start on horseback and carry sword, spear and bow** (`Q` switches). Requested by the player. The shield works with sword or spear on foot. The bow aims where the camera looks.
+- **The commander gets back up where they fell after 15 s** (replaces "respawns next to their army after ~10 s"), shoving nearby enemies away, and the camera stays on them meanwhile. Matches the GDD's "they patch themselves up".
+- **A leaderless army fights on by itself** (replaces "the army keeps its last orders while the commander is down"). Any army whose commander is down, a player's too, is run by the bot planner until the commander is back.
+- **Armies always have three groups: swordsmen, archers, cavalry** (replaces split-by-key-4 and `Tab`). Tap `1`/`2`/`3` = Follow/Hold/Attack for everyone; hold a group key and press an order key to order only that group.
+- **Roman shield wall:** swordsmen on Hold close ranks, lock shields towards the nearest enemy and stab out from behind them; a raised shield next to another blocks 97 % and cannot be pushed.
+- **Bot strategy:** form up (15 s) → march as a column → standoff with a shield wall while archers shoot → engage (swords charge, cavalry hunts archers) → regroup at the starting area when badly outnumbered. The bot commander stays behind the line and uses the bow.
+- **Holding units face the enemy**, and idle soldiers look at the nearest enemy.

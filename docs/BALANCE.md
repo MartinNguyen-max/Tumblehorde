@@ -100,3 +100,25 @@ Values the design did not specify. All live in `shared/src/config.ts`.
 | Movement while striking or drawing | 50 % speed |
 | Respawn invulnerability | 2 s |
 | Gravity | 25 m/s² |
+
+## Tuning round 1 (2026-11-26, after the first playtest)
+
+Feedback: the commander died too fast, fights were too quick, shields too weak, armies met too soon.
+These values replace the ones above where they differ.
+
+| Value | Before | Now |
+|---|---|---|
+| Commander HP | 100 | 300, heals 6 HP/s after 5 s without damage |
+| Commander respawn | 10 s next to the army | 15 s where they fell, shoves enemies within 5 m away |
+| Swordsman HP / cooldown | 100 / 0.8 s | 180 / 1.1 s |
+| Archer HP / arrow damage / cooldown | 70 / 40 / 2.0 s | 120 / 30 / 2.5 s |
+| Rider HP / lance damage / cooldown | 100 / 45 / 1.0 s | 180 / 40 / 1.3 s |
+| Horse HP | 150 | 280 |
+| Shield block / cone / blocked knockback | 80 % / ±60° / 50 % | 92 % / ±75° / 30 %, never stuns |
+| Shield wall (raised shield next to another) | – | 97 %, no knockback |
+| Army spacing / shield wall spacing | 1.9 m | 1.5 m / 1.15 m |
+| Distance between armies at start | 60 m | spawn circle radius 55 m (110 m for two armies) |
+| Form-up time before bots march | 1.5 s | 15 s |
+| Commander weapons | sword | sword, spear (30 dmg, 2.8 m; 45 dmg lance on horseback), bow (35 dmg, 45 m, 1.0 s) |
+
+Bot-vs-bot battles now last about 1–3 minutes (median 2:12 over 24 seeded battles), up from 30–60 s.

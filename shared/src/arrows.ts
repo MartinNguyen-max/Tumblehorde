@@ -1,10 +1,10 @@
-import { AI, ARCHER, ARROW, BODY, TERRAIN } from './config.ts';
+import { AI, ARROW, BODY, TERRAIN } from './config.ts';
 import { applyHit } from './combat.ts';
 import { dirToYaw, normalizeXZ, segmentSegmentDistanceSq, yawToDir, type Vec3 } from './math.ts';
 import { randomRange } from './random.ts';
 import { terrainHeightAt } from './terrain.ts';
 import type { Arrow, MatchState, Unit } from './types.ts';
-import { bodyRadius, isHorse, isMounted, teamOf } from './units.ts';
+import { bodyRadius, isHorse, isMounted, rangedStatsFor, teamOf } from './units.ts';
 
 const SHOULDER_HEIGHT = 1.4;
 const CHEST_HEIGHT = 1.1;
@@ -52,13 +52,24 @@ function launchVelocity(yaw: number, pitch: number): Vec3 {
   return { x: dir.x * horizontal, y: Math.sin(pitch) * ARROW.speed, z: dir.z * horizontal };
 }
 
-export function fireArrow(state: MatchState, shooter: Unit, target: Unit | null): Arrow {
-  const vel = target ? aimArrow(state, shooter, target) : launchVelocity(shooter.yaw, ARROW.blindPitch);
-  const forward = yawToDir(shooter.yaw);
+/** Launch velocity that lands on a point the player aimed at (no spread: players aim themselves). */
+export function aimAtPoint(shooter: Unit, point: Vec3): Vec3 {
+  const origin = { x: shooter.pos.x, y: shooter.pos.y + SHOULDER_HEIGHT, z: shooter.pos.z };
+  const dx = Math.hypot(point.x - origin.x, point.z - origin.z);
+  const yaw = dx > 1e-3 ? dirToYaw(point.x - origin.x, point.z - origin.z) : shooter.yaw;
+  const pitch = solveLaunchAngle(dx, point.y - origin.y, ARROW.speed, ARROW.gravity) ?? Math.PI / 4;
+  return launchVelocity(yaw, pitch);
+}
+
+export function fireArrow(state: MatchState, shooter: Unit, target: Unit | null, aim: Vec3 | null = null): Arrow {
+  const vel = aim ? aimAtPoint(shooter, aim) : target ? aimArrow(state, shooter, target) : launchVelocity(shooter.yaw, ARROW.blindPitch);
+  const forward = yawToDir(dirToYaw(vel.x, vel.z));
   const arrow: Arrow = {
     id: state.nextArrowId++,
     armyId: shooter.armyId,
     shooterId: shooter.id,
+    damage: rangedStatsFor(shooter)?.damage ?? 0,
+    knockback: rangedStatsFor(shooter)?.knockback ?? { strength: 0, stun: 0 },
     pos: {
       x: shooter.pos.x + forward.x * 0.5,
       y: shooter.pos.y + SHOULDER_HEIGHT,
@@ -142,5 +153,5 @@ function hitWithArrow(state: MatchState, arrow: Arrow, victim: Unit): void {
   const pushDir = normalizeXZ(arrow.vel.x, arrow.vel.z);
   // A point back along the flight path, so shields facing the shooter block it.
   const from = { x: arrow.pos.x - pushDir.x * ARROW_SOURCE_BACKTRACK, z: arrow.pos.z - pushDir.z * ARROW_SOURCE_BACKTRACK };
-  applyHit(state, victim, { attacker: shooter, armyId: arrow.armyId, from, pushDir }, ARCHER.ranged.damage, ARCHER.ranged.knockback);
+  applyHit(state, victim, { attacker: shooter, armyId: arrow.armyId, from, pushDir }, arrow.damage, arrow.knockback);
 }

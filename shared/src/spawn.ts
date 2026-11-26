@@ -8,11 +8,11 @@ export interface SpawnPoint {
 }
 
 /**
- * Armies are spread evenly on a circle around the center, sized so that
- * neighbouring armies are exactly `armySpawnDistance` apart.
+ * Armies are spread evenly on a circle around the center, far enough apart that there
+ * is time to plan before the lines meet.
  */
 export function armySpawnPoint(index: number, armyCount: number): SpawnPoint {
-  const radius = MAP.armySpawnDistance / 2 / Math.sin(Math.PI / armyCount);
+  const radius = MAP.armySpawnRadius;
   const angle = Math.PI + (index * 2 * Math.PI) / armyCount;
   const position = { x: Math.cos(angle) * radius, z: Math.sin(angle) * radius };
   return { position, yaw: Math.atan2(-position.x, -position.z) };

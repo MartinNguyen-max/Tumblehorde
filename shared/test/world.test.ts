@@ -32,12 +32,12 @@ describe('terrain', () => {
 });
 
 describe('spawn points', () => {
-  it.each([2, 3, 4])('places %i armies 60 m from their neighbours', (count) => {
+  it.each([2, 3, 4])('places %i armies far apart but inside the map', (count) => {
     for (let i = 0; i < count; i++) {
       const a = armySpawnPoint(i, count).position;
       const b = armySpawnPoint((i + 1) % count, count).position;
-      expect(distanceXZ(a, b)).toBeCloseTo(MAP.armySpawnDistance, 5);
-      expect(Math.max(Math.abs(a.x), Math.abs(a.z))).toBeLessThan(MAP.halfSize - 20);
+      expect(distanceXZ(a, b)).toBeGreaterThan(75);
+      expect(Math.max(Math.abs(a.x), Math.abs(a.z))).toBeLessThanOrEqual(MAP.halfSize - 20);
     }
   });
 

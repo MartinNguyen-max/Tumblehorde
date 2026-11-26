@@ -1,15 +1,15 @@
 import { runArmyAi } from './ai.ts';
 import { fireArrow, stepArrows } from './arrows.ts';
-import { runBotArmy } from './bot.ts';
+import { runBotArmy, runLeaderlessArmy } from './bot.ts';
 import { ARCHER, COMMANDER, MATCH, SIM } from './config.ts';
-import { isFreeToAct, killUnit, resolveMelee, startMelee } from './combat.ts';
-import { distanceXZ } from './math.ts';
-import { centroid, livingSoldiers, updateFollowAnchors } from './orders.ts';
+import { applyKnockback, isFreeToAct, killUnit, knockbackVector, resolveMelee, startMelee } from './combat.ts';
+import { distanceXZ, normalizeXZ } from './math.ts';
+import { livingSoldiers, updateFollowAnchors } from './orders.ts';
 import { stepMovement } from './physics.ts';
 import { randomRange } from './random.ts';
 import { terrainHeightAt } from './terrain.ts';
 import type { Army, CommanderInput, MatchState, Unit } from './types.ts';
-import { canBeTargeted, canUseShield, getUnit, isPerson, rangedStatsFor } from './units.ts';
+import { areEnemies, canBeTargeted, canUseShield, getUnit, isMounted, isPerson, rangedStatsFor } from './units.ts';
 
 /** Archers switch from the bow to melee when the target is this close. */
 const ARCHER_BOW_MIN_DISTANCE = ARCHER.melee.range + 0.6;
@@ -24,8 +24,10 @@ export function applyPlayerInput(state: MatchState, army: Army, input: Commander
     intent.jump = false;
     intent.attack = false;
     intent.shield = false;
+    intent.aim = null;
     return;
   }
+  intent.aim = input.aim;
   intent.moveX = input.moveX;
   intent.moveZ = input.moveZ;
   intent.faceYaw = input.faceYaw;
@@ -45,6 +47,7 @@ function startShot(unit: Unit): boolean {
 
 function wantsBow(state: MatchState, unit: Unit): boolean {
   if (!rangedStatsFor(unit)) return false;
+  if (unit.kind === 'commander') return true;
   const target = getUnit(state, unit.ai.targetId);
   return target !== null && distanceXZ(unit.pos, target.pos) > ARCHER_BOW_MIN_DISTANCE;
 }
@@ -72,7 +75,7 @@ export function progressActions(state: MatchState, dt: number): void {
     if (action === 'melee') resolveMelee(state, unit);
     else {
       const target = getUnit(state, unit.ai.targetId);
-      fireArrow(state, unit, target && canBeTargeted(target) ? target : null);
+      fireArrow(state, unit, target && canBeTargeted(target) ? target : null, unit.intent.aim);
     }
   }
 }
@@ -83,15 +86,20 @@ function updateTimers(state: MatchState, dt: number): void {
     if (unit.cooldownTimer > 0) unit.cooldownTimer = Math.max(0, unit.cooldownTimer - dt);
     if (unit.stunTimer > 0) unit.stunTimer = Math.max(0, unit.stunTimer - dt);
     if (unit.invulnerableTimer > 0) unit.invulnerableTimer = Math.max(0, unit.invulnerableTimer - dt);
+    unit.sinceHurt += dt;
+    if (unit.kind === 'commander' && unit.sinceHurt > COMMANDER.regenDelay && unit.hp < unit.maxHp) {
+      unit.hp = Math.min(unit.maxHp, unit.hp + COMMANDER.regenPerSecond * dt);
+    }
   }
 }
 
+/** The commander patches themselves up where they fell, shoving nearby enemies away. */
 export function respawnCommander(state: MatchState, army: Army, commander: Unit): boolean {
-  const center = centroid(livingSoldiers(state, army));
-  if (!center) return false;
+  if (livingSoldiers(state, army).length === 0) return false;
   commander.alive = true;
   commander.hp = commander.maxHp;
-  commander.pos = { x: center.x, y: terrainHeightAt(center.x, center.z), z: center.z };
+  commander.sinceHurt = 0;
+  commander.pos = { x: commander.pos.x, y: terrainHeightAt(commander.pos.x, commander.pos.z), z: commander.pos.z };
   commander.vel = { x: 0, y: 0, z: 0 };
   commander.onGround = true;
   commander.stunTimer = 0;
@@ -101,8 +109,20 @@ export function respawnCommander(state: MatchState, army: Army, commander: Unit)
   commander.respawnTimer = 0;
   commander.invulnerableTimer = COMMANDER.respawnShield;
   commander.lastHitByArmy = null;
+  shoveAway(state, commander);
   state.events.push({ type: 'respawn', unitId: commander.id });
   return true;
+}
+
+function shoveAway(state: MatchState, commander: Unit): void {
+  const shove = COMMANDER.respawnShove;
+  for (const other of state.units) {
+    if (!other.alive || other === commander || isMounted(other) || !areEnemies(state, commander, other)) continue;
+    const d = distanceXZ(other.pos, commander.pos);
+    if (d > shove.radius) continue;
+    const dir = d > 1e-3 ? normalizeXZ(other.pos.x - commander.pos.x, other.pos.z - commander.pos.z) : { x: 1, z: 0 };
+    applyKnockback(other, knockbackVector(dir, shove.strength), shove.stun);
+  }
 }
 
 function updateRespawns(state: MatchState, dt: number): void {
@@ -193,7 +213,8 @@ export function stepMatch(state: MatchState, inputs: ReadonlyMap<number, Command
   for (const army of state.armies) {
     if (army.eliminated) continue;
     if (army.isBot) runBotArmy(state, army, step);
-    else applyPlayerInput(state, army, inputs.get(army.id));
+    else if (state.units[army.commanderId]?.alive) applyPlayerInput(state, army, inputs.get(army.id));
+    else runLeaderlessArmy(state, army, step);
     runArmyAi(state, army, step);
   }
   updateTimers(state, step);

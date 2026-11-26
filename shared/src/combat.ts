@@ -6,7 +6,7 @@ import type { MatchState, Unit } from './types.ts';
 import {
   areEnemies,
   bodyRadius,
-  canBeTargeted,
+  canBeStruck,
   canUseShield,
   getUnit,
   isHorse,
@@ -44,6 +44,17 @@ export function knockbackVector(pushDir: Vec2, strength: number): Vec3 {
   return { x: pushDir.x * strength, y: strength * KNOCKBACK.lift, z: pushDir.z * strength };
 }
 
+/** True if a friend right next to `target` also has their shield up: the wall holds. */
+function inShieldWall(state: MatchState, target: Unit): boolean {
+  for (const other of state.units) {
+    if (other === target || !other.alive || !other.shieldUp || areEnemies(state, target, other)) continue;
+    const dx = other.pos.x - target.pos.x;
+    const dz = other.pos.z - target.pos.z;
+    if (dx * dx + dz * dz <= SHIELD.wallNeighborDistance * SHIELD.wallNeighborDistance) return true;
+  }
+  return false;
+}
+
 export function applyHit(
   state: MatchState,
   target: Unit,
@@ -53,14 +64,17 @@ export function applyHit(
 ): void {
   if (!target.alive || target.invulnerableTimer > 0) return;
   const blocked = isBlockingFrom(target, source.from);
-  const dealt = blocked ? damage * (1 - SHIELD.blockFraction) : damage;
-  let factor = blocked ? SHIELD.blockedKnockbackFactor : 1;
+  const wall = blocked && inShieldWall(state, target);
+  const blockFraction = wall ? SHIELD.wallBlockFraction : SHIELD.blockFraction;
+  const dealt = blocked ? damage * (1 - blockFraction) : damage;
+  let factor = wall ? 0 : blocked ? SHIELD.blockedKnockbackFactor : 1;
   if (isHorse(target)) factor *= HORSE.knockbackTaken;
   // Riders stay in the saddle; only the horse can throw them.
   if (isMounted(target)) factor = 0;
   const knockback = knockbackVector(source.pushDir, knock.strength * factor);
 
   target.hp -= dealt;
+  target.sinceHurt = 0;
   target.lastHitByArmy = source.armyId;
   state.events.push({
     type: 'hit',
@@ -80,7 +94,7 @@ export function applyHit(
     killUnit(state, target, source.armyId, boosted);
     return;
   }
-  if (factor > 0) applyKnockback(target, knockback, knock.stun * (blocked ? SHIELD.blockedKnockbackFactor : 1));
+  if (factor > 0) applyKnockback(target, knockback, blocked ? 0 : knock.stun);
 }
 
 export function applyKnockback(target: Unit, knockback: Vec3, stun: number): void {
@@ -152,7 +166,7 @@ export function meleeTargets(state: MatchState, attacker: Unit, range: number, a
   const minDot = Math.cos(arcHalfAngle);
   const found: { unit: Unit; distance: number }[] = [];
   for (const other of state.units) {
-    if (other === attacker || !canBeTargeted(other) || !areEnemies(state, attacker, other)) continue;
+    if (other === attacker || !canBeStruck(other) || !areEnemies(state, attacker, other)) continue;
     const dx = other.pos.x - attacker.pos.x;
     const dz = other.pos.z - attacker.pos.z;
     const centerDistance = Math.hypot(dx, dz);

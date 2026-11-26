@@ -111,7 +111,7 @@ describe('orders', () => {
 });
 
 describe('commander respawn', () => {
-  it('respawns after 10 seconds near the army', () => {
+  it('gets back up after the respawn time where they fell', () => {
     const state = quietMatch();
     const me = commanderOf(state, 0);
     place(me, 0, 0);
@@ -121,8 +121,7 @@ describe('commander respawn', () => {
     run(state, 1);
     expect(me.alive).toBe(true);
     expect(me.hp).toBe(COMMANDER.hp);
-    const center = armyCenter(state, state.armies[0]!)!;
-    expect(distanceXZ(center, me.pos)).toBeLessThan(5);
+    expect(distanceXZ({ x: 0, z: 0 }, me.pos)).toBeLessThan(1);
   });
 
   it('does not respawn once the whole army is gone, and the army is out', () => {

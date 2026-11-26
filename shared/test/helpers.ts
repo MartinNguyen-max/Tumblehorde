@@ -2,8 +2,22 @@ import { createMatch, defaultSettings } from '../src/setup.ts';
 import { terrainHeightAt } from '../src/terrain.ts';
 import type { MatchSettings, MatchState, Unit } from '../src/types.ts';
 
-export function newMatch(overrides: Partial<MatchSettings> = {}): MatchState {
-  return createMatch(defaultSettings(overrides));
+/**
+ * Most tests want commanders on foot; their starting horses are removed unless asked for.
+ */
+export function newMatch(overrides: Partial<MatchSettings> = {}, options: { commanderHorses?: boolean } = {}): MatchState {
+  const state = createMatch(defaultSettings(overrides));
+  if (options.commanderHorses) return state;
+  for (const army of state.armies) {
+    const commander = state.units[army.commanderId];
+    const horse = commander?.mountId === null || !commander ? undefined : state.units[commander.mountId];
+    if (!commander || !horse) continue;
+    commander.mountId = null;
+    horse.riderId = null;
+    horse.alive = false;
+    commander.pos.y = terrainHeightAt(commander.pos.x, commander.pos.z);
+  }
+  return state;
 }
 
 /** Moves a unit to a spot (on the ground) and clears its motion. */

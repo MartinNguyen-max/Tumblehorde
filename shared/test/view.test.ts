@@ -9,7 +9,7 @@ describe('match views', () => {
     const view = matchView(state);
     expect(view.units).toHaveLength(state.units.length);
     expect(view.armies[0]?.soldiersAlive).toBe(10);
-    expect(view.armies[1]?.orders).toEqual(['hold']);
+    expect(view.armies[1]?.orders).toEqual(['hold', 'hold', 'hold']);
   });
 
   it('interpolate positions halfway between two steps', () => {

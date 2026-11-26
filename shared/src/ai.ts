@@ -78,10 +78,29 @@ function nearestEnemyArcher(state: MatchState, unit: Unit): Unit | null {
   return best;
 }
 
+function nearestEnemyArcherWithin(state: MatchState, unit: Unit, radius: number): Unit | null {
+  let best: Unit | null = null;
+  let bestDistance = radius;
+  for (const other of state.units) {
+    if (other.kind !== 'archer' || !canBeTargeted(other) || !areEnemies(state, unit, other)) continue;
+    const d = distanceXZ(unit.pos, other.pos);
+    if (d < bestDistance) {
+      best = other;
+      bestDistance = d;
+    }
+  }
+  return best;
+}
+
 function chooseTarget(state: MatchState, unit: Unit, order: GroupOrder, slot: Vec2): Unit | null {
   const isArcher = unit.kind === 'archer';
   switch (order.order) {
     case 'attack':
+      // Cavalry rides around the melee to cut down the archers behind it.
+      if (isMounted(unit)) {
+        const archer = nearestEnemyArcherWithin(state, unit, AI.riderFlankRadius);
+        if (archer) return archer;
+      }
       return nearestEnemy(state, unit, AI.reactionRadius) ?? nearestEnemy(state, unit, Infinity);
     case 'follow': {
       const radius = isArcher ? ARCHER.ranged.range : AI.reactionRadius;
@@ -169,10 +188,12 @@ function archerIntent(state: MatchState, unit: Unit, target: Unit, order: GroupO
   unit.intent.attack = isFacing(unit, target.pos);
 }
 
-function moveToSlot(unit: Unit, slot: Vec2, order: GroupOrder): void {
+function moveToSlot(state: MatchState, unit: Unit, slot: Vec2, order: GroupOrder): void {
   const d = distanceXZ(unit.pos, slot);
   if (d < FORMATION.arriveRadius) {
-    unit.intent.faceYaw = order.anchorYaw;
+    // Standing in formation: keep an eye on the nearest enemy, otherwise face the line's way.
+    const enemy = nearestEnemy(state, unit, AI.lookAtEnemyRadius);
+    unit.intent.faceYaw = enemy ? dirToYaw(enemy.pos.x - unit.pos.x, enemy.pos.z - unit.pos.z) : order.anchorYaw;
     return;
   }
   setMove(unit.intent, slot.x - unit.pos.x, slot.z - unit.pos.z, Math.min(1, d / ARRIVE_SLOWDOWN_DISTANCE));
@@ -209,20 +230,41 @@ export function soldierIntent(state: MatchState, unit: Unit, order: GroupOrder, 
   }
   const target = getUnit(state, unit.ai.targetId);
   const validTarget = target && canBeTargeted(target) ? target : null;
+  if (unit.kind === 'swordsman' && order.order === 'hold' && shieldWallIntent(state, unit, slot, validTarget)) return;
   if (unit.ai.shieldTimer > 0 && canUseShield(unit)) {
     shieldIntent(state, unit);
     if (validTarget) meleeApproachOnly(unit, validTarget);
-    else moveToSlot(unit, slot, order);
+    else moveToSlot(state, unit, slot, order);
     unit.intent.attack = false;
     return;
   }
   if (!validTarget) {
-    moveToSlot(unit, slot, order);
+    moveToSlot(state, unit, slot, order);
     return;
   }
   if (unit.kind === 'archer') archerIntent(state, unit, validTarget, order);
   else if (isMounted(unit)) riderChargeIntent(unit, validTarget);
   else meleeIntent(unit, validTarget);
+}
+
+/**
+ * Roman shield wall: keep your place in the line with the shield up towards the enemy,
+ * and only lower it for a quick stab when someone is in reach. Returns false when no
+ * enemy is near, so the soldier just stands in formation.
+ */
+function shieldWallIntent(state: MatchState, unit: Unit, slot: Vec2, target: Unit | null): boolean {
+  const enemy = target ?? nearestEnemy(state, unit, AI.shieldWallRadius);
+  if (!enemy) return false;
+  const stats = meleeStatsFor(unit);
+  const d = distanceXZ(unit.pos, enemy.pos);
+  const inReach = stats !== null && d <= stats.range + bodyRadius(enemy);
+  if (distanceXZ(unit.pos, slot) > FORMATION.arriveRadius) {
+    setMove(unit.intent, slot.x - unit.pos.x, slot.z - unit.pos.z, Math.min(1, distanceXZ(unit.pos, slot) / ARRIVE_SLOWDOWN_DISTANCE));
+  }
+  faceTowards(unit, enemy.pos);
+  if (inReach && unit.cooldownTimer <= 0 && isFacing(unit, enemy.pos)) unit.intent.attack = true;
+  else unit.intent.shield = true;
+  return true;
 }
 
 function meleeApproachOnly(unit: Unit, target: Unit): void {

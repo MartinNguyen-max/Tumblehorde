@@ -1,9 +1,10 @@
 import { ARMY, MOVEMENT } from './config.ts';
-import { followCenter, formationSlots } from './formation.ts';
-import { clamp, dirToYaw, turnTowards, type Vec2 } from './math.ts';
+import { FORMATION } from './config.ts';
+import { followCenter, formationSlots, type FormationShape } from './formation.ts';
+import { clamp, dirToYaw, distanceXZ, turnTowards, type Vec2 } from './math.ts';
 import { toggleMount } from './mounts.ts';
 import type { Army, Command, EntityId, GroupOrder, MatchState, Order, Unit, UnitKind } from './types.ts';
-import { getUnit } from './units.ts';
+import { getUnit, setWeapon } from './units.ts';
 
 /**
  * Splitting is by unit type, so groups are tactically useful:
@@ -53,18 +54,38 @@ export function canGiveOrders(state: MatchState, army: Army): boolean {
   return !army.eliminated && commander?.alive === true && livingSoldiers(state, army).length > 0;
 }
 
+/** Center of the nearest army on another team. */
+export function nearestEnemyCenter(state: MatchState, army: Army, from: Vec2): Vec2 | null {
+  let best: Vec2 | null = null;
+  let bestDistance = Infinity;
+  for (const other of state.armies) {
+    if (other.eliminated || other.team === army.team) continue;
+    const center = armyCenter(state, other);
+    if (!center) continue;
+    const d = distanceXZ(from, center);
+    if (d < bestDistance) {
+      best = center;
+      bestDistance = d;
+    }
+  }
+  return best;
+}
+
 function orderFor(state: MatchState, army: Army, order: Order, group: number): GroupOrder {
   const commander = state.units[army.commanderId];
   const yaw = commander?.yaw ?? 0;
   if (order === 'hold') {
     const here = centroid(groupMembers(state, army, group)) ?? { x: commander?.pos.x ?? 0, z: commander?.pos.z ?? 0 };
-    return { order, anchor: here, anchorYaw: yaw };
+    // A holding line faces the enemy, whichever way the commander happened to look.
+    const enemy = nearestEnemyCenter(state, army, here);
+    return { order, anchor: here, anchorYaw: enemy ? dirToYaw(enemy.x - here.x, enemy.z - here.z) : yaw };
   }
   return { order, anchor: { x: commander?.pos.x ?? 0, z: commander?.pos.z ?? 0 }, anchorYaw: yaw };
 }
 
-export function issueOrder(state: MatchState, army: Army, order: Order, group: number | null): boolean {
-  if (!canGiveOrders(state, army)) return false;
+/** `leaderless` lets an army without a standing commander order itself. */
+export function issueOrder(state: MatchState, army: Army, order: Order, group: number | null, leaderless = false): boolean {
+  if (!(leaderless ? canActLeaderless(state, army) : canGiveOrders(state, army))) return false;
   if (group !== null && (group < 0 || group >= army.groupCount)) return false;
   for (let g = 0; g < army.groupCount; g++) {
     if (group === null || group === g) army.groupOrders[g] = orderFor(state, army, order, g);
@@ -73,8 +94,12 @@ export function issueOrder(state: MatchState, army: Army, order: Order, group: n
   return true;
 }
 
-export function splitArmy(state: MatchState, army: Army, groupCount: number): boolean {
-  if (!canGiveOrders(state, army)) return false;
+function canActLeaderless(state: MatchState, army: Army): boolean {
+  return !army.eliminated && livingSoldiers(state, army).length > 0;
+}
+
+export function splitArmy(state: MatchState, army: Army, groupCount: number, leaderless = false): boolean {
+  if (!(leaderless ? canActLeaderless(state, army) : canGiveOrders(state, army))) return false;
   const count = clamp(Math.round(groupCount), 1, ARMY.maxGroups);
   const previous = army.groupOrders[0]?.order ?? 'hold';
   army.groupCount = count;
@@ -99,6 +124,10 @@ export function applyCommand(state: MatchState, armyId: number, command: Command
     case 'mount': {
       const commander = state.units[army.commanderId];
       return commander ? toggleMount(state, commander) : false;
+    }
+    case 'weapon': {
+      const commander = state.units[army.commanderId];
+      return commander ? setWeapon(commander, command.weapon) : false;
     }
   }
 }
@@ -136,6 +165,7 @@ export function formationTargets(state: MatchState, army: Army): Map<EntityId, V
       members.map((m) => m.kind),
       center,
       groupOrder.anchorYaw,
+      formationShape(groupOrder, members),
     );
     members.forEach((m, i) => {
       const slot = slots[i];
@@ -143,6 +173,14 @@ export function formationTargets(state: MatchState, army: Army): Map<EntityId, V
     });
   }
   return targets;
+}
+
+const SHIELD_WALL: FormationShape = { spacing: FORMATION.shieldWallSpacing, rowWidth: FORMATION.shieldWallRowWidth };
+
+/** Swordsmen holding their ground close ranks into a shield wall. */
+function formationShape(groupOrder: GroupOrder, members: readonly Unit[]): FormationShape | undefined {
+  const allSwords = members.every((m) => m.kind === 'swordsman');
+  return groupOrder.order === 'hold' && allSwords ? SHIELD_WALL : undefined;
 }
 
 export function orderOf(army: Army, unit: Unit): GroupOrder | null {
