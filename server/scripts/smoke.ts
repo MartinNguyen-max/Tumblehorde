@@ -40,7 +40,7 @@ guest.send('start');
 await sleep(200);
 assert.equal(hostSeen.start, null, 'only the host can start');
 
-host.send('settings', { mode: 'teams', armySize: 10 });
+host.send('settings', { mode: 'teams', armySize: 15, map: 'city' });
 await sleep(200);
 assert.equal(hostSeen.lobby?.mode, 'teams');
 host.send('start');
