@@ -21,9 +21,9 @@ interface Corpse {
   isHorse: boolean;
 }
 
-const PERSON_BOX = { center: new Vector3(0, 0.95, 0), extents: new Vector3(0.62, 1.75, 0.48), mass: 1 };
-const HORSE_BOX = { center: new Vector3(0, 1.35, 0), extents: new Vector3(0.85, 1.2, 2.0), mass: 4 };
-const HELMET_EXTENTS = new Vector3(0.34, 0.28, 0.38);
+const PERSON_BOX = { center: new Vector3(0, 1.0, 0), extents: new Vector3(0.86, 2.0, 0.6), mass: 1 };
+const HORSE_BOX = { center: new Vector3(0, 1.35, 0), extents: new Vector3(1.0, 1.3, 2.1), mass: 4 };
+const HELMET_EXTENTS = new Vector3(0.64, 0.32, 0.64);
 /** Every corpse tips over around a sideways axis at least this fast, so none ends up standing. */
 const TOPPLE_SPIN = 6;
 const UPRIGHT_THRESHOLD = 0.6;

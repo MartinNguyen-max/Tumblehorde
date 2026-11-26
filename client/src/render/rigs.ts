@@ -5,7 +5,12 @@ import { buildBean } from './beans.ts';
 import { buildRoman, type PersonBody } from './legionary.ts';
 import { childNode, type PartFactory } from './parts.ts';
 
-const COMMANDER_SCALE = 1.12;
+/** Soldiers are drawn a bit larger than their collision body: chunky and easy to read. */
+const SOLDIER_SCALE = 1.1;
+/** The commander stands as tall as their soldiers; the horse lifts them only a little. */
+const COMMANDER_SCALE = SOLDIER_SCALE;
+/** Horses are built full size and shrunk into stocky war ponies (see BODY.saddleHeight). */
+const HORSE_SCALE = 0.7;
 const ARM_REST = -0.3;
 const ARM_OVERHEAD = -3.0;
 const ARM_STRIKE_END = 0.15;
@@ -105,7 +110,7 @@ function addBubbles(parts: PartFactory, head: TransformNode): InstancedMesh[] {
 }
 
 function addStars(parts: PartFactory, head: TransformNode): TransformNode {
-  const stars = childNode('stars', head, 0, 0.5, 0);
+  const stars = childNode('stars', head, 0, 0.62, 0);
   for (let i = 0; i < STAR_COUNT; i++) {
     const a = (i / STAR_COUNT) * Math.PI * 2;
     parts.part('sphere', COLORS.star, stars, [0.11, 0.11, 0.11], [Math.cos(a) * 0.3, 0, Math.sin(a) * 0.3], NO_SHADOW_GLOSS);
@@ -115,7 +120,7 @@ function addStars(parts: PartFactory, head: TransformNode): TransformNode {
 }
 
 export function createPersonRig(scene: Scene, parts: PartFactory, kind: UnitKind, palette: ArmyPalette): PersonRig {
-  const scale = kind === 'commander' ? COMMANDER_SCALE : 1;
+  const scale = kind === 'commander' ? COMMANDER_SCALE : SOLDIER_SCALE;
   const root = new TransformNode(kind, scene);
   const body = childNode('body', root);
   body.scaling.setAll(scale);
@@ -156,46 +161,41 @@ export function createPersonRig(scene: Scene, parts: PartFactory, kind: UnitKind
   };
 }
 
-/** A war horse in barding: cloth in the army's color, bronze chest plate, neck plates and face plate. */
+/** A boxy war horse in barding: cloth in the army's color, a gold chest plate and face plate. */
 export function createHorseRig(scene: Scene, parts: PartFactory, palette: ArmyPalette, id: number): HorseRig {
   const hide = id % 2 === 0 ? COLORS.horseLight : COLORS.horseDark;
   const root = new TransformNode('horse', scene);
   const body = childNode('horse-body', root);
-  parts.part('roundCapsule', hide, body, [0.8, 2.0, 0.88], [0, 1.38, 0], GLOSS).rotation.x = Math.PI / 2;
-  parts.part('roundCapsule', hide, body, [0.42, 1.0, 0.5], [0, 1.85, 0.85], GLOSS).rotation.x = 0.55;
-  parts.part('box', COLORS.mane, body, [0.1, 0.8, 0.24], [0, 2.05, 0.68], GLOSS).rotation.x = 0.55;
-  // Caparison over the back, trimmed in gold, and a Roman four-horned saddle on top.
-  parts.part('roundCapsule', palette.body, body, [0.9, 1.62, 0.95], [0, 1.43, -0.08], GLOSS).rotation.x = Math.PI / 2;
-  parts.part('tube', COLORS.gold, body, [0.92, 0.4, 1.55], [0, 1.2, -0.08], METAL);
-  parts.part('box', ROMAN.leather, body, [0.6, 0.12, 0.7], [0, 1.88, -0.08], GLOSS);
-  for (const x of [-0.22, 0.22]) {
-    for (const z of [-0.36, 0.22]) parts.part('roundSphere', ROMAN.darkLeather, body, [0.1, 0.12, 0.1], [x, 1.97, z], GLOSS);
-  }
-  parts.part('roundSphere', ROMAN.bronze, body, [0.78, 0.62, 0.3], [0, 1.4, 0.95], METAL);
-  for (let i = 0; i < 3; i++) {
-    const plate = parts.part('box', ROMAN.bronze, body, [0.36, 0.06, 0.26], [0, 1.95 + i * 0.13, 0.62 + i * 0.16], METAL);
-    plate.rotation.x = 0.55;
-  }
-  parts.part('roundCapsule', COLORS.mane, body, [0.15, 0.8, 0.15], [0, 1.45, -1.05], GLOSS).rotation.x = 0.6;
-  const head = childNode('horse-head', body, 0, 2.22, 1.2);
-  parts.part('roundCapsule', hide, head, [0.36, 0.8, 0.42], [0, 0, 0.22], GLOSS).rotation.x = Math.PI / 2 - 0.35;
-  parts.part('roundSphere', COLORS.mane, head, [0.28, 0.24, 0.2], [0, -0.13, 0.58], GLOSS);
-  const chamfron = parts.part('box', ROMAN.bronze, head, [0.26, 0.05, 0.5], [0, 0.12, 0.28], METAL);
-  chamfron.rotation.x = -0.35;
-  parts.part('roundCapsule', palette.body, head, [0.08, 0.3, 0.14], [0, 0.36, 0.02], GLOSS);
+  body.scaling.setAll(HORSE_SCALE);
+  parts.part('box', hide, body, [0.9, 0.9, 2.0], [0, 1.38, 0], GLOSS);
+  const neck = parts.part('box', hide, body, [0.56, 1.0, 0.6], [0, 1.92, 0.88], GLOSS);
+  neck.rotation.x = 0.5;
+  parts.part('box', COLORS.mane, body, [0.16, 0.9, 0.3], [0, 2.1, 0.66], GLOSS).rotation.x = 0.5;
+  parts.part('box', COLORS.mane, body, [0.16, 0.85, 0.16], [0, 1.4, -1.1], GLOSS).rotation.x = 0.5;
+  // Caparison over the back, trimmed in gold, with a saddle and a gold chest plate.
+  parts.part('box', palette.body, body, [1.0, 0.62, 1.62], [0, 1.36, -0.1], GLOSS);
+  parts.part('box', COLORS.gold, body, [1.02, 0.07, 1.64], [0, 1.06, -0.1], METAL);
+  parts.part('box', ROMAN.leather, body, [0.62, 0.14, 0.72], [0, 1.88, -0.1], GLOSS);
+  parts.part('box', COLORS.gold, body, [0.8, 0.6, 0.12], [0, 1.4, 1.04], METAL);
+  const head = childNode('horse-head', body, 0, 2.3, 1.2);
+  parts.part('box', hide, head, [0.46, 0.46, 0.86], [0, 0, 0.26], GLOSS);
+  parts.part('box', COLORS.mane, head, [0.42, 0.3, 0.12], [0, -0.08, 0.7], GLOSS);
+  parts.part('box', COLORS.gold, head, [0.3, 0.06, 0.6], [0, 0.25, 0.3], METAL);
+  parts.part('box', palette.body, head, [0.1, 0.34, 0.16], [0, 0.42, 0.04], GLOSS);
   for (const side of [-1, 1]) {
-    parts.part('smoothCone', hide, head, [0.1, 0.22, 0.1], [side * 0.12, 0.3, -0.02], GLOSS);
-    parts.part('roundSphere', COLORS.pupil, head, [0.08, 0.1, 0.08], [side * 0.18, 0.08, 0.26], NO_SHADOW_GLOSS);
+    parts.part('box', hide, head, [0.1, 0.22, 0.1], [side * 0.15, 0.32, -0.04], GLOSS);
+    parts.part('box', COLORS.eyeWhite, head, [0.04, 0.12, 0.12], [side * 0.24, 0.08, 0.22], NO_SHADOW_GLOSS);
+    parts.part('box', COLORS.pupil, head, [0.045, 0.07, 0.07], [side * 0.245, 0.07, 0.24], NO_SHADOW_GLOSS);
   }
   const legs: TransformNode[] = [];
-  for (const [x, z] of [[-0.26, 0.66], [0.26, 0.66], [-0.26, -0.66], [0.26, -0.66]] as const) {
+  for (const [x, z] of [[-0.28, 0.72], [0.28, 0.72], [-0.28, -0.72], [0.28, -0.72]] as const) {
     const leg = childNode('horse-leg', body, x, 1.0, z);
-    parts.part('roundCapsule', hide, leg, [0.2, 0.95, 0.2], [0, -0.44, 0], GLOSS);
-    parts.part('roundCylinder', COLORS.boot, leg, [0.22, 0.12, 0.22], [0, -0.92, 0], GLOSS);
+    parts.part('box', hide, leg, [0.26, 0.95, 0.28], [0, -0.45, 0], GLOSS);
+    parts.part('box', COLORS.boot, leg, [0.3, 0.14, 0.32], [0, -0.92, 0], GLOSS);
     legs.push(leg);
   }
   parts.bake(root, `horse:${hide}:${palette.body}`, new Set());
-  return { type: 'horse', scale: 1, root, body, head, legs, walkPhase: Math.random() * 6, hitAge: HIT_REACTION_TIME };
+  return { type: 'horse', scale: HORSE_SCALE, root, body, head, legs, walkPhase: Math.random() * 6, hitAge: HIT_REACTION_TIME };
 }
 
 export interface AnimationContext {
@@ -526,12 +526,12 @@ function animateDrunk(rig: PersonRig, view: UnitView, now: number): boolean {
   });
   if (rig.drool) {
     const drip = (now * 0.7 + id * 0.19) % 1;
-    rig.drool.scaling.y = 0.04 + drip * 0.12;
-    rig.drool.position.y = -0.1 - drip * 0.06;
+    rig.drool.scaling.y = 0.05 + drip * 0.16;
+    rig.drool.position.y = -0.2 - drip * 0.08;
   }
   rig.bubbles.forEach((b, i) => {
     const phase = (now * 0.45 + i / BUBBLE_COUNT + id * 0.13) % 1;
-    b.position.set(Math.sin(phase * 6 + i * 2) * 0.12, 0.32 + phase * 0.5, Math.cos(phase * 5 + i) * 0.08);
+    b.position.set(Math.sin(phase * 6 + i * 2) * 0.14, 0.5 + phase * 0.5, Math.cos(phase * 5 + i) * 0.1);
     b.scaling.setAll(0.07 * (1 - phase) + 0.025);
   });
   return Math.sin(now * 0.8 + id) > 0.3;

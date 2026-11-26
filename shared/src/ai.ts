@@ -290,7 +290,13 @@ export function soldierIntent(state: MatchState, unit: Unit, order: GroupOrder, 
   }
   const target = getUnit(state, unit.ai.targetId);
   const validTarget = target && canBeTargeted(target) ? target : null;
-  if (unit.kind === 'swordsman' && order.order === 'hold' && holdLineIntent(state, unit, slot, validTarget)) return;
+  if (unit.kind === 'swordsman' && order.order === 'hold') {
+    if (holdLineIntent(state, unit, slot, validTarget)) return;
+    // A held line always stands behind locked shields.
+    moveToSlot(state, unit, slot, order);
+    unit.intent.shield = distanceXZ(unit.pos, slot) < FORMATION.shieldUpDistance;
+    return;
+  }
   if (unit.ai.shieldTimer > 0 && canUseShield(unit) && !(validTarget && canRiposte(unit, validTarget))) {
     shieldIntent(state, unit);
     if (validTarget) meleeApproachOnly(state, unit, validTarget);

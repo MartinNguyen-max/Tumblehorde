@@ -63,9 +63,9 @@ export const BODY = {
   personRadius: 0.42,
   personHeight: 1.9,
   horseRadius: 0.85,
-  horseHeight: 2.3,
-  /** Rider's feet sit this high above the horse's feet. */
-  saddleHeight: 1.35,
+  horseHeight: 1.6,
+  /** Rider's feet sit this high above the horse's feet: a stocky horse, so riding only lifts you a little. */
+  saddleHeight: 0.72,
   personMass: 1,
   horseMass: 4,
   /** How much of a crowd push a commander takes from enemies (own soldiers always make way). */
@@ -330,8 +330,8 @@ export const FORMATION = {
   frontLineDistance: 2.6,
   archerRowsDistance: 4.5,
   cavalryFlankGap: 3,
-  /** Holding swordsmen stand shoulder to shoulder, shields overlapping. */
-  tightSpacing: 0.95,
+  /** Holding swordsmen stand shoulder to shoulder (just over a body's width), shields touching. */
+  tightSpacing: 0.86,
   rankGap: 1.0,
   /** Line formations stand this far ahead of the commander, so they stand right behind it. */
   holdLineAhead: 2.6,
@@ -344,6 +344,8 @@ export const FORMATION = {
   arriveRadius: 0.6,
   /** Holding soldiers settle much closer to their slot, so the ranks stay straight and tight. */
   holdArriveRadius: 0.15,
+  /** Holding soldiers raise their shields once this close to their place. */
+  shieldUpDistance: 1.2,
   commanderSpawnAhead: 5,
 } as const;
 

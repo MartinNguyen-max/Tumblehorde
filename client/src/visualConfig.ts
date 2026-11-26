@@ -213,13 +213,14 @@ export const LIGHTING = {
 
 export const CAMERA = {
   fov: 0.84,
-  distance: 9,
-  minDistance: 4,
+  /** Close behind and low, at about the soldiers' eye level. */
+  distance: 6.5,
+  minDistance: 3.5,
   maxDistance: 22,
-  height: 2.2,
+  height: 1.9,
   minPitch: -0.35,
   maxPitch: 1.2,
-  startPitch: 0.32,
+  startPitch: 0.2,
   mouseSensitivity: 0.0024,
   zoomStep: 0.0035,
   smoothing: 14,
