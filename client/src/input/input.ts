@@ -1,5 +1,5 @@
 /** Keys that act once per press rather than while held. */
-const PRESS_KEYS = new Set(['Digit1', 'Digit2', 'Digit3', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'KeyE', 'KeyV', 'KeyQ']);
+const PRESS_KEYS = new Set(['Digit1', 'Digit2', 'Digit3', 'KeyE', 'KeyV', 'KeyQ']);
 
 /** Raw keyboard and mouse state for the game, with pointer lock for mouse look. */
 export class InputState {

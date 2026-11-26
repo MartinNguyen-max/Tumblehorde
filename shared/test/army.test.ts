@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { ARMY, COMMANDER } from '../src/config.ts';
+import { ARMY, COMMANDER, FORMATION } from '../src/config.ts';
+import { ringRadius } from '../src/formation.ts';
 import { killUnit } from '../src/combat.ts';
 import { neutralInput } from '../src/input.ts';
 import { stepMatch } from '../src/match.ts';
-import { distanceXZ } from '../src/math.ts';
+import { distanceXZ, wrapAngle } from '../src/math.ts';
 import { applyCommand, armyCenter, groupForKind, livingSoldiers } from '../src/orders.ts';
 import { soldierKindsFor } from '../src/setup.ts';
-import type { MatchState } from '../src/types.ts';
+import type { ArmyMix, ArmySize, MatchState } from '../src/types.ts';
 import { commanderOf, newMatch, place, soldiersOf } from './helpers.ts';
 
 const DT = 1 / 60;
@@ -18,8 +19,8 @@ function run(state: MatchState, seconds: number, moveX = 0, moveZ = 0): void {
 }
 
 /** A match where the enemy is parked far away and cannot interfere. */
-function quietMatch(size: 10 | 20 | 30 = 10): MatchState {
-  const state = newMatch({ armySize: size, armies: [
+function quietMatch(size: ArmySize = 15, mix: ArmyMix = 'legion'): MatchState {
+  const state = newMatch({ armySize: size, mix, armies: [
     { name: 'You', team: 0, isBot: false },
     { name: 'Far', team: 1, isBot: false },
   ] });
@@ -27,9 +28,15 @@ function quietMatch(size: 10 | 20 | 30 = 10): MatchState {
 }
 
 describe('army composition', () => {
-  it.each(ARMY.sizes)('builds an army of %i soldiers with the fixed mix', (size) => {
+  it.each(ARMY.sizes)('builds a legion of %i swordsmen by default', (size) => {
     const kinds = soldierKindsFor(size);
-    const mix = ARMY.composition[size];
+    expect(kinds).toHaveLength(size);
+    expect(kinds.every((k) => k === 'swordsman')).toBe(true);
+  });
+
+  it.each(ARMY.sizes)('still builds the parked mixed army of %i soldiers', (size) => {
+    const kinds = soldierKindsFor(size, 'mixed');
+    const mix = ARMY.mixes.mixed[size];
     expect(kinds).toHaveLength(size);
     expect(kinds.filter((k) => k === 'swordsman')).toHaveLength(mix.swordsman);
     expect(kinds.filter((k) => k === 'archer')).toHaveLength(mix.archer);
@@ -37,14 +44,23 @@ describe('army composition', () => {
   });
 
   it('gives every rider a horse', () => {
-    const state = newMatch({ armySize: 30 });
+    const state = newMatch({ armySize: 40, mix: 'mixed' });
     const riders = soldiersOf(state, 0).filter((u) => u.kind === 'rider');
-    expect(riders).toHaveLength(3);
+    expect(riders).toHaveLength(ARMY.mixes.mixed[40].rider);
     for (const rider of riders) {
       const horse = rider.mountId === null ? undefined : state.units[rider.mountId];
       expect(horse?.kind).toBe('horse');
       expect(horse?.riderId).toBe(rider.id);
     }
+  });
+
+  it('gives only the player a commander; bot armies run themselves', () => {
+    const state = newMatch({}, { commanderHorses: true });
+    expect(state.armies[0]?.commanderId).not.toBeNull();
+    expect(state.armies[1]?.commanderId).toBeNull();
+    const horses = state.units.filter((u) => u.kind === 'horse');
+    expect(horses).toHaveLength(1);
+    expect(horses[0]?.riderId).toBe(state.armies[0]?.commanderId);
   });
 });
 
@@ -60,19 +76,60 @@ describe('orders', () => {
     expect(center.z).toBeLessThan(me.pos.z);
   });
 
-  it('Hold forms up around the commander: shield wall ahead, archers behind', () => {
-    const state = quietMatch(20);
+  it('Hold forms two tight lines just ahead of the commander by default', () => {
+    const state = quietMatch(25);
     const me = place(commanderOf(state, 0), -70, 0, Math.PI / 2);
     applyCommand(state, 0, { type: 'order', order: 'hold', group: null });
-    run(state, 8);
-    const soldiers = livingSoldiers(state, state.armies[0]!);
-    const swords = soldiers.filter((u) => u.kind === 'swordsman');
-    const archers = soldiers.filter((u) => u.kind === 'archer');
+    run(state, 10);
+    const swords = livingSoldiers(state, state.armies[0]!);
     const ahead = (u: { pos: { x: number } }) => u.pos.x - me.pos.x;
-    expect(swords.filter((u) => ahead(u) > 1.5).length).toBeGreaterThanOrEqual(6);
-    expect(swords.every((u) => distanceXZ(u.pos, me.pos) < 5)).toBe(true);
-    expect(archers.every((u) => ahead(u) < -2)).toBe(true);
-    expect(swords.filter((u) => u.shieldUp).length).toBe(0);
+    expect(swords.every((u) => ahead(u) > 0.8 && ahead(u) < FORMATION.holdLineAhead + 0.6)).toBe(true);
+    const front = swords.filter((u) => ahead(u) > FORMATION.holdLineAhead - FORMATION.rankGap / 2);
+    expect(front.length).toBe(13);
+    expect(swords.every((u) => u.weapon === 'spear')).toBe(true);
+  });
+
+  it('a long line puts everyone in one rank', () => {
+    const state = quietMatch(15);
+    const me = place(commanderOf(state, 0), -70, 0, Math.PI / 2);
+    applyCommand(state, 0, { type: 'formation', formation: 'line' });
+    run(state, 10);
+    const swords = livingSoldiers(state, state.armies[0]!);
+    for (const u of swords) expect(u.pos.x - me.pos.x).toBeCloseTo(FORMATION.holdLineAhead, 0);
+    const xs = swords.map((u) => u.pos.z).sort((a, b) => a - b);
+    expect(xs[xs.length - 1]! - xs[0]!).toBeGreaterThan(FORMATION.tightSpacing * 12);
+    expect(state.armies[0]?.formation).toBe('line');
+  });
+
+  it('a circle closes a ring around the commander, everyone facing out', () => {
+    const state = quietMatch(25);
+    const me = place(commanderOf(state, 0), -70, 0, 0);
+    applyCommand(state, 0, { type: 'formation', formation: 'circle' });
+    run(state, 12);
+    const radius = ringRadius(25);
+    for (const u of livingSoldiers(state, state.armies[0]!)) {
+      expect(distanceXZ(u.pos, me.pos)).toBeCloseTo(radius, 0);
+      const outward = Math.atan2(u.pos.x - me.pos.x, u.pos.z - me.pos.z);
+      expect(Math.abs(wrapAngle(u.yaw - outward))).toBeLessThan(0.3);
+    }
+  });
+
+  it('the next Hold remembers the chosen formation', () => {
+    const state = quietMatch();
+    applyCommand(state, 0, { type: 'formation', formation: 'circle' });
+    applyCommand(state, 0, { type: 'order', order: 'follow', group: null });
+    applyCommand(state, 0, { type: 'order', order: 'hold', group: null });
+    expect(state.armies[0]?.groupOrders[0]?.formation).toBe('circle');
+  });
+
+  it('swordsmen carry the spear on Follow and Hold and draw the sword to Attack', () => {
+    const state = quietMatch();
+    applyCommand(state, 0, { type: 'order', order: 'attack', group: null });
+    run(state, 0.1);
+    expect(soldiersOf(state, 0).every((u) => u.weapon === 'sword')).toBe(true);
+    applyCommand(state, 0, { type: 'order', order: 'follow', group: null });
+    run(state, 0.1);
+    expect(soldiersOf(state, 0).every((u) => u.weapon === 'spear')).toBe(true);
   });
 
   it('Attack sends the army towards the enemy', () => {
@@ -90,7 +147,7 @@ describe('orders', () => {
     expect(groupForKind('rider', 2)).toBe(0);
     expect(groupForKind('rider', 3)).toBe(2);
     expect(groupForKind('swordsman', 3)).toBe(0);
-    const state = quietMatch();
+    const state = quietMatch(15, 'mixed');
     applyCommand(state, 0, { type: 'split', groupCount: 3 });
     const army = state.armies[0]!;
     expect(army.groupCount).toBe(3);

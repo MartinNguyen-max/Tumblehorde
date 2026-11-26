@@ -32,9 +32,9 @@
           <div class="field">
             <span class="field-label">Army size</span>
             <div class="seg" id="opt-size" role="radiogroup">
-              <button data-value="10" class="on">10</button>
-              <button data-value="20">20</button>
-              <button data-value="30">30</button>
+              <button data-value="15" class="on">15</button>
+              <button data-value="25">25</button>
+              <button data-value="40">40</button>
             </div>
           </div>
           <div class="field">
@@ -88,8 +88,8 @@
             <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move &nbsp; <kbd>Space</kbd> jump</li>
             <li><kbd>Left click</kbd> strike &nbsp; <kbd>Right click</kbd> (hold) shield</li>
             <li><kbd>1</kbd> Follow &nbsp; <kbd>2</kbd> Hold (form up around you) &nbsp; <kbd>3</kbd> Attack</li>
-            <li><kbd>6</kbd> whole army &nbsp; <kbd>7</kbd> swordsmen &nbsp; <kbd>8</kbd> archers &nbsp; <kbd>9</kbd> cavalry: who hears your orders</li>
-            <li><kbd>Q</kbd> sword / spear / bow &nbsp; <kbd>E</kbd> mount / dismount</li>
+            <li>Keep <kbd>2</kbd> down: pick a formation with the mouse (long line, two lines, circle around you)</li>
+            <li><kbd>Q</kbd> sword / spear &nbsp; <kbd>E</kbd> mount / dismount · charge a shield wall on horseback to break it</li>
             <li><kbd>V</kbd> overview camera &nbsp; <kbd>Wheel</kbd> zoom &nbsp; <kbd>Esc</kbd> pause</li>
           </ul>
         </details>
@@ -107,9 +107,9 @@
           <div class="field">
             <span class="field-label">Army size</span>
             <div class="seg" id="lobby-size">
-              <button data-value="10">10</button>
-              <button data-value="20">20</button>
-              <button data-value="30">30</button>
+              <button data-value="15">15</button>
+              <button data-value="25">25</button>
+              <button data-value="40">40</button>
             </div>
           </div>
           <div class="field">
@@ -150,18 +150,17 @@
       <div class="banner" id="banner"></div>
       <div class="center-msg" id="center-msg"></div>
       <div class="damage-flash" id="damage-flash"></div>
+      <div class="wheel" id="formation-wheel" hidden></div>
       <div class="hud-bottom">
-        <div class="groups" id="hud-groups"></div>
         <div class="cmds" id="hud-cmds">
           <span class="cmd" data-order="follow"><b>1</b>Follow</span>
-          <span class="cmd" data-order="hold"><b>2</b>Hold</span>
+          <span class="cmd" data-order="hold"><b>2</b><span id="hud-hold-label">Hold · Two lines</span></span>
           <span class="cmd" data-order="attack"><b>3</b>Attack</span>
-          <span class="cmd tip" id="hud-group-tip">Orders go to the whole army</span>
+          <span class="cmd tip">Keep <b>2</b> down to pick a formation</span>
         </div>
         <div class="kit" id="hud-kit">
           <span class="slot weapon" data-weapon="sword">Sword</span>
           <span class="slot weapon" data-weapon="spear">Spear</span>
-          <span class="slot weapon" data-weapon="bow">Bow</span>
           <span class="slot tipslot"><b>Q</b> switch</span>
           <span class="slot" id="kit-shield">Shield · right click</span>
           <span class="slot off" id="kit-horse">Horse · none nearby</span>
@@ -177,8 +176,8 @@
           <li><kbd>WASD</kbd> move · <kbd>Space</kbd> jump</li>
           <li><kbd>Click</kbd> strike · <kbd>Right click</kbd> shield</li>
           <li><kbd>1</kbd> Follow · <kbd>2</kbd> Hold · <kbd>3</kbd> Attack</li>
-          <li><kbd>6</kbd> all · <kbd>7</kbd> swords · <kbd>8</kbd> archers · <kbd>9</kbd> cavalry</li>
-          <li><kbd>Q</kbd> sword / spear / bow · <kbd>E</kbd> horse</li>
+          <li>Keep <kbd>2</kbd> down to pick a formation</li>
+          <li><kbd>Q</kbd> sword / spear · <kbd>E</kbd> horse</li>
         </ul>
         <div class="row">
           <button class="btn" id="ctp-quit">Leave battle</button>

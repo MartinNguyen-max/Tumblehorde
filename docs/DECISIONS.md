@@ -75,3 +75,15 @@ Decisions made while building v1. None of them replace an earlier line.
 - **Horses jump** when the rider jumps.
 - **Commanders have right of way:** their own soldiers always step aside, and enemies only shove them a little, so they don't get stuck in crowds.
 - **The landing page battle mirrors the current setup** (bot armies, teams, army size, battlefield).
+
+## 2026-11-26 (Roman legion)
+
+- **Armies are swordsmen only for now** (replaces "Armies always have three groups" in practice). Archers and cavalry are parked, not deleted: `MatchSettings.mix = 'mixed'` still builds them and their tests still run. Requested by the player to keep controls simple.
+- **The bow is parked too.** Commanders carry sword and spear (`Q`); arrows only exist for the parked archers. Requested by the player.
+- **Only the commander rides a horse.**
+- **Army sizes are 15, 25 and 40** (replaces 10/20/30). Requested by the player.
+- **Bot armies have no commander** (`ARMY.botCommanders = false`); they run themselves with the leaderless planner. Without a commander to follow they march by holding a spot ~10 m ahead and moving it on, so they advance in formation. Makes the player's commander the special one. Requested by the player.
+- **Swordsmen carry a pilum on Follow and Hold and draw the gladius on Attack.** The spear reaches further (2.7 m) and shoves harder; the sword hits harder. Swapping takes 0.5 s.
+- **Hold has formations: long line, two lines (default) and a circle around the commander.** Soldiers stand 0.95 m apart, keep their order along the line so nobody crosses the formation, face their slot's way (a ring faces outwards) and only turn to enemies within ±85° of it. Tap `2` to hold in the last formation; keep `2` down for a see-through wheel and point the mouse at a formation (release or click picks it). Replaces the old "front line + guard ring" Hold and the `6`–`9` group keys.
+- **A commander's horse charge breaks shield walls**: shields do not stop it and the soldiers stay down ~2.8 s. Requested by the player: makes the commander matter.
+- **Characters are Roman legionaries** (replaces the faceted beans for swordsmen and commanders): lorica segmentata, Gallic helmets with team-colored crests, tall curved scuta that reach the ground, pilum and gladius, a face with scowling brows. The commander wears a bronze muscle cuirass, big pauldrons, greaves, an armored sword arm, a cape and a sideways crest; their horse wears barding. Mounted sword strikes hack downwards. Smooth, shiny shapes for characters; the world stays low-poly. Parked archers and riders keep the old bean look.

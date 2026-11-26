@@ -733,3 +733,75 @@ kbd {
     flex-wrap: wrap;
   }
 }
+
+/* ---------- formation wheel ---------- */
+.wheel {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.wheel::before {
+  content: '';
+  position: absolute;
+  left: -165px;
+  top: -165px;
+  width: 330px;
+  height: 330px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(14, 18, 26, 0.32) 0%, rgba(14, 18, 26, 0.18) 60%, rgba(14, 18, 26, 0) 72%);
+}
+.wheel-opt {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 112px;
+  padding: 8px 6px 7px;
+  border-radius: 14px;
+  background: rgba(14, 18, 26, 0.38);
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  opacity: 0.75;
+  transition: background 0.1s, opacity 0.1s, scale 0.1s;
+}
+.wheel-opt svg {
+  width: 48px;
+  height: 40px;
+}
+.wheel-opt.on {
+  background: rgba(240, 138, 36, 0.78);
+  border-color: var(--accent);
+  color: #fff;
+  opacity: 1;
+  scale: 1.08;
+}
+.wheel-dot {
+  position: absolute;
+  left: -6px;
+  top: -6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.3);
+}
+.wheel-hint {
+  position: absolute;
+  left: 0;
+  top: 78px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.8);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}

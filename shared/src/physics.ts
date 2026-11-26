@@ -255,7 +255,12 @@ function tryTrample(state: MatchState, horse: Unit, victim: Unit): void {
   if (speed < HORSE.trampleMinSpeed) return;
   const pushDir = normalizeXZ(horse.vel.x, horse.vel.z);
   state.events.push({ type: 'trample', horseId: horse.id, targetId: victim.id });
-  applyHit(state, victim, { attacker: rider, armyId: rider.armyId, from: horse.pos, pushDir }, HORSE.trampleDamage, HORSE.trample);
+  const source = { attacker: rider, armyId: rider.armyId, from: horse.pos, pushDir };
+  if (rider.kind === 'commander') {
+    applyHit(state, victim, { ...source, breaksGuard: true }, HORSE.commanderChargeDamage, HORSE.commanderCharge);
+  } else {
+    applyHit(state, victim, source, HORSE.trampleDamage, HORSE.trample);
+  }
 }
 
 /** Runs one movement step for every unit: steering, gravity, ground, edges, obstacles, crowding. */

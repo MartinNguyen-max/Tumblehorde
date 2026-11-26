@@ -10,7 +10,11 @@ export type SoldierKind = 'swordsman' | 'archer' | 'rider';
 export type Order = 'follow' | 'hold' | 'attack';
 export type Weapon = 'sword' | 'spear' | 'bow';
 export type GameMode = 'ffa' | 'teams';
-export type ArmySize = 10 | 20 | 30;
+export type ArmySize = 15 | 25 | 40;
+/** How the player's army holds its ground: one long line, two lines, or a ring around the commander. */
+export type Formation = 'line' | 'double' | 'circle';
+/** `legion` is swordsmen only. `mixed` (swordsmen, archers, cavalry) is parked for now but still works. */
+export type ArmyMix = 'legion' | 'mixed';
 
 /** What a unit is doing with its weapon right now. */
 export type ActionKind = 'none' | 'melee' | 'shoot';
@@ -76,8 +80,10 @@ export interface GroupOrder {
   /** Hold point and facing, captured when the order was given. */
   anchor: Vec2;
   anchorYaw: number;
-  /** Hold formed around the commander (front line, guard ring, archers behind) rather than in place. */
+  /** Hold formed around the commander rather than where the group stands. */
   aroundCommander: boolean;
+  /** Shape of a hold. */
+  formation: Formation;
 }
 
 export interface ArmyStats {
@@ -98,10 +104,13 @@ export interface Army {
   team: number;
   name: string;
   isBot: boolean;
-  commanderId: EntityId;
+  /** Bot armies have no commander: they run themselves. */
+  commanderId: EntityId | null;
   soldierIds: EntityId[];
   groupCount: number;
   groupOrders: GroupOrder[];
+  /** The formation the next Hold uses. */
+  formation: Formation;
   eliminated: boolean;
   /** When the commander dies for good (forfeit), they never respawn. */
   forfeited: boolean;
@@ -135,6 +144,8 @@ export interface MatchSettings {
   armies: ArmySetup[];
   seed: number;
   map: MapId;
+  /** Which unit types the armies have. Defaults to `legion`. */
+  mix?: ArmyMix;
 }
 
 export type MatchPhase = 'playing' | 'ending' | 'over';
@@ -157,7 +168,7 @@ export type SimEvent =
   | { type: 'dismount'; riderId: EntityId; horseId: EntityId; thrown: boolean }
   | { type: 'trample'; horseId: EntityId; targetId: EntityId }
   | { type: 'edgePush'; unitId: EntityId }
-  | { type: 'order'; armyId: number; group: number | null; order: Order }
+  | { type: 'order'; armyId: number; group: number | null; order: Order; formation: Formation }
   | { type: 'split'; armyId: number; groupCount: number }
   | { type: 'armyEliminated'; armyId: number }
   | { type: 'matchOver'; winnerTeam: number | null };
@@ -193,5 +204,7 @@ export interface CommanderInput {
 export type Command =
   | { type: 'order'; order: Order; group: number | null }
   | { type: 'split'; groupCount: number }
+  /** Picks the formation and holds in it right away. */
+  | { type: 'formation'; formation: Formation }
   | { type: 'mount' }
   | { type: 'weapon'; weapon: Weapon };

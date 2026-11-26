@@ -1,7 +1,7 @@
 import { lerp, wrapAngle } from './math.ts';
 import { matchDuration } from './match.ts';
 import { livingSoldiers } from './orders.ts';
-import type { ActionKind, ArmySize, GameMode, MatchPhase, MatchState, Order, Unit, UnitKind, Weapon } from './types.ts';
+import type { ActionKind, ArmySize, Formation, GameMode, MatchPhase, MatchState, Order, Unit, UnitKind, Weapon } from './types.ts';
 
 /** What a client needs to draw a unit. Built from the simulation or decoded from the network. */
 export interface UnitView {
@@ -50,12 +50,14 @@ export interface ArmyView {
   forfeited: boolean;
   groupCount: number;
   orders: Order[];
+  /** The formation Hold uses. */
+  formation: Formation;
   kills: number;
   deaths: number;
   commanderDeaths: number;
   startingSoldiers: number;
   soldiersAlive: number;
-  commanderId: number;
+  commanderId: number | null;
   disconnectTimer: number | null;
 }
 
@@ -119,6 +121,7 @@ export function matchView(state: MatchState): MatchView {
       forfeited: army.forfeited,
       groupCount: army.groupCount,
       orders: army.groupOrders.map((g) => g.order),
+      formation: army.formation,
       kills: army.stats.kills,
       deaths: army.stats.deaths,
       commanderDeaths: army.stats.commanderDeaths,

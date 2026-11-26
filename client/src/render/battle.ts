@@ -17,19 +17,11 @@ export class BattleRenderer {
   readonly ragdolls: Ragdolls;
   readonly effects: Effects;
   private lastView: MatchView | null = null;
-  private highlightArmy: number | null = null;
-  private highlightGroup: number | null = null;
 
   constructor(world: World) {
     this.world = world;
     this.ragdolls = new Ragdolls(world.scene);
     this.effects = new Effects(world.scene, world.parts);
-  }
-
-  /** Marks the soldiers of `group` in `armyId` (none when group is null: the whole army listens). */
-  highlight(armyId: number | null, group: number | null): void {
-    this.highlightArmy = armyId;
-    this.highlightGroup = group;
   }
 
   setMap(map: MapId): void {
@@ -57,7 +49,7 @@ export class BattleRenderer {
         case 'swing': {
           const rig = this.rigs.get(event.unitId);
           const unit = units?.[event.unitId];
-          if (rig) startSwing(rig, unit?.weapon ?? 'sword');
+          if (rig) startSwing(rig, unit?.weapon ?? 'sword', unit?.mountId !== null && unit?.mountId !== undefined);
           break;
         }
         case 'hit': {
@@ -130,8 +122,6 @@ export class BattleRenderer {
         animateHorse(rig, unit, ctx);
       } else {
         animatePerson(rig, unit, ctx);
-        const selected = this.highlightGroup !== null && unit.armyId === this.highlightArmy && unit.kind !== 'commander' && unit.group === this.highlightGroup;
-        rig.marker.setEnabled(selected);
       }
     }
     this.effects.syncArrows(view.arrows);

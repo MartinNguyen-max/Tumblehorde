@@ -28,6 +28,25 @@ export const COLORS = {
   edgePost: '#E8E2CF',
 } as const;
 
+/** Materials of the Roman soldiers. Team colors come from the army palette. */
+export const ROMAN = {
+  skin: '#E2AD86',
+  skinShade: '#D39A72',
+  brow: '#3B2A20',
+  mouth: '#7A3B2E',
+  steel: '#A3ACB6',
+  armorDark: '#4D545D',
+  iron: '#7A828A',
+  brass: '#CFA64E',
+  bronze: '#C98E3E',
+  bronzeDark: '#8F5F25',
+  leather: '#6E4528',
+  darkLeather: '#45291A',
+  wood: '#8A5A32',
+  scabbard: '#5B2620',
+  drool: '#BFE6FF',
+} as const;
+
 export interface ArmyPalette {
   body: string;
   trim: string;
@@ -200,6 +219,8 @@ export const ANIMATION = {
   gallopSpeed: 1.25,
   stunWobble: 0.35,
   knockdownStun: 0.9,
+  /** Ground speed at which the commander's cape streams out fully. */
+  capeFullSpeed: 9,
 } as const;
 
 export const EFFECTS = {
@@ -215,6 +236,19 @@ export const EFFECTS = {
   deathLaunchScale: 1.4,
   deathLiftMin: 3.5,
   popupLifetime: 0.9,
+} as const;
+
+export const FORMATION_WHEEL = {
+  /** Holding `2` longer than this opens the wheel; a shorter tap just holds. */
+  openDelay: 0.18,
+  /** Mouse travel (px) before an option is picked. */
+  deadzone: 26,
+  /** How far the wheel cursor can travel (px). */
+  radius: 90,
+  /** The cursor must point within ~60° of an option to pick it. */
+  minAlignment: 0.5,
+  /** Distance (px) of the options from the center of the wheel. */
+  optionDistance: 120,
 } as const;
 
 export const HUD = {

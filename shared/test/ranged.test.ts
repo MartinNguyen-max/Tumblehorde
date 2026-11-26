@@ -9,7 +9,7 @@ function flyAll(state: MatchState): void {
 }
 
 function setup(distance: number): { state: MatchState; archer: Unit; target: Unit } {
-  const state = newMatch();
+  const state = newMatch({ mix: 'mixed' });
   state.rng.seed = 7;
   const archer = place(firstOfKind(state, 0, 'archer'), 0, 0, 0);
   const target = place(firstOfKind(state, 1, 'swordsman'), 0, distance, Math.PI);

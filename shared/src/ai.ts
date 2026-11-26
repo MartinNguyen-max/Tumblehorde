@@ -1,9 +1,10 @@
 import { AI, ARCHER, FORMATION, HORSE } from './config.ts';
 import { dirToYaw, distanceXZ, normalizeXZ, wrapAngle, yawToDir, type Vec2 } from './math.ts';
+import type { FormationSlot } from './formation.ts';
 import { mount, nearestFreeHorse } from './mounts.ts';
 import { formationTargets, orderOf } from './orders.ts';
-import type { Army, GroupOrder, Intent, MatchState, Unit } from './types.ts';
-import { areEnemies, bodyRadius, canBeTargeted, canUseShield, getUnit, isMounted, meleeStatsFor } from './units.ts';
+import type { Army, GroupOrder, Intent, MatchState, Unit, Weapon } from './types.ts';
+import { areEnemies, bodyRadius, canBeTargeted, canUseShield, getUnit, isMounted, meleeStatsFor, setWeapon } from './units.ts';
 
 /** Facing within this angle of the target is good enough to swing. */
 const SWING_FACING_TOLERANCE = 0.45;
@@ -189,16 +190,64 @@ function archerIntent(state: MatchState, unit: Unit, target: Unit, order: GroupO
   unit.intent.attack = isFacing(unit, target.pos);
 }
 
-function moveToSlot(state: MatchState, unit: Unit, slot: Vec2, order: GroupOrder): void {
-  const d = distanceXZ(unit.pos, slot);
-  if (d < FORMATION.arriveRadius) {
-    // Standing in formation: keep an eye on the nearest enemy, otherwise face the line's way.
-    const enemy = nearestEnemy(state, unit, AI.lookAtEnemyRadius);
-    unit.intent.faceYaw = enemy ? dirToYaw(enemy.pos.x - unit.pos.x, enemy.pos.z - unit.pos.z) : order.anchorYaw;
+/** Where a soldier standing in formation looks: holding soldiers keep their side, others watch the nearest enemy. */
+function idleFacing(state: MatchState, unit: Unit, slot: FormationSlot, order: GroupOrder): number {
+  const enemy = nearestEnemy(state, unit, AI.lookAtEnemyRadius);
+  if (!enemy) return slot.yaw;
+  if (order.order === 'hold' && !withinHoldArc(unit, slot, enemy)) return slot.yaw;
+  return dirToYaw(enemy.pos.x - unit.pos.x, enemy.pos.z - unit.pos.z);
+}
+
+function withinHoldArc(unit: Unit, slot: FormationSlot, enemy: Unit): boolean {
+  const toEnemy = dirToYaw(enemy.pos.x - unit.pos.x, enemy.pos.z - unit.pos.z);
+  return Math.abs(wrapAngle(toEnemy - slot.yaw)) <= AI.holdFacingArc;
+}
+
+/**
+ * Walks towards a formation slot, stepping around the army's own commander when they stand in
+ * the way (they have right of way, so pushing into them would leave the soldier stuck).
+ */
+function walkToSlot(state: MatchState, unit: Unit, slot: Vec2, distance: number): void {
+  const dir = normalizeXZ(slot.x - unit.pos.x, slot.z - unit.pos.z);
+  const leader = leaderBody(state, unit);
+  const amount = Math.min(1, distance / ARRIVE_SLOWDOWN_DISTANCE);
+  if (!leader) {
+    setMove(unit.intent, dir.x, dir.z, amount);
     return;
   }
-  setMove(unit.intent, slot.x - unit.pos.x, slot.z - unit.pos.z, Math.min(1, d / ARRIVE_SLOWDOWN_DISTANCE));
-  unit.intent.faceYaw = isMounted(unit) || d > AI.faceWalkingDistance ? dirToYaw(slot.x - unit.pos.x, slot.z - unit.pos.z) : order.anchorYaw;
+  const rel = { x: leader.pos.x - unit.pos.x, z: leader.pos.z - unit.pos.z };
+  const ahead = rel.x * dir.x + rel.z * dir.z;
+  const right = { x: dir.z, z: -dir.x };
+  const side = rel.x * right.x + rel.z * right.z;
+  const clearance = bodyRadius(leader) + bodyRadius(unit) + AI.leaderClearance;
+  if (ahead <= 0 || ahead > distance || Math.abs(side) > clearance) {
+    setMove(unit.intent, dir.x, dir.z, amount);
+    return;
+  }
+  const away = side >= 0 ? -1 : 1;
+  setMove(unit.intent, dir.x + right.x * away * AI.leaderSidestep, dir.z + right.z * away * AI.leaderSidestep, amount);
+}
+
+/** The body of this unit's own commander (their horse when mounted), if standing. */
+function leaderBody(state: MatchState, unit: Unit): Unit | null {
+  const commander = getUnit(state, state.armies[unit.armyId]?.commanderId ?? null);
+  if (!commander?.alive) return null;
+  const horse = getUnit(state, commander.mountId);
+  return horse?.alive ? horse : commander;
+}
+
+function arriveRadius(order: GroupOrder): number {
+  return order.order === 'hold' ? FORMATION.holdArriveRadius : FORMATION.arriveRadius;
+}
+
+function moveToSlot(state: MatchState, unit: Unit, slot: FormationSlot, order: GroupOrder): void {
+  const d = distanceXZ(unit.pos, slot);
+  if (d < arriveRadius(order)) {
+    unit.intent.faceYaw = idleFacing(state, unit, slot, order);
+    return;
+  }
+  walkToSlot(state, unit, slot, d);
+  unit.intent.faceYaw = isMounted(unit) || d > AI.faceWalkingDistance ? dirToYaw(slot.x - unit.pos.x, slot.z - unit.pos.z) : slot.yaw;
 }
 
 function shieldIntent(state: MatchState, unit: Unit): void {
@@ -208,7 +257,7 @@ function shieldIntent(state: MatchState, unit: Unit): void {
 }
 
 /** Per-tick steering for a soldier based on its latest decisions. */
-export function soldierIntent(state: MatchState, unit: Unit, order: GroupOrder, slot: Vec2): void {
+export function soldierIntent(state: MatchState, unit: Unit, order: GroupOrder, slot: FormationSlot): void {
   resetIntent(unit);
   if (unit.stunTimer > 0) return;
   if (unit.action === 'shoot') {
@@ -231,7 +280,7 @@ export function soldierIntent(state: MatchState, unit: Unit, order: GroupOrder, 
   }
   const target = getUnit(state, unit.ai.targetId);
   const validTarget = target && canBeTargeted(target) ? target : null;
-  if (unit.kind === 'swordsman' && order.order === 'hold' && shieldWallIntent(state, unit, slot, validTarget)) return;
+  if (unit.kind === 'swordsman' && order.order === 'hold' && holdLineIntent(state, unit, slot, validTarget)) return;
   if (unit.ai.shieldTimer > 0 && canUseShield(unit)) {
     shieldIntent(state, unit);
     if (validTarget) meleeApproachOnly(unit, validTarget);
@@ -249,21 +298,21 @@ export function soldierIntent(state: MatchState, unit: Unit, order: GroupOrder, 
 }
 
 /**
- * Roman shield wall: keep your place in the line with the shield up towards the enemy,
- * and only lower it for a quick stab when someone is in reach. Returns false when no
- * enemy is near, so the soldier just stands in formation.
+ * Roman shield wall: keep your place with the shield up and thrust the spear over it when an
+ * enemy in front of you is in reach. Each soldier minds their own side of the formation, so a
+ * ring keeps facing outwards. Returns false when no enemy is near: then they just stand in place.
  */
-function shieldWallIntent(state: MatchState, unit: Unit, slot: Vec2, target: Unit | null): boolean {
+function holdLineIntent(state: MatchState, unit: Unit, slot: FormationSlot, target: Unit | null): boolean {
   const enemy = target ?? nearestEnemy(state, unit, AI.shieldWallRadius);
   if (!enemy) return false;
   const stats = meleeStatsFor(unit);
-  const d = distanceXZ(unit.pos, enemy.pos);
-  const inReach = stats !== null && d <= stats.range + bodyRadius(enemy);
-  if (distanceXZ(unit.pos, slot) > FORMATION.arriveRadius) {
-    setMove(unit.intent, slot.x - unit.pos.x, slot.z - unit.pos.z, Math.min(1, distanceXZ(unit.pos, slot) / ARRIVE_SLOWDOWN_DISTANCE));
-  }
-  faceTowards(unit, enemy.pos);
-  if (inReach && unit.cooldownTimer <= 0 && isFacing(unit, enemy.pos)) unit.intent.attack = true;
+  const toSlot = distanceXZ(unit.pos, slot);
+  if (toSlot > FORMATION.holdArriveRadius) walkToSlot(state, unit, slot, toSlot);
+  const facingEnemy = withinHoldArc(unit, slot, enemy);
+  if (facingEnemy) faceTowards(unit, enemy.pos);
+  else unit.intent.faceYaw = slot.yaw;
+  const inReach = stats !== null && distanceXZ(unit.pos, enemy.pos) <= stats.range + bodyRadius(enemy);
+  if (facingEnemy && inReach && unit.cooldownTimer <= 0 && isFacing(unit, enemy.pos)) unit.intent.attack = true;
   else unit.intent.shield = true;
   return true;
 }
@@ -286,6 +335,8 @@ export function runArmyAi(state: MatchState, army: Army, dt: number): void {
     const order = orderOf(army, unit);
     const slot = slots.get(id);
     if (!order || !slot) continue;
+    const weapon = weaponForOrder(unit, order);
+    if (weapon) setWeapon(unit, weapon);
     unit.ai.thinkTimer -= dt;
     unit.ai.shieldTimer -= dt;
     if (unit.ai.thinkTimer <= 0) {
@@ -295,6 +346,12 @@ export function runArmyAi(state: MatchState, army: Army, dt: number): void {
     }
     soldierIntent(state, unit, order, slot);
   }
+}
+
+/** Swordsmen march and hold with the spear and draw the sword to attack. */
+export function weaponForOrder(unit: Unit, order: GroupOrder): Weapon | null {
+  if (unit.kind !== 'swordsman') return null;
+  return order.order === 'attack' ? 'sword' : 'spear';
 }
 
 /** Spreads the first think of each unit so the whole army does not decide on the same tick. */

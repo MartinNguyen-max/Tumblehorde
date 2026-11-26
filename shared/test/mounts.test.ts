@@ -11,7 +11,7 @@ const ZERO = { x: 0, y: 0, z: 0 };
 
 describe('mounting', () => {
   it('lets the commander climb onto a free horse and off again', () => {
-    const state = newMatch();
+    const state = newMatch({ mix: 'mixed' });
     const rider = firstOfKind(state, 0, 'rider');
     const horse = horseOf(state, rider);
     dismount(state, rider);
@@ -25,7 +25,7 @@ describe('mounting', () => {
   });
 
   it('refuses a horse that already has a rider', () => {
-    const state = newMatch();
+    const state = newMatch({ mix: 'mixed' });
     const rider = firstOfKind(state, 1, 'rider');
     const horse = horseOf(state, rider);
     const me = place(commanderOf(state, 0), horse.pos.x + 1, horse.pos.z);
@@ -33,7 +33,7 @@ describe('mounting', () => {
   });
 
   it('gives riders the long spear while mounted', () => {
-    const state = newMatch();
+    const state = newMatch({ mix: 'mixed' });
     const rider = firstOfKind(state, 0, 'rider');
     expect(meleeStatsFor(rider)).toBe(RIDER.mountedMelee);
     dismount(state, rider);
@@ -41,7 +41,7 @@ describe('mounting', () => {
   });
 
   it('carries the rider at horse speed', () => {
-    const state = newMatch();
+    const state = newMatch({ mix: 'mixed' });
     const me = commanderOf(state, 0);
     const rider = firstOfKind(state, 0, 'rider');
     const horse = horseOf(state, rider);
@@ -60,7 +60,7 @@ describe('mounting', () => {
 
 describe('horse death', () => {
   it('throws the rider off and stuns them', () => {
-    const state = newMatch();
+    const state = newMatch({ mix: 'mixed' });
     const rider = firstOfKind(state, 0, 'rider');
     const horse = horseOf(state, rider);
     killUnit(state, horse, 1, ZERO);
@@ -72,7 +72,7 @@ describe('horse death', () => {
   });
 
   it('frees the horse when its rider dies', () => {
-    const state = newMatch();
+    const state = newMatch({ mix: 'mixed' });
     const rider = firstOfKind(state, 0, 'rider');
     const horse = horseOf(state, rider);
     killUnit(state, rider, 1, ZERO);
@@ -83,7 +83,7 @@ describe('horse death', () => {
 
 describe('cavalry', () => {
   it('tramples enemies it runs into', () => {
-    const state = newMatch();
+    const state = newMatch({ mix: 'mixed' });
     const rider = firstOfKind(state, 0, 'rider');
     const horse = horseOf(state, rider);
     const victim = place(firstOfKind(state, 1, 'swordsman'), 0, 1.0);
@@ -97,7 +97,7 @@ describe('cavalry', () => {
   });
 
   it('strikes with the spear from horseback', () => {
-    const state = newMatch();
+    const state = newMatch({ mix: 'mixed' });
     const rider = firstOfKind(state, 0, 'rider');
     const horse = horseOf(state, rider);
     place(horse, 0, 0, 0);
@@ -114,7 +114,7 @@ describe('stolen horses', () => {
   it('keep their army but fight for their new rider', async () => {
     const { teamOf } = await import('../src/units.ts');
     const { fireArrow, stepArrows } = await import('../src/arrows.ts');
-    const state = newMatch();
+    const state = newMatch({ mix: 'mixed' });
     const enemyRider = firstOfKind(state, 1, 'rider');
     const horse = horseOf(state, enemyRider);
     dismount(state, enemyRider);
@@ -134,7 +134,7 @@ describe('stolen horses', () => {
 
 describe('horse jumping', () => {
   it('jumps when the rider presses jump', () => {
-    const state = newMatch({}, { commanderHorses: true });
+    const state = newMatch({ mix: 'mixed' }, { commanderHorses: true });
     const me = commanderOf(state, 0);
     const horse = horseOf(state, me);
     const ground = horse.pos.y;

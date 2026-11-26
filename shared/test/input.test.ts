@@ -29,6 +29,7 @@ describe('sanitizeCommand', () => {
     expect(sanitizeCommand({ type: 'order', order: 'hold', group: 2 })).toEqual({ type: 'order', order: 'hold', group: 2 });
     expect(sanitizeCommand({ type: 'split', groupCount: 3 })).toEqual({ type: 'split', groupCount: 3 });
     expect(sanitizeCommand({ type: 'mount' })).toEqual({ type: 'mount' });
+    expect(sanitizeCommand({ type: 'formation', formation: 'circle' })).toEqual({ type: 'formation', formation: 'circle' });
   });
 
   it.each([
@@ -37,6 +38,8 @@ describe('sanitizeCommand', () => {
     { type: 'order', order: 'attack', group: 1.5 },
     { type: 'split', groupCount: 0 },
     { type: 'split', groupCount: 4 },
+    { type: 'formation', formation: 'square' },
+    { type: 'formation' },
     { type: 'nuke' },
     null,
   ])('rejects %j', (raw) => expect(sanitizeCommand(raw)).toBeNull());

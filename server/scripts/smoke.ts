@@ -72,7 +72,7 @@ const view = decodeSnapshot(new Uint8Array(last.bytes), {
   armies: last.armies,
   previous: null,
 });
-const commander = view.units[view.armies[0]!.commanderId]!;
+const commander = view.units[view.armies[0]!.commanderId!]!;
 const startX = -(MAP.armySpawnRadius - FORMATION.commanderSpawnAhead);
 assert.ok(commander.x > startX + 5, `host commander moved (x=${commander.x.toFixed(1)}, start ${startX})`);
 assert.deepEqual(view.armies[0]!.orders, ['attack', 'attack', 'attack'], 'order applied');

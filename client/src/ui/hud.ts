@@ -1,6 +1,7 @@
 import { Matrix, type Scene, Vector3 } from '../render/babylon.ts';
 import {
   distanceXZ,
+  type Formation,
   wrapAngle,
   HORSE,
   MATCH,
@@ -10,8 +11,9 @@ import {
   type UnitKind,
   type UnitView,
 } from '@tumblehorde/shared';
+import { FORMATION_LABEL, type FormationWheel, WHEEL_OPTIONS } from '../input/formationWheel.ts';
 import { paletteForArmy } from '../palettes.ts';
-import { EFFECTS, HUD } from '../visualConfig.ts';
+import { EFFECTS, FORMATION_WHEEL, HUD } from '../visualConfig.ts';
 import { byId, escapeHtml, formatTime } from './dom.ts';
 
 const ORDER_LABEL: Record<Order, string> = { follow: 'Follow', hold: 'Hold', attack: 'Attack' };
@@ -26,8 +28,6 @@ const HP_LABEL_HEIGHT = 2.75;
 const FOE_LABEL_HEIGHT = 3.4;
 const POPUP_RISE = 40;
 
-export const GROUP_NAMES = ['Swordsmen', 'Archers', 'Cavalry'] as const;
-
 interface Popup {
   el: HTMLElement;
   x: number;
@@ -39,8 +39,7 @@ interface Popup {
 export interface HudContext {
   view: MatchView;
   myArmyId: number;
-  /** The group that listens to 1/2/3 (null = whole army). */
-  selectedGroup: number | null;
+  wheel: Pick<FormationWheel, 'isOpen' | 'x' | 'y' | 'choice'>;
   scene: Scene;
   dt: number;
 }
@@ -55,7 +54,6 @@ export class Hud {
   private readonly prepare = byId('prepare');
   private readonly crosshair = byId('crosshair');
   private readonly kit = byId('hud-kit');
-  private readonly groupTip = byId('hud-group-tip');
   private readonly hpLabel = byId('hp-label');
   private readonly hpFill = byId('hp-fill');
   private readonly hpText = byId('hp-text');
@@ -64,8 +62,10 @@ export class Hud {
   private readonly banner = byId('banner');
   private readonly centerMsg = byId('center-msg');
   private readonly flash = byId('damage-flash');
-  private readonly groups = byId('hud-groups');
   private readonly cmds = byId('hud-cmds');
+  private readonly holdLabel = byId('hud-hold-label');
+  private readonly wheel = byId('formation-wheel');
+  private wheelDot: HTMLElement = this.wheel;
   private readonly kitShield = byId('kit-shield');
   private readonly kitHorse = byId('kit-horse');
   private readonly feed = byId('kill-feed');
@@ -76,6 +76,20 @@ export class Hud {
   private popups: Popup[] = [];
   private lastView: MatchView | null = null;
   private myArmyId = 0;
+
+  constructor() {
+    this.buildWheel();
+  }
+
+  private buildWheel(): void {
+    const options = WHEEL_OPTIONS.map((o) => {
+      const x = o.dirX * FORMATION_WHEEL.optionDistance;
+      const y = o.dirY * FORMATION_WHEEL.optionDistance;
+      return `<div class="wheel-opt" data-formation="${o.formation}" style="transform:translate(-50%,-50%) translate(${x}px,${y}px)">${formationIcon(o.formation)}<span>${o.label}</span></div>`;
+    });
+    this.wheel.innerHTML = `${options.join('')}<div class="wheel-dot" id="wheel-dot"></div><div class="wheel-hint">Release <b>2</b> to form up</div>`;
+    this.wheelDot = byId('wheel-dot');
+  }
 
   setVisible(visible: boolean): void {
     this.root.hidden = !visible;
@@ -168,8 +182,7 @@ export class Hud {
           break;
         case 'order':
           if (event.armyId === myArmyId) {
-            const who = event.group === null ? 'All' : (GROUP_NAMES[event.group] ?? 'Group');
-            this.showBanner(`${who}: ${ORDER_LABEL[event.order]}!`);
+            this.showBanner(event.order === 'hold' ? `Hold: ${FORMATION_LABEL[event.formation]}!` : `${ORDER_LABEL[event.order]}!`);
           }
           break;
         case 'mount':
@@ -190,14 +203,15 @@ export class Hud {
     this.myArmyId = myArmyId;
     const army = view.armies[myArmyId];
     if (!army) return;
-    const me = view.units[army.commanderId];
+    const me = army.commanderId === null ? undefined : view.units[army.commanderId];
 
     this.army.textContent = `Your army: ${army.soldiersAlive}/${army.startingSoldiers}`;
     this.time.textContent = formatTime(view.duration);
     this.updateDisconnectNotice(view);
     this.updatePrepare(view);
 
-    this.updateOrders(view, ctx.selectedGroup, me);
+    this.updateOrders(view, me);
+    this.updateWheel(ctx);
     this.updateKit(view, me);
     this.updateCenterMessage(army.eliminated, me);
     this.updateHpLabel(ctx, me);
@@ -221,30 +235,29 @@ export class Hud {
     if (this.flashTimer > 0 && (this.flashTimer -= dt) <= 0) this.flash.classList.remove('on');
   }
 
-  private updateOrders(view: MatchView, selected: number | null, me: UnitView | undefined): void {
+  private updateOrders(view: MatchView, me: UnitView | undefined): void {
     const army = view.armies[this.myArmyId];
     if (!army) return;
     const canOrder = me?.alive === true && army.soldiersAlive > 0 && view.phase === 'playing';
-    const counts = [0, 0, 0];
-    for (const u of view.units) {
-      if (u.alive && u.armyId === this.myArmyId && u.kind !== 'commander' && u.kind !== 'horse') counts[u.group] = (counts[u.group] ?? 0) + 1;
-    }
-    const chips = [`<span class="group ${selected === null ? 'on' : ''}"><b>6</b>Whole army</span>`];
-    GROUP_NAMES.forEach((name, i) => {
-      const order = ORDER_LABEL[army.orders[i] ?? 'hold'];
-      chips.push(`<span class="group ${selected === i ? 'on' : ''}"><b>${i + 7}</b>${name} ${counts[i] ?? 0} · ${order}</span>`);
-    });
-    const html = chips.join('');
-    if (this.groups.dataset.html !== html) {
-      this.groups.innerHTML = html;
-      this.groups.dataset.html = html;
-    }
-    const active = selected === null ? (army.orders.every((o) => o === army.orders[0]) ? army.orders[0] : null) : army.orders[selected];
+    const active = army.orders[0];
     for (const cmd of this.cmds.querySelectorAll<HTMLElement>('.cmd[data-order]')) {
       cmd.classList.toggle('off', !canOrder);
       cmd.classList.toggle('active', canOrder && cmd.dataset.order === active);
     }
-    this.groupTip.textContent = selected === null ? 'Orders go to the whole army' : `Orders go to: ${GROUP_NAMES[selected] ?? ''}`;
+    const label = `Hold · ${FORMATION_LABEL[army.formation]}`;
+    if (this.holdLabel.textContent !== label) this.holdLabel.textContent = label;
+  }
+
+  /** The formation wheel: a see-through ring, the option the mouse points at lights up. */
+  private updateWheel(ctx: HudContext): void {
+    const { wheel } = ctx;
+    this.wheel.hidden = !wheel.isOpen;
+    if (!wheel.isOpen) return;
+    const choice = wheel.choice;
+    for (const el of this.wheel.querySelectorAll<HTMLElement>('[data-formation]')) {
+      el.classList.toggle('on', el.dataset.formation === choice);
+    }
+    this.wheelDot.style.transform = `translate(${wheel.x}px, ${wheel.y}px)`;
   }
 
   private updateKit(view: MatchView, me: UnitView | undefined): void {
@@ -375,4 +388,15 @@ export class Hud {
       return true;
     });
   }
+}
+
+/** A little top-down sketch of the formation: dots for soldiers, a ring for the commander. */
+function formationIcon(formation: Formation): string {
+  const dots: [number, number][] = [];
+  if (formation === 'line') for (let i = 0; i < 7; i++) dots.push([6 + i * 6, 18]);
+  else if (formation === 'double') for (let r = 0; r < 2; r++) for (let i = 0; i < 6; i++) dots.push([9 + i * 6, 14 + r * 6]);
+  else for (let i = 0; i < 10; i++) dots.push([24 + Math.sin((i / 10) * Math.PI * 2) * 12, 22 - Math.cos((i / 10) * Math.PI * 2) * 12]);
+  const commander = formation === 'circle' ? [24, 22] : [24, 32];
+  const circles = dots.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.4"/>`).join('');
+  return `<svg viewBox="0 0 48 40" aria-hidden="true"><g fill="currentColor">${circles}</g><circle cx="${commander[0]}" cy="${commander[1]}" r="3" fill="none" stroke="#f08a24" stroke-width="2"/></svg>`;
 }

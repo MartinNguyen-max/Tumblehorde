@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { COMMANDER, MATCH, SHIELD, SWORDSMAN } from '../src/config.ts';
+import { BOT, COMMANDER, HORSE, MATCH, SHIELD, SWORDSMAN } from '../src/config.ts';
 import { applyHit, killUnit, startMelee } from '../src/combat.ts';
 import { chooseStance } from '../src/bot.ts';
 import { neutralInput } from '../src/input.ts';
 import { progressActions, stepMatch } from '../src/match.ts';
 import { distanceXZ } from '../src/math.ts';
-import { applyCommand } from '../src/orders.ts';
-import { meleeStatsFor, rangedStatsFor, canUseShield } from '../src/units.ts';
+import { applyCommand, centroid } from '../src/orders.ts';
+import { separateBodies } from '../src/physics.ts';
+import { meleeStatsFor, canUseShield } from '../src/units.ts';
 import { terrainHeightAt } from '../src/terrain.ts';
-import { commanderOf, firstOfKind, newMatch, place } from './helpers.ts';
+import { commanderOf, firstOfKind, newMatch, place, soldiersOf } from './helpers.ts';
 
 const DT = 1 / 30;
 const ZERO = { x: 0, y: 0, z: 0 };
@@ -21,16 +22,15 @@ describe('commander kit', () => {
     expect(state.units[me.mountId!]?.kind).toBe('horse');
   });
 
-  it('switches between sword, spear and bow', () => {
+  it('switches between sword and spear; the bow is parked for now', () => {
     const state = newMatch();
     const me = commanderOf(state, 0);
     expect(me.weapon).toBe('sword');
     expect(applyCommand(state, 0, { type: 'weapon', weapon: 'spear' })).toBe(true);
     expect(meleeStatsFor(me)).toBe(COMMANDER.spear);
-    applyCommand(state, 0, { type: 'weapon', weapon: 'bow' });
-    expect(rangedStatsFor(me)).toBe(COMMANDER.bow);
-    expect(meleeStatsFor(me)).toBeNull();
-    expect(canUseShield(me)).toBe(false);
+    expect(applyCommand(state, 0, { type: 'weapon', weapon: 'bow' })).toBe(false);
+    expect(me.weapon).toBe('spear');
+    expect(canUseShield(me)).toBe(true);
   });
 
   it('can raise the shield on horseback', () => {
@@ -39,20 +39,6 @@ describe('commander kit', () => {
     expect(me.mountId).not.toBeNull();
     stepMatch(state, new Map([[0, { ...neutralInput(), shield: true }]]), DT);
     expect(me.shieldUp).toBe(true);
-  });
-
-  it('shoots an arrow where the player aims', () => {
-    const state = newMatch();
-    const me = place(commanderOf(state, 0), 0, 0, 0);
-    const foe = place(firstOfKind(state, 1, 'swordsman'), 0, 20, Math.PI);
-    applyCommand(state, 0, { type: 'weapon', weapon: 'bow' });
-    me.cooldownTimer = 0;
-    for (let t = 0; t < 2; t += DT) {
-      place(foe, 0, 20, Math.PI);
-      const aim = { x: foe.pos.x, y: foe.pos.y + 1.1, z: foe.pos.z };
-      stepMatch(state, new Map([[0, { ...neutralInput(), attack: t < 0.5, aim }]]), DT);
-    }
-    expect(foe.hp).toBeLessThan(foe.maxHp);
   });
 
   it('patches themselves up out of combat', () => {
@@ -93,7 +79,7 @@ describe('shields', () => {
 
 describe('free horses', () => {
   it('can be struck', () => {
-    const state = newMatch();
+    const state = newMatch({ mix: 'mixed' });
     const me = place(commanderOf(state, 0), 0, 10, 0);
     const rider = firstOfKind(state, 1, 'rider');
     const horse = state.units[rider.mountId!]!;
@@ -113,9 +99,24 @@ describe('bot strategy', () => {
     expect(chooseStance(state, army, 100, 10, 10)).toBe('form');
     state.time = MATCH.prepareTime + 1;
     expect(chooseStance(state, army, 100, 10, 10)).toBe('march');
-    expect(chooseStance(state, army, 50, 10, 10)).toBe('standoff');
-    expect(chooseStance(state, army, 20, 10, 10)).toBe('engage');
-    expect(chooseStance(state, army, 30, 3, 10)).toBe('regroup');
+    expect(chooseStance(state, army, BOT.marchDistance - 5, 10, 10)).toBe('standoff');
+    expect(chooseStance(state, army, BOT.engageDistance - 5, 10, 10)).toBe('engage');
+    expect(chooseStance(state, army, BOT.marchDistance - 5, 3, 10)).toBe('regroup');
+  });
+
+  it('marches without a commander, in formation and with spears', () => {
+    const state = newMatch();
+    const army = state.armies[1]!;
+    expect(army.commanderId).toBeNull();
+    const enemyStart = soldiersOf(state, 1).map((u) => u.pos.x);
+    const before = centroid(soldiersOf(state, 1))!;
+    for (let t = 0; t < MATCH.prepareTime + 6; t += DT) stepMatch(state, new Map([[0, neutralInput()]]), DT);
+    const after = centroid(soldiersOf(state, 1))!;
+    const me = commanderOf(state, 0);
+    expect(distanceXZ(after, me.pos)).toBeLessThan(distanceXZ(before, me.pos) - 15);
+    expect(army.groupOrders[0]?.order).toBe('hold');
+    expect(soldiersOf(state, 1).every((u) => u.weapon === 'spear')).toBe(true);
+    expect(enemyStart).toHaveLength(army.soldierIds.length);
   });
 
   it('does not rush in at the start', () => {
@@ -123,6 +124,25 @@ describe('bot strategy', () => {
     for (let t = 0; t < MATCH.prepareTime - 0.5; t += DT) stepMatch(state, new Map(), DT);
     expect(state.armies.reduce((n, a) => n + a.stats.deaths, 0)).toBe(0);
     expect(state.armies.every((a) => a.groupOrders.every((g) => g.order === 'hold'))).toBe(true);
+  });
+});
+
+describe('a commander on horseback', () => {
+  it('charges through a locked shield wall and knocks the soldiers flat', () => {
+    const state = newMatch({ armySize: 15 }, { commanderHorses: true });
+    const me = commanderOf(state, 0);
+    const horse = state.units[me.mountId!]!;
+    const [a, b] = soldiersOf(state, 1);
+    place(a!, 0, 10, Math.PI);
+    place(b!, 1, 10, Math.PI);
+    a!.shieldUp = true;
+    b!.shieldUp = true;
+    place(horse, 0, 9, 0);
+    horse.vel = { x: 0, y: 0, z: HORSE.speed };
+    separateBodies(state);
+    expect(a!.stunTimer).toBeGreaterThanOrEqual(HORSE.commanderCharge.stun - 1e-6);
+    expect(a!.hp).toBeLessThan(a!.maxHp);
+    expect(a!.vel.z).toBeGreaterThan(0);
   });
 });
 

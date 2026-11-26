@@ -17,7 +17,7 @@ import { createMatch, defaultSettings } from '../src/setup.ts';
 import { matchView } from '../src/view.ts';
 
 function battleView() {
-  const settings = defaultSettings({ armySize: 20 });
+  const settings = defaultSettings({ armySize: 25 });
   const state = createMatch(settings);
   for (let i = 0; i < 20 * 25; i++) stepMatch(state, new Map(), 1 / 20);
   return { settings, view: matchView(state) };
@@ -49,7 +49,7 @@ describe('snapshot codec', () => {
 
   it('stays small enough for 20 snapshots per second', () => {
     const settings = defaultSettings({
-      armySize: 30,
+      armySize: 40,
       armies: [0, 1, 2, 3].map((i) => ({ name: `P${i}`, team: i, isBot: false })),
     });
     const bytes = encodeSnapshot(matchView(createMatch(settings)));
@@ -63,7 +63,7 @@ describe('lobby rules', () => {
     hostId: 'a',
     phase: 'lobby',
     mode,
-    armySize: 10,
+    armySize: 15,
     players: teams.map((team, i) => ({ sessionId: String(i), name: `P${i}`, team, connected: true })),
   });
 
@@ -94,9 +94,9 @@ describe('message validation', () => {
   });
 
   it('only allows known lobby settings', () => {
-    expect(sanitizeLobbySettings({ mode: 'teams', armySize: 20 })).toEqual({ mode: 'teams', armySize: 20 });
-    expect(sanitizeLobbySettings({ mode: 'teams', armySize: 25 })).toBeNull();
-    expect(sanitizeLobbySettings({ mode: 'chaos', armySize: 20 })).toBeNull();
+    expect(sanitizeLobbySettings({ mode: 'teams', armySize: 25 })).toEqual({ mode: 'teams', armySize: 25 });
+    expect(sanitizeLobbySettings({ mode: 'teams', armySize: 20 })).toBeNull();
+    expect(sanitizeLobbySettings({ mode: 'chaos', armySize: 25 })).toBeNull();
   });
 
   it('cleans player names', () => {
@@ -119,7 +119,7 @@ describe('downed commanders in snapshots', () => {
     const { killUnit } = await import('../src/combat.ts');
     const settings = defaultSettings();
     const state = createMatch(settings);
-    const commander = state.units[state.armies[0]!.commanderId]!;
+    const commander = state.units[state.armies[0]!.commanderId!]!;
     killUnit(state, commander, 1, { x: 5, y: 3, z: 0 });
     for (let i = 0; i < 20; i++) stepMatch(state, new Map(), 1 / 20);
     const view = matchView(state);

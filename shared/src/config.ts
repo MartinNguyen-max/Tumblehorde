@@ -169,6 +169,7 @@ export const COMMANDER = {
 export const SWORDSMAN = {
   hp: 180,
   speed: 5,
+  /** Attack: the gladius comes out. */
   melee: {
     damage: 25,
     range: 2.0,
@@ -178,6 +179,18 @@ export const SWORDSMAN = {
     maxTargets: 1,
     knockback: SWORD_KNOCKBACK,
   } satisfies MeleeStats,
+  /** Follow and Hold: the spear, thrust over the shield. Longer reach, keeps attackers off the line. */
+  spear: {
+    damage: 20,
+    range: 2.7,
+    cooldown: 1.2,
+    windup: 0.3,
+    arcHalfAngle: 35 * DEG,
+    maxTargets: 1,
+    knockback: { strength: 4.5, stun: 0.5 },
+  } satisfies MeleeStats,
+  /** Time to swap spear and sword when the order changes. */
+  weaponSwapTime: 0.5,
 } as const;
 
 export const ARCHER = {
@@ -234,6 +247,9 @@ export const HORSE = {
   trampleMinSpeed: 6,
   trample: { strength: 12, stun: 1.5 } satisfies KnockbackStats,
   trampleDamage: 10,
+  /** A commander's charge breaks even a locked shield wall and leaves soldiers on the ground for a while. */
+  commanderCharge: { strength: 10, stun: 2.8 } satisfies KnockbackStats,
+  commanderChargeDamage: 15,
   /** Mounted targets: chance that a hit lands on the horse instead of the rider. */
   hitsHorseChance: 0.5,
   /** Horses are heavy; swords barely shove them. */
@@ -279,12 +295,23 @@ export const ARROW = {
 } as const;
 
 export const ARMY = {
-  sizes: [10, 20, 30] as const,
-  composition: {
-    10: { swordsman: 6, archer: 3, rider: 1 },
-    20: { swordsman: 12, archer: 6, rider: 2 },
-    30: { swordsman: 18, archer: 9, rider: 3 },
+  sizes: [15, 25, 40] as const,
+  /** Soldiers per army for each mix. Archers and cavalry are parked for now (see `ArmyMix`). */
+  mixes: {
+    legion: {
+      15: { swordsman: 15, archer: 0, rider: 0 },
+      25: { swordsman: 25, archer: 0, rider: 0 },
+      40: { swordsman: 40, archer: 0, rider: 0 },
+    },
+    mixed: {
+      15: { swordsman: 9, archer: 4, rider: 2 },
+      25: { swordsman: 15, archer: 7, rider: 3 },
+      40: { swordsman: 24, archer: 11, rider: 5 },
+    },
   },
+  defaultMix: 'legion' as const,
+  /** Bot armies fight without a commander, which makes the player's own commander stand out. */
+  botCommanders: false,
   maxArmies: 4,
   minArmies: 2,
   maxGroups: 3,
@@ -295,22 +322,28 @@ export const FORMATION = {
   rowWidth: 6,
   /** Distance behind the commander where the follow formation starts. */
   followDistance: 4,
-  /** Swordsmen holding a shield wall stand shoulder to shoulder in long ranks. */
-  shieldWallSpacing: 1.15,
-  shieldWallRowWidth: 8,
   /** Following archers walk behind the swordsmen; riders ride on the flank. */
   followArcherDepth: 7,
   followRiderSide: 7,
-  /** Hold around the commander: a shield-wall front line ahead, the rest guarding around them. */
+  /** Hold around the commander for mixed armies: cavalry waits beside a front this wide, archers behind. */
   frontLineSize: 8,
   frontLineDistance: 2.6,
-  guardRingRadius: 2.2,
   archerRowsDistance: 4.5,
   cavalryFlankGap: 3,
+  /** Holding swordsmen stand shoulder to shoulder, shields overlapping. */
+  tightSpacing: 0.95,
+  rankGap: 1.0,
+  /** Line formations stand this far ahead of the commander, so they stand right behind it. */
+  holdLineAhead: 2.6,
+  /** The ring around the commander never gets smaller than this. */
+  circleMinRadius: 2.4,
+  defaultFormation: 'double' as const,
   /** Sideways offset between groups when several groups follow. */
   groupSideOffset: 9,
   /** A unit closer to its slot than this counts as arrived. */
   arriveRadius: 0.6,
+  /** Holding soldiers settle much closer to their slot, so the ranks stay straight and tight. */
+  holdArriveRadius: 0.15,
   commanderSpawnAhead: 5,
 } as const;
 
@@ -341,6 +374,12 @@ export const AI = {
   riderOvershoot: 6,
   /** Archers this close to an enemy back off even while ready to shoot. */
   archerPanicDistance: 8,
+  /** Soldiers walking to their place give their own commander this much room... */
+  leaderClearance: 0.3,
+  /** ...by veering sideways this strongly. */
+  leaderSidestep: 1.5,
+  /** A soldier holding a formation only turns to enemies within this angle of its slot's facing. */
+  holdFacingArc: 85 * DEG,
   /** A soldier this far from its slot looks where it walks instead of the formation's way. */
   faceWalkingDistance: 3,
 } as const;
@@ -349,18 +388,20 @@ export const BOT = {
   orderInterval: 5,
   thinkInterval: 0.25,
   /** Beyond this distance between army centers the bot marches as one block. */
-  marchDistance: 70,
-  /** Between this and marchDistance the bot holds a shield wall and lets its archers work. */
-  engageDistance: 38,
+  marchDistance: 32,
+  /** Between this and marchDistance the bot holds a spear wall and waits for the enemy to come. */
+  engageDistance: 14,
   /** How long a bot waits in a standoff before it charges anyway. */
-  standoffPatience: 10,
+  standoffPatience: 12,
+  /** A bot army without a commander marches by holding a spot this far ahead... */
+  advanceStep: 10,
+  /** ...and moving it on this often, so the formation keeps walking. */
+  advanceInterval: 1.5,
   /** Fewer soldiers than this fraction of the enemy's makes the bot fall back and regroup. */
   regroupRatio: 0.5,
   /** The bot commander stays this far behind its own front line. */
   commanderBehindLine: 8,
   marchStopDistance: 45,
-  /** The bot commander shoots enemies between these distances and draws the sword when closer. */
-  bowMinDistance: 10,
   retreatHpFraction: 0.3,
   /** A wounded bot commander backs off from enemies this close... */
   retreatTriggerDistance: 9,
@@ -395,4 +436,8 @@ export const NET = {
   port: 2567,
 } as const;
 
+/** Every weapon in the game, in network order. */
 export const WEAPONS = ['sword', 'spear', 'bow'] as const;
+/** What a commander carries. The bow is parked along with archers for now. */
+export const COMMANDER_WEAPONS = ['sword', 'spear'] as const;
+export const FORMATIONS = ['line', 'double', 'circle'] as const;

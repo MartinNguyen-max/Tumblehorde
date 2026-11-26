@@ -2,6 +2,7 @@ import {
   ARCHER,
   BODY,
   COMMANDER,
+  COMMANDER_WEAPONS,
   HORSE,
   RIDER,
   SWORDSMAN,
@@ -30,10 +31,21 @@ export function maxHpFor(kind: UnitKind): number {
   }
 }
 
+const CARRIED: Record<UnitKind, readonly Weapon[]> = {
+  commander: COMMANDER_WEAPONS,
+  // Spear for marching and holding, the sword comes out to attack.
+  swordsman: ['spear', 'sword'],
+  archer: ['bow'],
+  rider: ['spear'],
+  horse: [],
+};
+
+export function carriedWeapons(kind: UnitKind): readonly Weapon[] {
+  return CARRIED[kind];
+}
+
 export function defaultWeapon(kind: UnitKind): Weapon {
-  if (kind === 'archer') return 'bow';
-  if (kind === 'rider') return 'spear';
-  return 'sword';
+  return CARRIED[kind][0] ?? 'sword';
 }
 
 export function createUnit(id: EntityId, kind: UnitKind, armyId: number, pos: Vec3, yaw: number): Unit {
@@ -98,7 +110,7 @@ export function meleeStatsForKind(kind: UnitKind, mounted: boolean, weapon: Weap
       if (weapon === 'spear') return mounted ? COMMANDER.mountedSpear : COMMANDER.spear;
       return mounted ? COMMANDER.mountedMelee : COMMANDER.melee;
     case 'swordsman':
-      return SWORDSMAN.melee;
+      return weapon === 'spear' ? SWORDSMAN.spear : SWORDSMAN.melee;
     case 'archer':
       return ARCHER.melee;
     case 'rider':
@@ -123,14 +135,15 @@ export function canUseShield(unit: Unit): boolean {
   return unit.kind === 'swordsman' || unit.kind === 'rider';
 }
 
-/** Commanders carry sword, spear and bow; switching takes a moment and cancels a swing. */
+/** Switches to another carried weapon; it takes a moment and cancels a swing. */
 export function setWeapon(unit: Unit, weapon: Weapon): boolean {
-  if (unit.kind !== 'commander' || !unit.alive || unit.weapon === weapon) return false;
+  if (!unit.alive || unit.weapon === weapon || !carriedWeapons(unit.kind).includes(weapon)) return false;
   unit.weapon = weapon;
   unit.action = 'none';
   unit.actionTimer = 0;
   unit.shieldUp = false;
-  unit.cooldownTimer = Math.max(unit.cooldownTimer, COMMANDER.weaponSwapTime);
+  const swapTime = unit.kind === 'commander' ? COMMANDER.weaponSwapTime : SWORDSMAN.weaponSwapTime;
+  unit.cooldownTimer = Math.max(unit.cooldownTimer, swapTime);
   return true;
 }
 

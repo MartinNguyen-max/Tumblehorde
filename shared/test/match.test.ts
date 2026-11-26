@@ -16,7 +16,7 @@ function bots(count: number, mode: MatchSettings['mode'], teams: number[] = []):
   return createMatch(
     defaultSettings({
       mode,
-      armySize: 10,
+      armySize: 15,
       armies: Array.from({ length: count }, (_, i) => ({ name: `Bot ${i}`, team: teams[i] ?? i, isBot: true })),
     }),
   );

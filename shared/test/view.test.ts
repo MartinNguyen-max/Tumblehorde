@@ -8,8 +8,10 @@ describe('match views', () => {
     const state = newMatch();
     const view = matchView(state);
     expect(view.units).toHaveLength(state.units.length);
-    expect(view.armies[0]?.soldiersAlive).toBe(10);
+    expect(view.armies[0]?.soldiersAlive).toBe(15);
     expect(view.armies[1]?.orders).toEqual(['hold', 'hold', 'hold']);
+    expect(view.armies[0]?.formation).toBe('double');
+    expect(view.armies[1]?.commanderId).toBeNull();
   });
 
   it('interpolate positions halfway between two steps', () => {
@@ -40,7 +42,7 @@ describe('match views', () => {
   });
 
   it('stay cheap during a battle', () => {
-    const state = newMatch({ armySize: 30 });
+    const state = newMatch({ armySize: 40 });
     for (let i = 0; i < 60; i++) stepMatch(state, new Map(), 1 / 60);
     expect(matchView(state).units.every((u) => Number.isFinite(u.x))).toBe(true);
   });

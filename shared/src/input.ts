@@ -1,11 +1,15 @@
-import { ARMY, WEAPONS } from './config.ts';
+import { ARMY, FORMATIONS, WEAPONS } from './config.ts';
 import { wrapAngle, type Vec3 } from './math.ts';
-import type { Command, CommanderInput, Order, Weapon } from './types.ts';
+import type { Command, CommanderInput, Formation, Order, Weapon } from './types.ts';
 
 const ORDERS: readonly Order[] = ['follow', 'hold', 'attack'];
 
 function isWeapon(value: unknown): value is Weapon {
   return typeof value === 'string' && (WEAPONS as readonly string[]).includes(value);
+}
+
+function isFormation(value: unknown): value is Formation {
+  return typeof value === 'string' && (FORMATIONS as readonly string[]).includes(value);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -68,6 +72,8 @@ export function sanitizeCommand(raw: unknown): Command | null {
       if (typeof count !== 'number' || !Number.isInteger(count) || count < 1 || count > ARMY.maxGroups) return null;
       return { type: 'split', groupCount: count };
     }
+    case 'formation':
+      return isFormation(raw.formation) ? { type: 'formation', formation: raw.formation } : null;
     case 'mount':
       return { type: 'mount' };
     case 'weapon':

@@ -1,14 +1,14 @@
 import { findMeleeThreat, meleeIntent, nearestEnemy } from './ai.ts';
 import { AI, BOT, COMMANDER, FORMATION, MATCH } from './config.ts';
 import { dirToYaw, distanceXZ, normalizeXZ, type Vec2 } from './math.ts';
-import { armyCenter, centroid, issueOrder, livingSoldiers, splitArmy } from './orders.ts';
+import { advanceArmy, armyCenter, centroid, issueOrder, livingSoldiers, splitArmy } from './orders.ts';
 import { armySpawnPoint } from './spawn.ts';
 import type { Army, MatchState, Order, Unit } from './types.ts';
 import { canBeTargeted, getUnit, setWeapon } from './units.ts';
 
 /**
  * - form: the first seconds of a battle; hold and let everyone plan.
- * - march: far apart; the army follows its commander as a column.
+ * - march: far apart; the army follows its commander as a column, or without one advances in formation.
  * - standoff: in sight; shield wall, archers shoot, wait for the enemy to come.
  * - engage: close, or tired of waiting; swords charge, riders flank, archers keep shooting.
  * - regroup: badly outnumbered; fall back behind the commander.
@@ -20,12 +20,13 @@ const BOT_GROUPS = 3;
 
 /**
  * Orders for [swordsmen, archers, riders]. Without a standing commander there is nobody
- * to follow, so marching becomes advancing and regrouping becomes holding.
+ * to follow, so marching becomes advancing in formation (see `advanceArmy`) and regrouping
+ * becomes holding.
  */
 export function stanceOrders(stance: Exclude<BotStance, 'form'>, hasMelee: boolean, leaderless: boolean): Order[] {
   switch (stance) {
     case 'march':
-      return leaderless ? ['attack', 'attack', 'attack'] : ['follow', 'follow', 'follow'];
+      return leaderless ? ['hold', 'hold', 'hold'] : ['follow', 'follow', 'follow'];
     case 'standoff':
       return ['hold', 'hold', 'hold'];
     case 'engage':
@@ -67,8 +68,9 @@ export function chooseStance(state: MatchState, army: Army, distance: number, ow
   return 'engage';
 }
 
-function applyStance(state: MatchState, army: Army, stance: BotStance, leaderless: boolean): boolean {
+function applyStance(state: MatchState, army: Army, stance: BotStance, leaderless: boolean, enemyCenter: Vec2): boolean {
   if (stance === 'form') return false;
+  if (leaderless && stance === 'march') return advanceArmy(state, army, enemyCenter, BOT.advanceStep);
   let changed = false;
   if (army.groupCount !== BOT_GROUPS) changed = splitArmy(state, army, BOT_GROUPS, leaderless) || changed;
   const hasMelee = livingSoldiers(state, army).some((s) => s.kind !== 'archer');
@@ -109,7 +111,7 @@ function botCommanderThink(state: MatchState, army: Army, commander: Unit, stanc
 
   const alone = livingSoldiers(state, army).length === 0;
   // A commander without an army has nothing to lead: go and fight.
-  const enemy = nearestEnemy(state, commander, alone ? Infinity : COMMANDER.bow.range);
+  const enemy = nearestEnemy(state, commander, alone ? Infinity : BOT.selfDefenseDistance);
   if (!enemy) return;
   if (alone) commander.ai.chargePoint = { x: enemy.pos.x, z: enemy.pos.z };
   const d = distanceXZ(enemy.pos, commander.pos);
@@ -119,13 +121,8 @@ function botCommanderThink(state: MatchState, army: Army, commander: Unit, stanc
     commander.ai.chargePoint = { x: commander.pos.x + away.x * BOT.retreatDistance, z: commander.pos.z + away.z * BOT.retreatDistance };
     return;
   }
-  if (d < BOT.selfDefenseDistance) {
-    setWeapon(commander, 'sword');
-    commander.ai.targetId = enemy.id;
-  } else if (d > BOT.bowMinDistance && stance !== 'form') {
-    setWeapon(commander, 'bow');
-    commander.ai.targetId = enemy.id;
-  }
+  setWeapon(commander, 'sword');
+  commander.ai.targetId = enemy.id;
 }
 
 function moveTowards(commander: Unit, goal: Vec2): void {
@@ -148,16 +145,10 @@ function botCommanderIntent(state: MatchState, commander: Unit): void {
   if (commander.stunTimer > 0) return;
   const target = getUnit(state, commander.ai.targetId);
   const validTarget = target && canBeTargeted(target) ? target : null;
-  if (commander.ai.shieldTimer > 0 && commander.weapon !== 'bow' && commander.mountId === null) {
+  if (commander.ai.shieldTimer > 0 && commander.mountId === null) {
     intent.shield = true;
     const threat = findMeleeThreat(state, commander);
     if (threat) intent.faceYaw = dirToYaw(threat.pos.x - commander.pos.x, threat.pos.z - commander.pos.z);
-    return;
-  }
-  if (validTarget && commander.weapon === 'bow') {
-    if (commander.action === 'none' && commander.ai.chargePoint) moveTowards(commander, commander.ai.chargePoint);
-    intent.faceYaw = dirToYaw(validTarget.pos.x - commander.pos.x, validTarget.pos.z - commander.pos.z);
-    intent.attack = commander.cooldownTimer <= 0;
     return;
   }
   if (validTarget) {
@@ -170,7 +161,7 @@ function botCommanderIntent(state: MatchState, commander: Unit): void {
 /** Picks a stance and, at most every few seconds, turns it into orders. */
 function planArmy(state: MatchState, army: Army, dt: number, leaderless: boolean): { stance: BotStance; enemy: EnemyArmy } | null {
   army.bot.orderTimer -= dt;
-  const commander = state.units[army.commanderId];
+  const commander = getUnit(state, army.commanderId);
   const own = armyCenter(state, army) ?? commander?.pos;
   if (!own) return null;
   const enemy = nearestEnemyArmy(state, army, own);
@@ -178,7 +169,9 @@ function planArmy(state: MatchState, army: Army, dt: number, leaderless: boolean
   const distance = distanceXZ(own, enemy.center);
   const stance = chooseStance(state, army, distance, livingSoldiers(state, army).length, enemy.soldiers);
   army.bot.standoffTimer = stance === 'standoff' ? army.bot.standoffTimer + dt : stance === 'march' ? 0 : army.bot.standoffTimer;
-  if (army.bot.orderTimer <= 0 && applyStance(state, army, stance, leaderless)) army.bot.orderTimer = BOT.orderInterval;
+  if (army.bot.orderTimer <= 0 && applyStance(state, army, stance, leaderless, enemy.center)) {
+    army.bot.orderTimer = leaderless && stance === 'march' ? BOT.advanceInterval : BOT.orderInterval;
+  }
   return { stance, enemy };
 }
 
@@ -187,16 +180,15 @@ export function runLeaderlessArmy(state: MatchState, army: Army, dt: number): vo
   planArmy(state, army, dt, true);
 }
 
-/** The bot commander: gives orders at most every few seconds, stays behind its lines, and fights. */
+/** The bot army: gives orders at most every few seconds; a bot commander stays behind its lines and fights. */
 export function runBotArmy(state: MatchState, army: Army, dt: number): void {
-  const commander = state.units[army.commanderId];
-  if (!commander) return;
-  army.bot.thinkTimer -= dt;
-  commander.ai.shieldTimer -= dt;
-  if (!commander.alive) {
+  const commander = getUnit(state, army.commanderId);
+  if (!commander?.alive) {
     runLeaderlessArmy(state, army, dt);
     return;
   }
+  army.bot.thinkTimer -= dt;
+  commander.ai.shieldTimer -= dt;
   const plan = planArmy(state, army, dt, false);
   if (!plan) return;
   const { stance, enemy } = plan;

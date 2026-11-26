@@ -22,6 +22,8 @@ export interface HitSource {
   from: Vec2;
   /** Horizontal push direction (unit length). */
   pushDir: Vec2;
+  /** Shields do not help against this, e.g. a commander's horse barging through the line. */
+  breaksGuard?: boolean;
 }
 
 /** True if `target` has its shield raised towards the point `from`. */
@@ -63,7 +65,7 @@ export function applyHit(
   knock: KnockbackStats,
 ): void {
   if (!target.alive || target.invulnerableTimer > 0) return;
-  const blocked = isBlockingFrom(target, source.from);
+  const blocked = !source.breaksGuard && isBlockingFrom(target, source.from);
   const wall = blocked && inShieldWall(state, target);
   const blockFraction = wall ? SHIELD.wallBlockFraction : SHIELD.blockFraction;
   const dealt = blocked ? damage * (1 - blockFraction) : damage;

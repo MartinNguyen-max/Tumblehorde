@@ -75,9 +75,9 @@ export class OnlineSession implements Session {
     this.myArmyId = armyId;
     this.roster = rosterFor(start.settings);
     const local = createMatch(start.settings);
-    const commanderId = local.armies[armyId]?.commanderId;
-    const commander = commanderId === undefined ? undefined : local.units[commanderId];
-    if (commanderId === undefined || !commander) throw new Error('Missing commander');
+    const commanderId = local.armies[armyId]?.commanderId ?? null;
+    const commander = commanderId === null ? undefined : local.units[commanderId];
+    if (commanderId === null || !commander) throw new Error('Missing commander');
     this.commanderId = commanderId;
     this.predicted = commander;
     this.predictedPrevious = copyVec(commander.pos);

@@ -16,7 +16,7 @@ import { areEnemies, canBeTargeted, canUseShield, getUnit, isMounted, isPerson, 
 const ARCHER_BOW_MIN_DISTANCE = ARCHER.melee.range + 0.6;
 
 export function applyPlayerInput(state: MatchState, army: Army, input: CommanderInput | undefined): void {
-  const commander = state.units[army.commanderId];
+  const commander = getUnit(state, army.commanderId);
   if (!commander?.alive) return;
   const intent = commander.intent;
   if (!input || army.disconnectTimer !== null) {
@@ -128,7 +128,7 @@ function shoveAway(state: MatchState, commander: Unit): void {
 
 function updateRespawns(state: MatchState, dt: number): void {
   for (const army of state.armies) {
-    const commander = state.units[army.commanderId];
+    const commander = getUnit(state, army.commanderId);
     if (!commander || commander.alive || army.forfeited || army.eliminated) continue;
     commander.respawnTimer -= dt;
     if (commander.respawnTimer <= 0) respawnCommander(state, army, commander);
@@ -139,7 +139,7 @@ function updateRespawns(state: MatchState, dt: number): void {
 export function forfeitArmy(state: MatchState, army: Army): void {
   army.forfeited = true;
   army.disconnectTimer = null;
-  const ids = [army.commanderId, ...army.soldierIds];
+  const ids = army.commanderId === null ? army.soldierIds : [army.commanderId, ...army.soldierIds];
   for (const id of ids) {
     const unit = state.units[id];
     if (!unit?.alive) continue;
@@ -168,7 +168,7 @@ function updateDisconnects(state: MatchState, dt: number): void {
 }
 
 export function isArmyDefeated(state: MatchState, army: Army): boolean {
-  const commander = state.units[army.commanderId];
+  const commander = getUnit(state, army.commanderId);
   return livingSoldiers(state, army).length === 0 && !commander?.alive;
 }
 
@@ -206,7 +206,7 @@ function updateMatchPhase(state: MatchState, dt: number): void {
 /** AI-driven units walk along walls towards gates; players steer themselves. */
 function steerAiAroundStructures(state: MatchState): void {
   for (const army of state.armies) {
-    const commander = state.units[army.commanderId];
+    const commander = getUnit(state, army.commanderId);
     const playerControlled = !army.isBot && commander?.alive === true;
     for (const id of army.soldierIds) {
       const unit = state.units[id];
@@ -227,7 +227,7 @@ export function stepMatch(state: MatchState, inputs: ReadonlyMap<number, Command
   for (const army of state.armies) {
     if (army.eliminated) continue;
     if (army.isBot) runBotArmy(state, army, step);
-    else if (state.units[army.commanderId]?.alive) applyPlayerInput(state, army, inputs.get(army.id));
+    else if (getUnit(state, army.commanderId)?.alive) applyPlayerInput(state, army, inputs.get(army.id));
     else runLeaderlessArmy(state, army, step);
     runArmyAi(state, army, step);
   }

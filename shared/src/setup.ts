@@ -1,16 +1,16 @@
 import { staggerThinking } from './ai.ts';
 import { ARMY, FORMATION, MAP, BODY } from './config.ts';
-import { formationSlots } from './formation.ts';
+import { formationSlots, holdSlots } from './formation.ts';
 import { centroid, groupForKind } from './orders.ts';
-import { yawToDir } from './math.ts';
+import { yawToDir, type Vec2, type Vec3 } from './math.ts';
 import { createRandom } from './random.ts';
 import { armySpawnPoint } from './spawn.ts';
 import { terrainHeightAt } from './terrain.ts';
-import type { Army, ArmySize, MatchSettings, MatchState, SoldierKind, Unit } from './types.ts';
+import type { Army, ArmyMix, ArmySize, MatchSettings, MatchState, SoldierKind, Unit } from './types.ts';
 import { createUnit } from './units.ts';
 
-export function soldierKindsFor(size: ArmySize): SoldierKind[] {
-  const mix = ARMY.composition[size];
+export function soldierKindsFor(size: ArmySize, armyMix: ArmyMix = ARMY.defaultMix): SoldierKind[] {
+  const mix = ARMY.mixes[armyMix][size];
   return [
     ...Array<SoldierKind>(mix.swordsman).fill('swordsman'),
     ...Array<SoldierKind>(mix.archer).fill('archer'),
@@ -54,6 +54,22 @@ function groundPos(settings: MatchSettings, x: number, z: number): { x: number; 
   return { x, y: terrainHeightAt(settings.map, x, z), z };
 }
 
+/** Commanders start on horseback. */
+function addCommander(state: MatchState, armyId: number, pos: Vec3, yaw: number): Unit {
+  const commander = addUnit(state, (id) => createUnit(id, 'commander', armyId, pos, yaw));
+  const horse = addUnit(state, (id) => createUnit(id, 'horse', armyId, pos, yaw));
+  horse.riderId = commander.id;
+  commander.mountId = horse.id;
+  commander.pos.y = horse.pos.y + BODY.saddleHeight;
+  return commander;
+}
+
+/** A legion starts in its default formation, so nobody has to shuffle; mixed armies start as a block. */
+function startingSlots(kinds: readonly SoldierKind[], center: Vec2, yaw: number): Vec2[] {
+  if (kinds.every((k) => k === 'swordsman')) return holdSlots(FORMATION.defaultFormation, kinds.length, center, yaw, false);
+  return formationSlots(kinds, center, yaw);
+}
+
 function createArmy(
   state: MatchState,
   armyId: number,
@@ -68,14 +84,10 @@ function createArmy(
     spawn.position.x + forward.x * FORMATION.commanderSpawnAhead,
     spawn.position.z + forward.z * FORMATION.commanderSpawnAhead,
   );
-  const commander = addUnit(state, (id) => createUnit(id, 'commander', armyId, commanderPos, spawn.yaw));
-  const commanderHorse = addUnit(state, (id) => createUnit(id, 'horse', armyId, commanderPos, spawn.yaw));
-  commanderHorse.riderId = commander.id;
-  commander.mountId = commanderHorse.id;
-  commander.pos.y = commanderHorse.pos.y + BODY.saddleHeight;
+  const commander = isBot && !ARMY.botCommanders ? null : addCommander(state, armyId, commanderPos, spawn.yaw);
 
-  const kinds = soldierKindsFor(settings.armySize);
-  const slots = formationSlots(kinds, spawn.position, spawn.yaw);
+  const kinds = soldierKindsFor(settings.armySize, settings.mix);
+  const slots = startingSlots(kinds, spawn.position, spawn.yaw);
   const soldierIds: number[] = [];
   const soldiers: Unit[] = [];
   kinds.forEach((kind, i) => {
@@ -99,7 +111,7 @@ function createArmy(
     team,
     name,
     isBot,
-    commanderId: commander.id,
+    commanderId: commander?.id ?? null,
     soldierIds,
     groupCount: ARMY_GROUPS,
     groupOrders: Array.from({ length: ARMY_GROUPS }, (_, g) => ({
@@ -107,7 +119,9 @@ function createArmy(
       anchor: centroid(soldiers.filter((s) => s.group === g)) ?? { ...spawn.position },
       anchorYaw: spawn.yaw,
       aroundCommander: false,
+      formation: FORMATION.defaultFormation,
     })),
+    formation: FORMATION.defaultFormation,
     eliminated: false,
     forfeited: false,
     disconnectTimer: null,
@@ -120,7 +134,7 @@ function createArmy(
 export function defaultSettings(overrides: Partial<MatchSettings> = {}): MatchSettings {
   return {
     mode: 'ffa',
-    armySize: 10,
+    armySize: ARMY.sizes[0],
     armies: [
       { name: 'You', team: 0, isBot: false },
       { name: 'Red Bot', team: 1, isBot: true },

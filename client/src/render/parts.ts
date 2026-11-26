@@ -7,6 +7,7 @@ import {
   type Scene,
   type ShadowGenerator,
   StandardMaterial,
+  TransformNode,
 } from './babylon.ts';
 
 /**
@@ -25,16 +26,43 @@ export type PartShape =
   | 'disc'
   | 'torus'
   | 'smoothCone'
-  | 'eye';
+  | 'eye'
+  // Smooth shapes for characters: armor and skin read better without facets.
+  | 'roundSphere'
+  | 'roundCapsule'
+  | 'roundCylinder'
+  | 'roundDome'
+  | 'frustum'
+  | 'tube';
 
 export interface PartOptions {
   castShadow?: boolean;
   /** Shiny plastic finish, used for characters. */
   gloss?: boolean;
+  /** Polished metal: a strong, tight highlight. Wins over gloss. */
+  metal?: boolean;
 }
 
-const GLOSS_SPECULAR = 0.28;
-const GLOSS_POWER = 24;
+type Finish = 'matte' | 'gloss' | 'metal';
+
+const FINISH: Record<Finish, { specular: number; power: number }> = {
+  matte: { specular: 0, power: 1 },
+  gloss: { specular: 0.28, power: 24 },
+  metal: { specular: 0.45, power: 40 },
+};
+
+function finishOf(options: PartOptions): Finish {
+  if (options.metal) return 'metal';
+  return options.gloss ? 'gloss' : 'matte';
+}
+
+/** An empty pivot under `parent`, for building and animating characters. */
+export function childNode(name: string, parent: TransformNode, x = 0, y = 0, z = 0): TransformNode {
+  const n = new TransformNode(name, parent.getScene());
+  n.parent = parent;
+  n.position.set(x, y, z);
+  return n;
+}
 
 /**
  * Every visible piece of the world is an instance of a shared source mesh, one per shape,
@@ -51,24 +79,26 @@ export class PartFactory {
     this.shadows = shadows;
   }
 
-  material(color: string, gloss = false): StandardMaterial {
-    const key = `${color}:${gloss}`;
+  material(color: string, finish: Finish | boolean = 'matte'): StandardMaterial {
+    const kind: Finish = finish === true ? 'gloss' : finish === false ? 'matte' : finish;
+    const key = `${color}:${kind}`;
     const existing = this.materials.get(key);
     if (existing) return existing;
     const mat = new StandardMaterial(`mat-${key}`, this.scene);
     mat.diffuseColor = Color3.FromHexString(color);
-    mat.specularColor = gloss ? new Color3(GLOSS_SPECULAR, GLOSS_SPECULAR, GLOSS_SPECULAR) : Color3.Black();
-    mat.specularPower = GLOSS_POWER;
+    const { specular, power } = FINISH[kind];
+    mat.specularColor = new Color3(specular, specular, specular);
+    mat.specularPower = power;
     this.materials.set(key, mat);
     return mat;
   }
 
-  private source(shape: PartShape, color: string, gloss: boolean): Mesh {
-    const key = `${shape}:${color}:${gloss}`;
+  private source(shape: PartShape, color: string, finish: Finish): Mesh {
+    const key = `${shape}:${color}:${finish}`;
     const existing = this.sources.get(key);
     if (existing) return existing;
     const mesh = this.buildShape(shape, key);
-    mesh.material = this.material(color, gloss);
+    mesh.material = this.material(color, finish);
     mesh.isVisible = false;
     mesh.receiveShadows = true;
     this.sources.set(key, mesh);
@@ -101,6 +131,18 @@ export class PartFactory {
         return flat(MeshBuilder.CreateCylinder(name, { diameterTop: 0, diameterBottom: 1, height: 1, tessellation: 6 }, s));
       case 'eye':
         return MeshBuilder.CreateSphere(name, { diameter: 1, segments: 6 }, s);
+      case 'roundSphere':
+        return MeshBuilder.CreateSphere(name, { diameter: 1, segments: 8 }, s);
+      case 'roundCapsule':
+        return roundCapsule(name, s);
+      case 'roundCylinder':
+        return MeshBuilder.CreateCylinder(name, { diameter: 1, height: 1, tessellation: 14 }, s);
+      case 'roundDome':
+        return MeshBuilder.CreateSphere(name, { diameter: 1, segments: 8, slice: 0.5 }, s);
+      case 'frustum':
+        return MeshBuilder.CreateCylinder(name, { diameterTop: 0.82, diameterBottom: 1, height: 1, tessellation: 14 }, s);
+      case 'tube':
+        return MeshBuilder.CreateTorus(name, { diameter: 1, thickness: 0.08, tessellation: 18 }, s);
     }
   }
 
@@ -117,7 +159,7 @@ export class PartFactory {
     position: readonly [number, number, number],
     options: PartOptions = {},
   ): InstancedMesh {
-    const instance = this.source(shape, color, options.gloss ?? false).createInstance(`${shape}-part`);
+    const instance = this.source(shape, color, finishOf(options)).createInstance(`${shape}-part`);
     instance.parent = parent;
     instance.scaling.set(size[0], size[1], size[2]);
     instance.position.set(position[0], position[1], position[2]);
@@ -127,6 +169,17 @@ export class PartFactory {
     }
     return instance;
   }
+}
+
+/**
+ * A pill one unit wide and tall. Built narrow and stretched, because a capsule whose height
+ * equals its diameter has a degenerate middle ring that shades as a dark band.
+ */
+function roundCapsule(name: string, scene: Scene): Mesh {
+  const mesh = MeshBuilder.CreateCapsule(name, { height: 1, radius: 0.25, tessellation: 12, capSubdivisions: 4 }, scene);
+  mesh.scaling.set(2, 1, 2);
+  mesh.bakeCurrentTransformIntoVertices();
+  return mesh;
 }
 
 function flat(mesh: Mesh): Mesh {

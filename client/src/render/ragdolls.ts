@@ -1,5 +1,4 @@
 import {
-  type AbstractMesh,
   PhysicsBody,
   PhysicsMotionType,
   PhysicsShapeBox,
@@ -22,9 +21,9 @@ interface Corpse {
   isHorse: boolean;
 }
 
-const PERSON_BOX = { center: new Vector3(0, 0.95, 0), extents: new Vector3(0.8, 1.7, 0.7), mass: 1 };
+const PERSON_BOX = { center: new Vector3(0, 0.95, 0), extents: new Vector3(0.62, 1.75, 0.48), mass: 1 };
 const HORSE_BOX = { center: new Vector3(0, 1.35, 0), extents: new Vector3(0.85, 1.2, 2.0), mass: 4 };
-const HELMET_EXTENTS = new Vector3(0.6, 0.35, 0.6);
+const HELMET_EXTENTS = new Vector3(0.34, 0.28, 0.38);
 /** Every corpse tips over around a sideways axis at least this fast, so none ends up standing. */
 const TOPPLE_SPIN = 6;
 const UPRIGHT_THRESHOLD = 0.6;
@@ -80,7 +79,7 @@ export class Ragdolls {
   }
 
   /** Sends the helmet flying on its own, because it is funny. */
-  private popOff(piece: AbstractMesh, extents: Vector3, knockback: Vec3): { holder: TransformNode; body: PhysicsBody } {
+  private popOff(piece: TransformNode, extents: Vector3, knockback: Vec3): { holder: TransformNode; body: PhysicsBody } {
     const holder = new TransformNode('loose-part', this.scene);
     holder.position.copyFrom(piece.getAbsolutePosition());
     holder.rotationQuaternion = Quaternion.Identity();

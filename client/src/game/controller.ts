@@ -1,6 +1,7 @@
 import { Vector3 } from '../render/babylon.ts';
 import {
   type CommanderInput,
+  COMMANDER_WEAPONS,
   distanceToEdge,
   MAP,
   type MatchView,
@@ -8,9 +9,9 @@ import {
   terrainHeightAt,
   type UnitView,
   type Vec3,
-  WEAPONS,
   yawToDir,
 } from '@tumblehorde/shared';
+import { FormationWheel } from '../input/formationWheel.ts';
 import type { InputState } from '../input/input.ts';
 import type { BattleRenderer } from '../render/battle.ts';
 import type { FollowCamera } from '../render/camera.ts';
@@ -19,9 +20,9 @@ import type { Hud } from '../ui/hud.ts';
 import { CAMERA } from '../visualConfig.ts';
 import type { Session } from './session.ts';
 
-const ORDER_KEYS: Record<string, Order> = { Digit1: 'follow', Digit2: 'hold', Digit3: 'attack' };
-/** 6 = whole army, 7 = swordsmen, 8 = archers, 9 = cavalry. The choice sticks until changed. */
-const SELECT_KEYS: Record<string, number | null> = { Digit6: null, Digit7: 0, Digit8: 1, Digit9: 2 };
+/** `2` (Hold) is handled by the formation wheel. */
+const ORDER_KEYS: Record<string, Order> = { Digit1: 'follow', Digit3: 'attack' };
+const HOLD_KEY = 'Digit2';
 const EDGE_FADE_DISTANCE = 12;
 const EDGE_MAX_ALPHA = 0.28;
 const SPECTATE_HEIGHT = 6;
@@ -43,8 +44,9 @@ export class GameController {
   private finished = false;
   private lastFocus = { x: 0, y: 0, z: 0 };
   private cameraSnapped = false;
-  /** Which group listens to 1/2/3; null is the whole army. */
-  private selectedGroup: number | null = null;
+  private readonly wheel = new FormationWheel();
+  /** A click that picked a formation must not also swing the sword. */
+  private swallowClick = false;
   readonly session: Session;
   private readonly world: World;
   private readonly renderer: BattleRenderer;
@@ -81,21 +83,22 @@ export class GameController {
   private myCommander(view: MatchView | null): UnitView | undefined {
     const id = this.session.myArmyId;
     if (id === null || !view) return undefined;
-    const army = view.armies[id];
-    return army ? view.units[army.commanderId] : undefined;
+    const commanderId = view.armies[id]?.commanderId ?? null;
+    return commanderId === null ? undefined : view.units[commanderId];
   }
 
-  private order(order: Order, group: number | null): void {
-    this.session.command({ type: 'order', order, group });
+  /** Orders always go to the whole army. */
+  private order(order: Order): void {
+    this.session.command({ type: 'order', order, group: null });
   }
 
-  private handleKeys(): void {
+  private handleKeys(dt: number): void {
     for (const code of this.input.takePressed()) {
       const order = ORDER_KEYS[code];
       if (order) {
-        this.order(order, this.selectedGroup);
-      } else if (code in SELECT_KEYS) {
-        this.selectedGroup = SELECT_KEYS[code] ?? null;
+        this.order(order);
+      } else if (code === HOLD_KEY) {
+        this.wheel.press();
       } else if (code === 'KeyE') {
         this.session.command({ type: 'mount' });
       } else if (code === 'KeyV') {
@@ -104,13 +107,29 @@ export class GameController {
         this.cycleWeapon();
       }
     }
-    this.input.takeReleased();
+    for (const code of this.input.takeReleased()) {
+      if (code === HOLD_KEY && this.wheel.isPressed) this.closeWheel();
+    }
+    this.wheel.tick(dt);
+    if (this.wheel.isOpen && this.input.mouseLeft && !this.swallowClick) {
+      this.swallowClick = true;
+      this.closeWheel();
+    }
+    if (!this.input.mouseLeft) this.swallowClick = false;
+  }
+
+  /** A picked formation holds in that shape; otherwise Hold uses the last one picked. */
+  private closeWheel(): void {
+    const formation = this.wheel.release();
+    if (formation) this.session.command({ type: 'formation', formation });
+    else this.order('hold');
   }
 
   private cycleWeapon(): void {
     const me = this.myCommander(this.session.view());
     if (!me) return;
-    const next = WEAPONS[(WEAPONS.indexOf(me.weapon) + 1) % WEAPONS.length] ?? 'sword';
+    const index = COMMANDER_WEAPONS.findIndex((w) => w === me.weapon);
+    const next = COMMANDER_WEAPONS[(index + 1) % COMMANDER_WEAPONS.length] ?? 'sword';
     this.session.command({ type: 'weapon', weapon: next });
   }
 
@@ -146,7 +165,7 @@ export class GameController {
       moveZ,
       faceYaw: this.camera.yaw,
       jump: this.input.isHeld('Space'),
-      attack: this.input.mouseLeft,
+      attack: this.input.mouseLeft && !this.wheel.isOpen && !this.swallowClick,
       shield: this.input.mouseRight,
       aim: this.aimPoint(),
     };
@@ -155,12 +174,14 @@ export class GameController {
   frame(dt: number, now: number): void {
     const active = !this.paused || this.session.online;
     if (!this.paused) {
-      this.handleKeys();
+      this.handleKeys(dt);
       const look = this.input.takeLook();
-      this.camera.look(look.x, look.y);
+      if (this.wheel.isOpen) this.wheel.move(look.x, look.y);
+      else this.camera.look(look.x, look.y);
       this.camera.zoom(this.input.takeWheel());
       this.session.setInput(this.buildInput());
     } else {
+      this.wheel.cancel();
       this.session.setInput({ moveX: 0, moveZ: 0, faceYaw: this.camera.yaw, jump: false, attack: false, shield: false, aim: null });
     }
     if (active) this.session.update(dt);
@@ -171,12 +192,11 @@ export class GameController {
 
     const view = this.session.view();
     if (!view) return;
-    this.renderer.highlight(this.session.myArmyId, this.selectedGroup);
     this.renderer.sync(view, active ? dt : 0, now);
     this.updateCamera(view, dt);
     this.updateEdgeWalls(view);
     if (this.session.myArmyId !== null) {
-      this.hud.update({ view, myArmyId: this.session.myArmyId, selectedGroup: this.selectedGroup, scene: this.world.scene, dt });
+      this.hud.update({ view, myArmyId: this.session.myArmyId, wheel: this.wheel, scene: this.world.scene, dt });
     }
     if (view.phase === 'over' && !this.finished) {
       this.finished = true;

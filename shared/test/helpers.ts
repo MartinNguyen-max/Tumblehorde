@@ -1,6 +1,7 @@
 import { createMatch, defaultSettings } from '../src/setup.ts';
 import { terrainHeightAt } from '../src/terrain.ts';
 import type { MatchSettings, MatchState, Unit } from '../src/types.ts';
+import { getUnit } from '../src/units.ts';
 
 /**
  * Most tests want commanders on foot; their starting horses are removed unless asked for.
@@ -9,7 +10,7 @@ export function newMatch(overrides: Partial<MatchSettings> = {}, options: { comm
   const state = createMatch(defaultSettings(overrides));
   if (options.commanderHorses) return state;
   for (const army of state.armies) {
-    const commander = state.units[army.commanderId];
+    const commander = getUnit(state, army.commanderId);
     const horse = commander?.mountId === null || !commander ? undefined : state.units[commander.mountId];
     if (!commander || !horse) continue;
     commander.mountId = null;
@@ -33,7 +34,7 @@ export function place(unit: Unit, x: number, z: number, yaw = 0): Unit {
 
 export function commanderOf(state: MatchState, armyId: number): Unit {
   const army = state.armies[armyId];
-  const unit = army ? state.units[army.commanderId] : undefined;
+  const unit = army ? getUnit(state, army.commanderId) : null;
   if (!unit) throw new Error(`no commander for army ${armyId}`);
   return unit;
 }

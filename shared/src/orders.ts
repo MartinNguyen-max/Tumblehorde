@@ -1,9 +1,8 @@
 import { ARMY, MOVEMENT } from './config.ts';
-import { FORMATION } from './config.ts';
-import { aroundCommanderSlots, followCenter, formationSlots, type FormationShape } from './formation.ts';
-import { clamp, dirToYaw, distanceXZ, turnTowards, type Vec2 } from './math.ts';
+import { assignHoldSlots, followCenter, formationSlots, holdSlots, supportSlots, type FormationSlot } from './formation.ts';
+import { clamp, dirToYaw, distanceXZ, normalizeXZ, turnTowards, type Vec2 } from './math.ts';
 import { toggleMount } from './mounts.ts';
-import type { Army, Command, EntityId, GroupOrder, MatchState, Order, Unit, UnitKind } from './types.ts';
+import type { Army, Command, EntityId, Formation, GroupOrder, MatchState, Order, Unit, UnitKind } from './types.ts';
 import { getUnit, setWeapon } from './units.ts';
 
 /**
@@ -44,13 +43,13 @@ export function groupMembers(state: MatchState, army: Army, group: number): Unit
 /** Center of everything still standing in the army, including the commander. */
 export function armyCenter(state: MatchState, army: Army): Vec2 | null {
   const members = livingSoldiers(state, army);
-  const commander = state.units[army.commanderId];
+  const commander = getUnit(state, army.commanderId);
   if (commander?.alive) members.push(commander);
   return centroid(members);
 }
 
 export function canGiveOrders(state: MatchState, army: Army): boolean {
-  const commander = state.units[army.commanderId];
+  const commander = getUnit(state, army.commanderId);
   return !army.eliminated && commander?.alive === true && livingSoldiers(state, army).length > 0;
 }
 
@@ -72,20 +71,22 @@ export function nearestEnemyCenter(state: MatchState, army: Army, from: Vec2): V
 }
 
 function orderFor(state: MatchState, army: Army, order: Order, group: number, leaderless: boolean): GroupOrder {
-  const commander = state.units[army.commanderId];
+  const commander = getUnit(state, army.commanderId);
   const yaw = commander?.yaw ?? 0;
   const commanderPos = { x: commander?.pos.x ?? 0, z: commander?.pos.z ?? 0 };
+  const formation = army.formation;
   if (order === 'hold' && !leaderless && !army.isBot && commander?.alive) {
     // A player's Hold: form up around me, facing where I look.
-    return { order, anchor: commanderPos, anchorYaw: yaw, aroundCommander: true };
+    return { order, anchor: commanderPos, anchorYaw: yaw, aroundCommander: true, formation };
   }
   if (order === 'hold') {
     const here = centroid(groupMembers(state, army, group)) ?? commanderPos;
     // Bots and leaderless armies hold where they stand, facing the enemy.
     const enemy = nearestEnemyCenter(state, army, here);
-    return { order, anchor: here, anchorYaw: enemy ? dirToYaw(enemy.x - here.x, enemy.z - here.z) : yaw, aroundCommander: false };
+    const facing = enemy ? dirToYaw(enemy.x - here.x, enemy.z - here.z) : yaw;
+    return { order, anchor: here, anchorYaw: facing, aroundCommander: false, formation };
   }
-  return { order, anchor: commanderPos, anchorYaw: yaw, aroundCommander: false };
+  return { order, anchor: commanderPos, anchorYaw: yaw, aroundCommander: false, formation };
 }
 
 /** `leaderless` lets an army without a standing commander order itself. */
@@ -95,8 +96,32 @@ export function issueOrder(state: MatchState, army: Army, order: Order, group: n
   for (let g = 0; g < army.groupCount; g++) {
     if (group === null || group === g) army.groupOrders[g] = orderFor(state, army, order, g, leaderless);
   }
-  state.events.push({ type: 'order', armyId: army.id, group, order });
+  state.events.push({ type: 'order', armyId: army.id, group, order, formation: army.formation });
   return true;
+}
+
+/**
+ * An army without a commander marches in formation: it holds a spot `step` meters further
+ * towards `target`, and is moved on again before it gets there.
+ */
+export function advanceArmy(state: MatchState, army: Army, target: Vec2, step: number): boolean {
+  if (!canActLeaderless(state, army)) return false;
+  const here = centroid(livingSoldiers(state, army));
+  if (!here) return false;
+  const dir = normalizeXZ(target.x - here.x, target.z - here.z);
+  const anchor = { x: here.x + dir.x * step, z: here.z + dir.z * step };
+  const anchorYaw = dirToYaw(dir.x, dir.z);
+  for (let g = 0; g < army.groupCount; g++) {
+    army.groupOrders[g] = { order: 'hold', anchor, anchorYaw, aroundCommander: false, formation: army.formation };
+  }
+  return true;
+}
+
+/** Picks the formation for Hold and forms it up at once. */
+export function setFormation(state: MatchState, army: Army, formation: Formation): boolean {
+  if (!canGiveOrders(state, army)) return false;
+  army.formation = formation;
+  return issueOrder(state, army, 'hold', null);
 }
 
 function canActLeaderless(state: MatchState, army: Army): boolean {
@@ -126,12 +151,14 @@ export function applyCommand(state: MatchState, armyId: number, command: Command
       return issueOrder(state, army, command.order, command.group);
     case 'split':
       return splitArmy(state, army, command.groupCount);
+    case 'formation':
+      return setFormation(state, army, command.formation);
     case 'mount': {
-      const commander = state.units[army.commanderId];
+      const commander = getUnit(state, army.commanderId);
       return commander ? toggleMount(state, commander) : false;
     }
     case 'weapon': {
-      const commander = state.units[army.commanderId];
+      const commander = getUnit(state, army.commanderId);
       return commander ? setWeapon(commander, command.weapon) : false;
     }
   }
@@ -140,7 +167,7 @@ export function applyCommand(state: MatchState, armyId: number, command: Command
 /** Following groups track their commander and turn with the direction they walk. */
 export function updateFollowAnchors(state: MatchState, dt: number): void {
   for (const army of state.armies) {
-    const commander = state.units[army.commanderId];
+    const commander = getUnit(state, army.commanderId);
     if (!commander?.alive) continue;
     const speed = Math.hypot(commander.vel.x, commander.vel.z);
     for (const groupOrder of army.groupOrders) {
@@ -155,45 +182,44 @@ export function updateFollowAnchors(state: MatchState, dt: number): void {
 }
 
 /** Formation slot for every living soldier in the army, based on their group's order. */
-export function formationTargets(state: MatchState, army: Army): Map<EntityId, Vec2> {
-  const targets = new Map<EntityId, Vec2>();
+export function formationTargets(state: MatchState, army: Army): Map<EntityId, FormationSlot> {
+  const targets = new Map<EntityId, FormationSlot>();
   for (let g = 0; g < army.groupCount; g++) {
     const groupOrder = army.groupOrders[g];
     if (!groupOrder) continue;
     const members = groupMembers(state, army, g);
     if (members.length === 0) continue;
-    if (groupOrder.order === 'hold' && groupOrder.aroundCommander) {
-      const around = aroundCommanderSlots(g, members.length, groupOrder.anchor, groupOrder.anchorYaw);
-      members.forEach((m, i) => {
-        const slot = around[i];
-        if (slot) targets.set(m.id, slot);
-      });
-      continue;
-    }
-    const center =
-      groupOrder.order === 'follow'
-        ? followCenter(groupOrder.anchor, groupOrder.anchorYaw, g, army.groupCount, members.length)
-        : groupOrder.anchor;
-    const slots = formationSlots(
-      members.map((m) => m.kind),
-      center,
-      groupOrder.anchorYaw,
-      formationShape(groupOrder, members),
-    );
-    members.forEach((m, i) => {
-      const slot = slots[i];
-      if (slot) targets.set(m.id, slot);
-    });
+    for (const [id, slot] of groupSlots(groupOrder, g, army.groupCount, members)) targets.set(id, slot);
   }
   return targets;
 }
 
-const SHIELD_WALL: FormationShape = { spacing: FORMATION.shieldWallSpacing, rowWidth: FORMATION.shieldWallRowWidth };
-
-/** Swordsmen holding their ground close ranks into a shield wall. */
-function formationShape(groupOrder: GroupOrder, members: readonly Unit[]): FormationShape | undefined {
-  const allSwords = members.every((m) => m.kind === 'swordsman');
-  return groupOrder.order === 'hold' && allSwords ? SHIELD_WALL : undefined;
+function groupSlots(groupOrder: GroupOrder, group: number, groupCount: number, members: readonly Unit[]): Map<EntityId, FormationSlot> {
+  const { anchor, anchorYaw: yaw } = groupOrder;
+  const result = new Map<EntityId, FormationSlot>();
+  // The main group (all swordsmen) holds in the chosen formation, everyone in their own place.
+  if (groupOrder.order === 'hold' && group === 0) {
+    const slots = holdSlots(groupOrder.formation, members.length, anchor, yaw, groupOrder.aroundCommander);
+    const places = assignHoldSlots(groupOrder.formation, members.map((m) => m.pos), anchor, yaw);
+    members.forEach((m, i) => {
+      const slot = slots[places[i] ?? i];
+      if (slot) result.set(m.id, slot);
+    });
+    return result;
+  }
+  const blockSlots =
+    groupOrder.order === 'hold' && groupOrder.aroundCommander
+      ? supportSlots(group, members.length, anchor, yaw)
+      : formationSlots(
+          members.map((m) => m.kind),
+          groupOrder.order === 'follow' ? followCenter(anchor, yaw, group, groupCount, members.length) : anchor,
+          yaw,
+        );
+  members.forEach((m, i) => {
+    const slot = blockSlots[i];
+    if (slot) result.set(m.id, { x: slot.x, z: slot.z, yaw });
+  });
+  return result;
 }
 
 export function orderOf(army: Army, unit: Unit): GroupOrder | null {

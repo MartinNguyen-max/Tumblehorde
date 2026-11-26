@@ -53,7 +53,7 @@ describe('maps', () => {
   it('are picked at random for online battles', () => {
     expect(mapFromRandom(0)).toBe('meadow');
     expect(mapFromRandom(0.999)).toBe('highlands');
-    const lobby = { code: 'ABCDE', hostId: 'a', phase: 'lobby' as const, mode: 'ffa' as const, armySize: 10 as const, players: [] };
+    const lobby = { code: 'ABCDE', hostId: 'a', phase: 'lobby' as const, mode: 'ffa' as const, armySize: 15 as const, players: [] };
     const picked = new Set(Array.from({ length: 40 }, (_, seed) => battleSettings(lobby, seed).map));
     expect(picked.size).toBe(MAP_IDS.length);
   });

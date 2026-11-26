@@ -1,15 +1,18 @@
-import { type InstancedMesh, TransformNode, type Scene } from './babylon.ts';
+import { TransformNode, type Scene } from './babylon.ts';
 import { approach, lerp, meleeStatsForKind, type UnitKind, type UnitView, type Weapon } from '@tumblehorde/shared';
-import { ANIMATION, type ArmyPalette, COLORS } from '../visualConfig.ts';
-import type { PartFactory } from './parts.ts';
+import { ANIMATION, type ArmyPalette, COLORS, ROMAN } from '../visualConfig.ts';
+import { buildBean } from './beans.ts';
+import { buildRoman, type PersonBody } from './legionary.ts';
+import { childNode, type PartFactory } from './parts.ts';
 
-const COMMANDER_SCALE = 1.15;
-const ARM_REST = -0.35;
+const COMMANDER_SCALE = 1.12;
+const ARM_REST = -0.3;
 const ARM_OVERHEAD = -3.0;
 const ARM_STRIKE_END = 0.15;
 const STRIKE_TIME = 0.12;
 const RECOVER_TIME = 0.25;
 const SHIELD_RAISE_RATE = 12;
+const GUARD_RATE = 6;
 const KNOCKDOWN_RATE = 6;
 const BLINK_RATE = 18;
 const HIT_REACTION_TIME = 0.45;
@@ -17,35 +20,35 @@ const LAND_SQUASH_TIME = 0.22;
 const FLAIL_SPEED = 28;
 const STAR_COUNT = 3;
 const DIZZY_STUN = 0.3;
-const PUPIL_SPREAD = 0.13;
+const PUPIL_JIGGLE = 0.02;
+/** The sword sits across the fist, the blade pointing forward-up when the arm hangs. */
+const SWORD_GRIP_PITCH = -1.75;
+/** Total pitch of the spear: upright on the march, forward over the shield on guard, a lance on horseback. */
+const SPEAR_UPRIGHT = -2.95;
+const SPEAR_LEVEL = -1.55;
+const SPEAR_LANCE = -1.25;
+/** Overhand arm, hand by the shoulder, ready to thrust over the shield. */
+const ARM_SPEAR_GUARD = -2.2;
+const ARM_LANCE = -1.15;
+const BROW_SCOWL = 0.4;
 
 /** How a swing looks. Purely visual: the simulation only knows "a strike". */
-export type SwingStyle = 'chop' | 'swipe' | 'thrust' | 'spin';
+export type SwingStyle = 'chop' | 'swipe' | 'thrust' | 'spin' | 'slash' | 'lance';
 
-export interface PersonRig {
+export interface PersonRig extends PersonBody {
   type: 'person';
   unitKind: UnitKind;
   scale: number;
   root: TransformNode;
   body: TransformNode;
-  torso: TransformNode;
-  head: TransformNode;
-  pupils: InstancedMesh[];
-  deadEyes: TransformNode;
-  legL: TransformNode;
-  legR: TransformNode;
-  armL: TransformNode;
-  armR: TransformNode;
-  shield: TransformNode | null;
-  helmet: InstancedMesh;
-  weapons: Partial<Record<Weapon, TransformNode>>;
   stars: TransformNode;
-  /** Bobbing arrow shown over the soldiers the player has selected. */
-  marker: TransformNode;
+  pupilRest: { x: number; y: number }[];
   walkPhase: number;
   swingAge: number | null;
   swingStyle: SwingStyle;
   shieldAmount: number;
+  /** 0 = spear upright on the shoulder, 1 = levelled and ready. */
+  guardAmount: number;
   drawAmount: number;
   knockdown: number;
   hitAge: number;
@@ -72,196 +75,41 @@ export interface HorseRig {
 export type Rig = PersonRig | HorseRig;
 
 const GLOSS = { gloss: true } as const;
+const METAL = { metal: true } as const;
 const NO_SHADOW_GLOSS = { gloss: true, castShadow: false } as const;
 
-function node(name: string, parent: TransformNode, x = 0, y = 0, z = 0): TransformNode {
-  const n = new TransformNode(name, parent.getScene());
-  n.parent = parent;
-  n.position.set(x, y, z);
-  return n;
-}
-
-/** Big googly eyes. Pupils wobble when hit; on death they turn into crosses. */
-function addEyes(parts: PartFactory, head: TransformNode, forward: number, size: number): { pupils: InstancedMesh[]; deadEyes: TransformNode } {
-  const pupils: InstancedMesh[] = [];
-  const deadEyes = node('dead-eyes', head);
-  for (const side of [-1, 1]) {
-    const x = side * PUPIL_SPREAD;
-    parts.part('eye', COLORS.eyeWhite, head, [size, size * 1.1, size * 0.6], [x, 0, forward], NO_SHADOW_GLOSS);
-    pupils.push(parts.part('eye', COLORS.pupil, head, [size * 0.45, size * 0.5, size * 0.3], [x, 0, forward + size * 0.24], NO_SHADOW_GLOSS));
-    const cross = node('x-eye', deadEyes, x, 0, forward + size * 0.3);
-    parts.part('box', COLORS.pupil, cross, [size * 0.7, size * 0.12, 0.02], [0, 0, 0], { castShadow: false }).rotation.z = 0.8;
-    parts.part('box', COLORS.pupil, cross, [size * 0.7, size * 0.12, 0.02], [0, 0, 0], { castShadow: false }).rotation.z = -0.8;
-  }
-  deadEyes.setEnabled(false);
-  return { pupils, deadEyes };
-}
-
-function addSword(parts: PartFactory, grip: TransformNode): TransformNode {
-  const sword = node('sword', grip);
-  sword.rotation.x = -1.75;
-  parts.part('box', COLORS.steel, sword, [0.1, 0.95, 0.04], [0, -0.58, 0], GLOSS);
-  parts.part('smoothCone', COLORS.steel, sword, [0.1, 0.16, 0.04], [0, -1.12, 0], GLOSS).rotation.x = Math.PI;
-  parts.part('capsule', COLORS.gold, sword, [0.1, 0.36, 0.1], [0, -0.08, 0], GLOSS).rotation.z = Math.PI / 2;
-  parts.part('sphere', COLORS.gold, sword, [0.11, 0.11, 0.11], [0, 0.1, 0], GLOSS);
-  return sword;
-}
-
-function addSpear(parts: PartFactory, grip: TransformNode): TransformNode {
-  const spear = node('spear', grip);
-  spear.rotation.x = -1.75;
-  parts.part('disc', COLORS.wood, spear, [0.07, 2.4, 0.07], [0, -0.55, 0], GLOSS);
-  parts.part('smoothCone', COLORS.steel, spear, [0.16, 0.4, 0.16], [0, -1.92, 0], GLOSS).rotation.x = Math.PI;
-  parts.part('torus', COLORS.gold, spear, [0.12, 0.5, 0.12], [0, -1.7, 0], GLOSS);
-  return spear;
-}
-
-function addBow(parts: PartFactory, arm: TransformNode): TransformNode {
-  const bow = node('bow', arm, 0, -0.48, 0.05);
-  parts.part('capsule', COLORS.wood, bow, [0.07, 0.3, 0.07], [0, 0, 0], GLOSS).rotation.x = Math.PI / 2;
-  parts.part('capsule', COLORS.wood, bow, [0.06, 0.6, 0.06], [0, 0.1, 0.38], GLOSS).rotation.x = 1.2;
-  parts.part('capsule', COLORS.wood, bow, [0.06, 0.6, 0.06], [0, 0.1, -0.38], GLOSS).rotation.x = -1.2;
-  parts.part('box', COLORS.edgePost, bow, [0.015, 0.015, 1.25], [0, 0.22, 0], { castShadow: false });
-  return bow;
-}
-
-/** Tall Roman scutum: team color with curved-looking edges, trim rim, steel boss, golden emblem. */
-function addScutum(parts: PartFactory, parent: TransformNode, palette: ArmyPalette): TransformNode {
-  const shield = node('scutum', parent, -0.62, 1.0, 0.06);
-  parts.part('box', palette.trim, shield, [0.08, 1.08, 0.74], [0.02, 0, 0], GLOSS);
-  parts.part('box', palette.body, shield, [0.1, 0.98, 0.64], [-0.01, 0, 0], GLOSS);
-  parts.part('box', palette.body, shield, [0.08, 0.98, 0.16], [0.04, 0, 0.34], GLOSS).rotation.y = -0.35;
-  parts.part('box', palette.body, shield, [0.08, 0.98, 0.16], [0.04, 0, -0.34], GLOSS).rotation.y = 0.35;
-  parts.part('box', COLORS.emblem, shield, [0.02, 0.8, 0.07], [-0.07, 0, 0], GLOSS);
-  parts.part('box', COLORS.emblem, shield, [0.02, 0.07, 0.5], [-0.07, 0.18, 0], GLOSS);
-  parts.part('box', COLORS.emblem, shield, [0.02, 0.07, 0.5], [-0.07, -0.18, 0], GLOSS);
-  parts.part('dome', COLORS.steel, shield, [0.26, 0.26, 0.26], [-0.07, 0, 0], GLOSS).rotation.z = Math.PI / 2;
-  return shield;
-}
-
-function addRoundShield(parts: PartFactory, parent: TransformNode, palette: ArmyPalette): TransformNode {
-  const shield = node('round-shield', parent, -0.6, 1.02, 0.06);
-  parts.part('disc', palette.body, shield, [0.78, 0.09, 0.78], [0, 0, 0], GLOSS).rotation.z = Math.PI / 2;
-  parts.part('torus', palette.trim, shield, [0.8, 0.8, 0.8], [0, 0, 0], GLOSS).rotation.z = Math.PI / 2;
-  parts.part('dome', COLORS.gold, shield, [0.24, 0.24, 0.24], [-0.05, 0, 0], GLOSS).rotation.z = Math.PI / 2;
-  return shield;
-}
-
 function addStars(parts: PartFactory, head: TransformNode): TransformNode {
-  const stars = node('stars', head, 0, 0.62, 0);
+  const stars = childNode('stars', head, 0, 0.5, 0);
   for (let i = 0; i < STAR_COUNT; i++) {
     const a = (i / STAR_COUNT) * Math.PI * 2;
-    parts.part('sphere', COLORS.star, stars, [0.13, 0.13, 0.13], [Math.cos(a) * 0.38, 0, Math.sin(a) * 0.38], NO_SHADOW_GLOSS);
+    parts.part('sphere', COLORS.star, stars, [0.11, 0.11, 0.11], [Math.cos(a) * 0.3, 0, Math.sin(a) * 0.3], NO_SHADOW_GLOSS);
   }
   stars.setEnabled(false);
   return stars;
 }
 
-function addHeadgear(parts: PartFactory, head: TransformNode, kind: UnitKind, palette: ArmyPalette): InstancedMesh {
-  switch (kind) {
-    case 'commander': {
-      const helmet = parts.part('dome', COLORS.gold, head, [0.78, 0.6, 0.74], [0, 0.17, 0], GLOSS);
-      parts.part('smoothCone', COLORS.accent, head, [0.16, 0.7, 0.16], [0, 0.72, -0.05], GLOSS);
-      parts.part('sphere', COLORS.accent, head, [0.24, 0.24, 0.24], [0, 1.02, -0.05], GLOSS);
-      return helmet;
-    }
-    case 'swordsman': {
-      const helmet = parts.part('dome', COLORS.steel, head, [0.76, 0.58, 0.72], [0, 0.16, 0], GLOSS);
-      // Roman crest running front to back.
-      parts.part('capsule', palette.trim, head, [0.1, 0.62, 0.22], [0, 0.5, 0], GLOSS).rotation.x = Math.PI / 2;
-      parts.part('box', COLORS.steel, head, [0.06, 0.26, 0.2], [-0.37, -0.04, 0.12], GLOSS);
-      parts.part('box', COLORS.steel, head, [0.06, 0.26, 0.2], [0.37, -0.04, 0.12], GLOSS);
-      return helmet;
-    }
-    case 'archer': {
-      const hood = parts.part('dome', palette.trim, head, [0.8, 0.62, 0.76], [0, 0.14, -0.02], GLOSS);
-      parts.part('smoothCone', COLORS.emblem, head, [0.06, 0.45, 0.06], [0.25, 0.5, -0.15], GLOSS).rotation.z = -0.5;
-      return hood;
-    }
-    default: {
-      const helmet = parts.part('dome', COLORS.steel, head, [0.76, 0.6, 0.72], [0, 0.16, 0], GLOSS);
-      parts.part('smoothCone', COLORS.steel, head, [0.12, 0.32, 0.12], [0, 0.6, 0], GLOSS);
-      return helmet;
-    }
-  }
-}
-
 export function createPersonRig(scene: Scene, parts: PartFactory, kind: UnitKind, palette: ArmyPalette): PersonRig {
   const scale = kind === 'commander' ? COMMANDER_SCALE : 1;
   const root = new TransformNode(kind, scene);
-  const body = node('body', root);
+  const body = childNode('body', root);
   body.scaling.setAll(scale);
-  const torso = node('torso', body);
-
-  const legL = node('legL', torso, -0.18, 0.52, 0);
-  const legR = node('legR', torso, 0.18, 0.52, 0);
-  for (const leg of [legL, legR]) {
-    parts.part('capsule', palette.trim, leg, [0.24, 0.5, 0.24], [0, -0.22, 0], GLOSS);
-    parts.part('sphere', COLORS.boot, leg, [0.27, 0.18, 0.36], [0, -0.46, 0.06], GLOSS);
-  }
-  // The bean: one rounded body with the face on it, Fall Guys style.
-  parts.part('capsule', palette.body, torso, [0.8, 1.28, 0.7], [0, 1.08, 0], GLOSS);
-  parts.part('torus', palette.trim, torso, [0.86, 0.9, 0.76], [0, 0.82, 0], GLOSS);
-  parts.part('sphere', COLORS.gold, torso, [0.14, 0.14, 0.08], [0, 0.82, 0.37], GLOSS);
-  const head = node('head', torso, 0, 1.46, 0);
-  const { pupils, deadEyes } = addEyes(parts, head, 0.31, 0.2);
-  parts.part('sphere', COLORS.skin, head, [0.42, 0.2, 0.1], [0, -0.2, 0.3], NO_SHADOW_GLOSS);
-  const helmet = addHeadgear(parts, head, kind, palette);
-
-  const armL = node('armL', torso, -0.45, 1.22, 0.02);
-  const armR = node('armR', torso, 0.45, 1.22, 0.02);
-  for (const arm of [armL, armR]) {
-    parts.part('capsule', palette.body, arm, [0.2, 0.5, 0.2], [0, -0.22, 0], GLOSS);
-    parts.part('sphere', COLORS.skin, arm, [0.19, 0.19, 0.19], [0, -0.48, 0], GLOSS);
-  }
-  const grip = node('grip', armR, 0, -0.5, 0.05);
-
-  const weapons: Partial<Record<Weapon, TransformNode>> = {};
-  let shield: TransformNode | null = null;
-  if (kind === 'archer') {
-    weapons.bow = addBow(parts, armL);
-    parts.part('capsule', COLORS.wood, torso, [0.22, 0.55, 0.16], [0.18, 1.2, -0.36], GLOSS).rotation.z = 0.3;
-  } else if (kind === 'swordsman') {
-    weapons.sword = addSword(parts, grip);
-    shield = addScutum(parts, torso, palette);
-  } else if (kind === 'rider') {
-    weapons.spear = addSpear(parts, grip);
-    shield = addRoundShield(parts, torso, palette);
-  } else {
-    weapons.sword = addSword(parts, grip);
-    weapons.spear = addSpear(parts, grip);
-    weapons.bow = addBow(parts, armL);
-    shield = addRoundShield(parts, torso, palette);
-    parts.part('capsule', COLORS.accent, torso, [0.66, 1.05, 0.1], [0, 1.05, -0.36], GLOSS);
-  }
-  const stars = addStars(parts, head);
-  const marker = node('marker', root, 0, 2.75 * scale, 0);
-  parts.part('smoothCone', COLORS.toast, marker, [0.36, 0.42, 0.36], [0, 0, 0], NO_SHADOW_GLOSS).rotation.x = Math.PI;
-  marker.setEnabled(false);
-
+  const roman = kind === 'swordsman' || kind === 'commander';
+  const built = roman ? buildRoman(parts, body, palette, kind === 'commander') : buildBean(parts, body, kind, palette);
+  const stars = addStars(parts, built.head);
   return {
+    ...built,
     type: 'person',
     unitKind: kind,
     scale,
     root,
     body,
-    torso,
-    head,
-    pupils,
-    deadEyes,
-    legL,
-    legR,
-    armL,
-    armR,
-    shield,
-    helmet,
-    weapons,
     stars,
-    marker,
+    pupilRest: built.pupils.map((p) => ({ x: p.position.x, y: p.position.y })),
     walkPhase: Math.random() * Math.PI * 2,
     swingAge: null,
     swingStyle: 'chop',
     shieldAmount: 0,
+    guardAmount: 0,
     drawAmount: 0,
     knockdown: 0,
     hitAge: HIT_REACTION_TIME,
@@ -274,29 +122,42 @@ export function createPersonRig(scene: Scene, parts: PartFactory, kind: UnitKind
   };
 }
 
+/** A war horse in barding: cloth in the army's color, bronze chest plate, neck plates and face plate. */
 export function createHorseRig(scene: Scene, parts: PartFactory, palette: ArmyPalette, id: number): HorseRig {
   const hide = id % 2 === 0 ? COLORS.horseLight : COLORS.horseDark;
   const root = new TransformNode('horse', scene);
-  const body = node('horse-body', root);
-  parts.part('capsule', hide, body, [0.84, 2.0, 0.9], [0, 1.38, 0], GLOSS).rotation.x = Math.PI / 2;
-  parts.part('capsule', hide, body, [0.46, 1.0, 0.5], [0, 1.85, 0.85], GLOSS).rotation.x = 0.55;
-  parts.part('box', COLORS.mane, body, [0.12, 0.8, 0.26], [0, 2.05, 0.7], GLOSS).rotation.x = 0.55;
-  parts.part('box', palette.body, body, [0.94, 0.06, 1.05], [0, 1.82, -0.05], GLOSS);
-  parts.part('capsule', palette.trim, body, [0.7, 0.9, 0.2], [0, 1.9, -0.05], GLOSS).rotation.x = Math.PI / 2;
-  parts.part('capsule', COLORS.mane, body, [0.16, 0.8, 0.16], [0, 1.45, -1.05], GLOSS).rotation.x = 0.6;
-  const head = node('horse-head', body, 0, 2.22, 1.2);
-  parts.part('capsule', hide, head, [0.38, 0.8, 0.44], [0, 0, 0.22], GLOSS).rotation.x = Math.PI / 2 - 0.35;
-  parts.part('sphere', COLORS.mane, head, [0.3, 0.26, 0.2], [0, -0.13, 0.58], GLOSS);
+  const body = childNode('horse-body', root);
+  parts.part('roundCapsule', hide, body, [0.8, 2.0, 0.88], [0, 1.38, 0], GLOSS).rotation.x = Math.PI / 2;
+  parts.part('roundCapsule', hide, body, [0.42, 1.0, 0.5], [0, 1.85, 0.85], GLOSS).rotation.x = 0.55;
+  parts.part('box', COLORS.mane, body, [0.1, 0.8, 0.24], [0, 2.05, 0.68], GLOSS).rotation.x = 0.55;
+  // Caparison over the back, trimmed in gold, and a Roman four-horned saddle on top.
+  parts.part('roundCapsule', palette.body, body, [0.9, 1.62, 0.95], [0, 1.43, -0.08], GLOSS).rotation.x = Math.PI / 2;
+  parts.part('tube', COLORS.gold, body, [0.92, 0.4, 1.55], [0, 1.2, -0.08], METAL);
+  parts.part('box', ROMAN.leather, body, [0.6, 0.12, 0.7], [0, 1.88, -0.08], GLOSS);
+  for (const x of [-0.22, 0.22]) {
+    for (const z of [-0.36, 0.22]) parts.part('roundSphere', ROMAN.darkLeather, body, [0.1, 0.12, 0.1], [x, 1.97, z], GLOSS);
+  }
+  parts.part('roundSphere', ROMAN.bronze, body, [0.78, 0.62, 0.3], [0, 1.4, 0.95], METAL);
+  for (let i = 0; i < 3; i++) {
+    const plate = parts.part('box', ROMAN.bronze, body, [0.36, 0.06, 0.26], [0, 1.95 + i * 0.13, 0.62 + i * 0.16], METAL);
+    plate.rotation.x = 0.55;
+  }
+  parts.part('roundCapsule', COLORS.mane, body, [0.15, 0.8, 0.15], [0, 1.45, -1.05], GLOSS).rotation.x = 0.6;
+  const head = childNode('horse-head', body, 0, 2.22, 1.2);
+  parts.part('roundCapsule', hide, head, [0.36, 0.8, 0.42], [0, 0, 0.22], GLOSS).rotation.x = Math.PI / 2 - 0.35;
+  parts.part('roundSphere', COLORS.mane, head, [0.28, 0.24, 0.2], [0, -0.13, 0.58], GLOSS);
+  const chamfron = parts.part('box', ROMAN.bronze, head, [0.26, 0.05, 0.5], [0, 0.12, 0.28], METAL);
+  chamfron.rotation.x = -0.35;
+  parts.part('roundCapsule', palette.body, head, [0.08, 0.3, 0.14], [0, 0.36, 0.02], GLOSS);
   for (const side of [-1, 1]) {
-    parts.part('smoothCone', hide, head, [0.1, 0.22, 0.1], [side * 0.12, 0.3, 0.02], GLOSS);
-    parts.part('eye', COLORS.eyeWhite, head, [0.15, 0.17, 0.15], [side * 0.18, 0.1, 0.25], NO_SHADOW_GLOSS);
-    parts.part('eye', COLORS.pupil, head, [0.07, 0.08, 0.07], [side * 0.24, 0.1, 0.28], NO_SHADOW_GLOSS);
+    parts.part('smoothCone', hide, head, [0.1, 0.22, 0.1], [side * 0.12, 0.3, -0.02], GLOSS);
+    parts.part('roundSphere', COLORS.pupil, head, [0.08, 0.1, 0.08], [side * 0.18, 0.08, 0.26], NO_SHADOW_GLOSS);
   }
   const legs: TransformNode[] = [];
-  for (const [x, z] of [[-0.28, 0.68], [0.28, 0.68], [-0.28, -0.68], [0.28, -0.68]] as const) {
-    const leg = node('horse-leg', body, x, 1.0, z);
-    parts.part('capsule', hide, leg, [0.22, 0.95, 0.22], [0, -0.44, 0], GLOSS);
-    parts.part('disc', COLORS.boot, leg, [0.24, 0.12, 0.24], [0, -0.92, 0], GLOSS);
+  for (const [x, z] of [[-0.26, 0.66], [0.26, 0.66], [-0.26, -0.66], [0.26, -0.66]] as const) {
+    const leg = childNode('horse-leg', body, x, 1.0, z);
+    parts.part('roundCapsule', hide, leg, [0.2, 0.95, 0.2], [0, -0.44, 0], GLOSS);
+    parts.part('roundCylinder', COLORS.boot, leg, [0.22, 0.12, 0.22], [0, -0.92, 0], GLOSS);
     legs.push(leg);
   }
   return { type: 'horse', scale: 1, root, body, head, legs, walkPhase: Math.random() * 6, hitAge: HIT_REACTION_TIME };
@@ -319,7 +180,13 @@ interface SwingPose {
   sweep: number;
   twist: number;
   reach: number;
+  /** Wrist flick: extra pitch on the weapon so a slash follows through downwards. */
+  wrist: number;
+  /** Leaning out of the saddle towards the side being struck. */
+  lean: number;
 }
+
+const NO_SWING = { sweep: 0, twist: 0, reach: 0, wrist: 0, lean: 0 } as const;
 
 /** Arm pitch, sideways sweep, body twist and forward reach for the current swing. */
 function swingPose(rig: PersonRig, mounted: boolean, weapon: Weapon): SwingPose | null {
@@ -334,28 +201,42 @@ function swingPose(rig: PersonRig, mounted: boolean, weapon: Weapon): SwingPose 
   const back = ease(t / windup);
   const hit = strike < 0 ? 0 : Math.min(1, strike / STRIKE_TIME);
   const recover = strike < STRIKE_TIME ? 0 : (strike - STRIKE_TIME) / RECOVER_TIME;
+  /** windup → strike → back to rest, for any value. */
+  const phase = (rest: number, cocked: number, struck: number): number =>
+    strike < 0 ? lerp(rest, cocked, back) : strike < STRIKE_TIME ? lerp(cocked, struck, hit) : lerp(struck, rest, recover);
   switch (rig.swingStyle) {
-    case 'chop': {
-      const pitch = strike < 0 ? lerp(ARM_REST, ARM_OVERHEAD, back) : strike < STRIKE_TIME ? lerp(ARM_OVERHEAD, ARM_STRIKE_END, hit) : lerp(ARM_STRIKE_END, ARM_REST, recover);
-      return { pitch, sweep: 0, twist: strike < 0 ? -0.2 * back : 0.25 * (1 - recover), reach: 0 };
-    }
+    case 'chop':
+      return { ...NO_SWING, pitch: phase(ARM_REST, ARM_OVERHEAD, ARM_STRIKE_END), twist: strike < 0 ? -0.2 * back : 0.25 * (1 - recover) };
     case 'swipe': {
-      const sweep = strike < 0 ? lerp(0, -1.4, back) : strike < STRIKE_TIME ? lerp(-1.4, 1.1, hit) : lerp(1.1, 0, recover);
-      return { pitch: -1.45 * (1 - recover), sweep, twist: sweep * 0.35, reach: 0 };
+      const sweep = phase(0, -1.4, 1.1);
+      return { ...NO_SWING, pitch: -1.45 * (1 - recover), sweep, twist: sweep * 0.35 };
     }
     case 'thrust': {
-      const reach = strike < 0 ? -0.25 * back : strike < STRIKE_TIME ? lerp(-0.25, 0.45, hit) : lerp(0.45, 0, recover);
-      return { pitch: lerp(ARM_REST, -1.55, Math.min(1, back * 1.5)) * (1 - recover) + ARM_REST * recover, sweep: 0, twist: -reach * 0.5, reach };
+      // Overhand spear thrust over the shield rim.
+      return { ...NO_SWING, pitch: phase(ARM_SPEAR_GUARD, ARM_SPEAR_GUARD - 0.25, ARM_SPEAR_GUARD + 0.35), reach: phase(0, -0.22, 0.5), twist: phase(0, 0.15, -0.25) };
     }
     case 'spin': {
       const spin = strike < 0 ? -0.4 * back : -0.4 + (Math.PI * 2 + 0.4) * ease(strike / (STRIKE_TIME + RECOVER_TIME));
-      return { pitch: -1.5, sweep: -1.2, twist: spin, reach: 0 };
+      return { ...NO_SWING, pitch: -1.5, sweep: -1.2, twist: spin };
     }
+    case 'slash':
+      // From the saddle: sword raised high and out, then hacked down at whoever is below.
+      return {
+        pitch: phase(ARM_REST, ARM_OVERHEAD - 0.2, 0.55),
+        sweep: phase(0, 0.55, 0.25),
+        twist: phase(0, -0.35, 0.3),
+        reach: 0,
+        wrist: phase(0, -0.3, 1.1),
+        lean: phase(0, -0.12, 0.32),
+      };
+    case 'lance':
+      return { ...NO_SWING, pitch: phase(ARM_LANCE, ARM_LANCE - 0.35, ARM_LANCE + 0.45), reach: phase(0, -0.3, 0.55), lean: phase(0, 0, 0.15) };
   }
 }
 
 function showWeapon(rig: PersonRig, weapon: Weapon): void {
   for (const [key, n] of Object.entries(rig.weapons)) n.setEnabled(key === weapon);
+  rig.sheathed?.setEnabled(weapon !== 'sword');
   rig.shield?.setEnabled(weapon !== 'bow');
 }
 
@@ -375,22 +256,78 @@ function animateLegs(rig: PersonRig, mounted: boolean, flail: boolean, airborne:
   }
 }
 
-function animateArms(rig: PersonRig, view: UnitView, pose: SwingPose | null, flail: boolean, swing: number, now: number): void {
+/** The weapon arm: the swing when there is one, else a resting or guard pose for the weapon. */
+function weaponArmPitch(rig: PersonRig, weapon: Weapon, mounted: boolean, swing: number): number {
+  if (weapon === 'spear') {
+    const rest = ARM_REST * 0.6 + swing * ANIMATION.armSwing * 0.2;
+    return mounted ? ARM_LANCE : lerp(rest, ARM_SPEAR_GUARD, rig.guardAmount);
+  }
+  return ARM_REST + swing * ANIMATION.armSwing * 0.4;
+}
+
+/** Spears are carried upright, levelled over the shield on guard, and couched as a lance in the saddle. */
+function spearPitch(rig: PersonRig, mounted: boolean): number {
+  if (mounted) return SPEAR_LANCE;
+  return lerp(SPEAR_UPRIGHT, SPEAR_LEVEL, rig.guardAmount);
+}
+
+function animateArms(rig: PersonRig, view: UnitView, pose: SwingPose | null, flail: boolean, swing: number, mounted: boolean, now: number): void {
   if (flail) {
     rig.armL.rotation.set(-1.6 + Math.sin(now * FLAIL_SPEED) * 1.3, 0, -0.6);
     rig.armR.rotation.set(-1.6 + Math.cos(now * FLAIL_SPEED) * 1.3, 0, 0.6);
     return;
   }
+  const armPitch = pose ? pose.pitch : weaponArmPitch(rig, view.weapon, mounted, swing);
+  rig.armR.rotation.set(armPitch, 0, pose ? -pose.sweep : 0);
+  rig.armR.position.z = 0.01 + (pose?.reach ?? 0);
+  const sword = rig.weapons.sword;
+  if (sword) sword.rotation.x = SWORD_GRIP_PITCH + (pose?.wrist ?? 0);
+  const spear = rig.weapons.spear;
+  if (spear) spear.rotation.x = spearPitch(rig, mounted) - armPitch;
   const armLRest = -swing * ANIMATION.armSwing;
-  rig.armR.rotation.set(pose ? pose.pitch : ARM_REST + swing * ANIMATION.armSwing * 0.4, 0, pose ? -pose.sweep : 0);
-  rig.armR.position.z = 0.02 + (pose?.reach ?? 0);
   if (view.weapon === 'bow') {
     rig.armL.rotation.set(lerp(armLRest, -1.5, rig.drawAmount), 0, 0);
     if (!pose) rig.armR.rotation.x = lerp(rig.armR.rotation.x, -1.45, rig.drawAmount);
-    rig.armR.position.z = 0.02 - rig.drawAmount * 0.25;
+    rig.armR.position.z = 0.01 - rig.drawAmount * 0.25;
   } else {
-    rig.armL.rotation.set(lerp(armLRest, -1.35, rig.shieldAmount), rig.shieldAmount * 0.5, 0);
+    // The shield arm hangs on the shield's grip.
+    rig.armL.rotation.set(lerp(-0.25, -1.3, rig.shieldAmount), rig.shieldAmount * 0.5, -0.12);
   }
+}
+
+function animateShield(rig: PersonRig, hitT: number): void {
+  if (!rig.shield) return;
+  const s = rig.shieldAmount;
+  const { rest, raised, restYaw } = rig.shieldPose;
+  // A small shove back when a blocked blow lands on the shield.
+  const bump = rig.hitBlocked ? hitT * 0.12 : 0;
+  rig.shield.position.set(lerp(rest[0], raised[0], s), lerp(rest[1], raised[1], s), lerp(rest[2], raised[2], s) - bump * s);
+  rig.shield.rotation.y = lerp(restYaw, Math.PI / 2, s);
+}
+
+/** The commander's cape streams out behind them the faster they go. */
+function animateCape(rig: PersonRig, speed: number, now: number): void {
+  if (!rig.cape) return;
+  const flow = Math.min(1, speed / ANIMATION.capeFullSpeed);
+  rig.cape.rotation.x = 0.08 + flow * 0.75 + Math.sin(now * 9 + rig.walkPhase) * 0.06 * flow;
+}
+
+/** Brows knit together when the soldier fights or hides behind the shield. */
+function animateFace(rig: PersonRig, view: UnitView, hitT: number, now: number): void {
+  const fierce = view.action === 'melee' || rig.swingAge !== null || view.shieldUp ? 1 : 0;
+  rig.brows.forEach((brow, i) => {
+    const side = i === 0 ? -1 : 1;
+    brow.rotation.z = side * BROW_SCOWL * fierce - side * 0.25 * hitT;
+    brow.position.y = 0.06 - fierce * 0.012 + hitT * 0.02;
+  });
+  const stunned = view.stunTimer > 0;
+  const jiggle = hitT + (stunned ? 0.6 : 0);
+  rig.pupils.forEach((p, i) => {
+    const rest = rig.pupilRest[i];
+    if (!rest) return;
+    p.position.x = rest.x + Math.sin(now * 37 + i * 2) * PUPIL_JIGGLE * jiggle;
+    p.position.y = rest.y + Math.cos(now * 41 + i) * PUPIL_JIGGLE * jiggle;
+  });
 }
 
 export function animatePerson(rig: PersonRig, view: UnitView, ctx: AnimationContext): void {
@@ -398,7 +335,8 @@ export function animatePerson(rig: PersonRig, view: UnitView, ctx: AnimationCont
   rig.root.position.set(view.x, view.y, view.z);
   rig.root.rotation.y = ctx.displayYaw;
   showWeapon(rig, view.weapon);
-  const speed = mounted ? 0 : Math.hypot(view.vx, view.vz);
+  const groundSpeed = Math.hypot(view.vx, view.vz);
+  const speed = mounted ? 0 : groundSpeed;
   const stride = Math.min(1, speed / 4);
   rig.walkPhase += dt * speed * ANIMATION.walkCycleSpeed;
   const swing = Math.sin(rig.walkPhase) * stride;
@@ -413,47 +351,37 @@ export function animatePerson(rig: PersonRig, view: UnitView, ctx: AnimationCont
   const flail = !mounted && (stunned || (airborne && view.vy < -2));
   const pose = swingPose(rig, mounted, view.weapon);
   rig.shieldAmount = approach(rig.shieldAmount, view.shieldUp ? 1 : 0, dt * SHIELD_RAISE_RATE);
+  rig.guardAmount = approach(rig.guardAmount, view.shieldUp || pose !== null ? 1 : 0, dt * GUARD_RATE);
   rig.drawAmount = approach(rig.drawAmount, view.action === 'shoot' ? 1 : 0, dt * SHIELD_RAISE_RATE);
   animateLegs(rig, mounted, flail, airborne, swing, now);
-  animateArms(rig, view, pose, flail, swing, now);
+  animateArms(rig, view, pose, flail, swing, mounted, now);
 
   const hitT = Math.max(0, 1 - rig.hitAge / HIT_REACTION_TIME);
-  if (rig.shield) {
-    const s = rig.shieldAmount;
-    // A small shove back when a blocked blow lands on the shield.
-    const bump = rig.hitBlocked ? hitT * 0.15 : 0;
-    rig.shield.position.set(lerp(-0.62, -0.1, s), lerp(1.0, 1.12, s), lerp(0.06, 0.58 - bump, s));
-    rig.shield.rotation.y = s * (Math.PI / 2);
-  }
+  animateShield(rig, hitT);
+  animateCape(rig, groundSpeed, now);
+  animateFace(rig, view, hitT, now);
 
   // Body: knockdown, wobble, waddle, a crouch behind the shield, squash and stretch.
   const lying = view.stunTimer > ANIMATION.knockdownStun ? 1 : 0;
   rig.knockdown = approach(rig.knockdown, lying, dt * KNOCKDOWN_RATE);
   const wobble = stunned && lying === 0 ? Math.sin(now * 25) * ANIMATION.stunWobble * Math.min(1, view.stunTimer * 3) : 0;
-  const waddle = Math.sin(rig.walkPhase) * 0.12 * stride;
+  const waddle = Math.sin(rig.walkPhase) * 0.08 * stride;
   const flinch = rig.hitBlocked ? -0.1 * hitT : -0.4 * hitT;
-  const crouch = mounted ? 0 : rig.shieldAmount * 0.12;
-  rig.body.rotation.set(-rig.knockdown * 1.45 + flinch + crouch, pose?.twist ?? 0, wobble + waddle);
+  const crouch = mounted ? 0 : rig.shieldAmount * 0.14;
+  const lean = pose?.lean ?? 0;
+  rig.body.rotation.set(-rig.knockdown * 1.45 + flinch + crouch + Math.abs(lean) * 0.4, pose?.twist ?? 0, wobble + waddle - lean);
   const landT = Math.max(0, 1 - rig.landAge / LAND_SQUASH_TIME);
-  const squash = (rig.hitBlocked ? 0.06 : 0.2) * hitT * Math.sin(rig.hitAge * 30) + landT * 0.18;
-  const stretch = airborne && !flail ? 0.08 : 0;
-  const breathe = Math.sin(now * 2.2 + rig.walkPhase) * 0.012;
+  const squash = (rig.hitBlocked ? 0.05 : 0.16) * hitT * Math.sin(rig.hitAge * 30) + landT * 0.14;
+  const stretch = airborne && !flail ? 0.06 : 0;
+  const breathe = Math.sin(now * 2.2 + rig.walkPhase) * 0.008;
   rig.torso.scaling.set(1 + squash, 1 - squash + stretch + breathe, 1 + squash);
-  rig.body.position.y = mounted ? 0 : Math.abs(Math.sin(rig.walkPhase)) * ANIMATION.bob * 1.6 * stride + rig.knockdown * 0.22 - crouch * 0.4;
+  rig.body.position.y = mounted ? 0 : Math.abs(Math.sin(rig.walkPhase)) * ANIMATION.bob * stride + rig.knockdown * 0.22 - crouch * 0.5;
 
-  // Head: comic wobble on hits; googly pupils jiggle; dizzy stars when stunned.
-  rig.head.rotation.set(Math.sin(now * 23) * 0.15 * hitT, 0, Math.sin(now * 31) * 0.35 * hitT);
-  const jiggle = hitT + (stunned ? 0.6 : 0);
-  rig.pupils.forEach((p, i) => {
-    p.position.x = (i === 0 ? -PUPIL_SPREAD : PUPIL_SPREAD) + Math.sin(now * 37 + i * 2) * 0.04 * jiggle;
-    p.position.y = Math.cos(now * 41 + i) * 0.04 * jiggle;
-  });
+  // Head: comic wobble on hits; dizzy stars when stunned.
+  rig.head.rotation.set(Math.sin(now * 23) * 0.15 * hitT, 0, Math.sin(now * 31) * 0.3 * hitT);
   const dizzy = view.stunTimer > DIZZY_STUN;
   rig.stars.setEnabled(dizzy);
   if (dizzy) rig.stars.rotation.y = now * 6;
-
-  rig.marker.position.y = 2.75 * rig.scale + (mounted ? 1.4 : 0) + Math.sin(now * 5) * 0.12;
-  rig.marker.rotation.y = now * 2;
   rig.root.setEnabled(!view.invulnerable || Math.sin(now * BLINK_RATE) > -0.3);
 }
 
@@ -495,8 +423,10 @@ export function animateDowned(rig: PersonRig, view: UnitView, dt: number, now: n
   rig.stars.setEnabled(true);
   rig.stars.rotation.y = now * 4;
   rig.pupils.forEach((p, i) => {
-    p.position.x = (i === 0 ? -PUPIL_SPREAD : PUPIL_SPREAD) + Math.cos(now * 8 + i * Math.PI) * 0.05;
-    p.position.y = Math.sin(now * 8 + i * Math.PI) * 0.05;
+    const rest = rig.pupilRest[i];
+    if (!rest) return;
+    p.position.x = rest.x + Math.cos(now * 8 + i * Math.PI) * PUPIL_JIGGLE * 1.5;
+    p.position.y = rest.y + Math.sin(now * 8 + i * Math.PI) * PUPIL_JIGGLE * 1.5;
   });
 }
 
@@ -507,13 +437,17 @@ export function standUp(rig: PersonRig): void {
   rig.knockdown = 1;
 }
 
-/** Picks a swing style for variety; spears thrust, commanders sometimes spin. */
-export function startSwing(rig: Rig, weapon: Weapon): void {
+/** Picks a swing style: spears thrust, riders hack downwards, commanders sometimes spin. */
+export function startSwing(rig: Rig, weapon: Weapon, mounted: boolean): void {
   if (rig.type !== 'person') return;
   rig.swings++;
   rig.swingAge = 0;
   if (weapon === 'spear') {
-    rig.swingStyle = 'thrust';
+    rig.swingStyle = mounted ? 'lance' : 'thrust';
+    return;
+  }
+  if (mounted) {
+    rig.swingStyle = 'slash';
     return;
   }
   const roll = (rig.swings * 7 + Math.floor(rig.walkPhase * 10)) % 10;

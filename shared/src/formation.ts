@@ -1,6 +1,11 @@
 import { FORMATION } from './config.ts';
-import { yawToDir, type Vec2 } from './math.ts';
-import type { UnitKind } from './types.ts';
+import { dirToYaw, yawToDir, type Vec2 } from './math.ts';
+import type { Formation, UnitKind } from './types.ts';
+
+/** A place in a formation and the way the soldier standing there should face. */
+export interface FormationSlot extends Vec2 {
+  yaw: number;
+}
 
 const KIND_RANK: Record<UnitKind, number> = {
   swordsman: 0,
@@ -49,15 +54,99 @@ export function formationSlots(kinds: readonly UnitKind[], center: Vec2, yaw: nu
   return slots;
 }
 
-const FRONT_RING_START = (70 * Math.PI) / 180;
-const FRONT_RING_END = (290 * Math.PI) / 180;
+
+const FULL_TURN = Math.PI * 2;
+
+function rankCount(formation: Formation): number {
+  return formation === 'line' ? 1 : 2;
+}
+
+/** Ranks of soldiers shoulder to shoulder, front rank first; each rank runs left to right. */
+export function rankSlots(count: number, frontCenter: Vec2, yaw: number, ranks: number): FormationSlot[] {
+  const forward = yawToDir(yaw);
+  const right = { x: forward.z, z: -forward.x };
+  const perRank = Math.ceil(count / ranks);
+  const slots: FormationSlot[] = [];
+  for (let i = 0; i < count; i++) {
+    const rank = Math.floor(i / perRank);
+    const inRank = Math.min(perRank, count - rank * perRank);
+    const side = ((i % perRank) - (inRank - 1) / 2) * FORMATION.tightSpacing;
+    const back = rank * FORMATION.rankGap;
+    slots.push({
+      x: frontCenter.x + right.x * side - forward.x * back,
+      z: frontCenter.z + right.z * side - forward.z * back,
+      yaw,
+    });
+  }
+  return slots;
+}
+
+export function ringRadius(count: number): number {
+  return Math.max(FORMATION.circleMinRadius, (count * FORMATION.tightSpacing) / FULL_TURN);
+}
+
+/** A closed ring around `center`, everyone facing outwards; slot 0 faces `yaw`, then clockwise from above. */
+export function ringSlots(count: number, center: Vec2, yaw: number): FormationSlot[] {
+  const radius = ringRadius(count);
+  const slots: FormationSlot[] = [];
+  for (let i = 0; i < count; i++) {
+    const facing = yaw + (FULL_TURN * i) / count;
+    const dir = yawToDir(facing);
+    slots.push({ x: center.x + dir.x * radius, z: center.z + dir.z * radius, yaw: facing });
+  }
+  return slots;
+}
 
 /**
- * Hold around the commander at `anchor`, facing `yaw`: group 0 (swordsmen) form a shield-wall
- * front line ahead and a guard ring around the commander, group 1 (archers) stand in rows
- * behind, group 2 (cavalry) waits on the flanks.
+ * Slots for a held formation facing `yaw`. Around the commander the lines stand just ahead of
+ * `anchor` and the ring closes around it; otherwise the formation is centered on `anchor`.
  */
-export function aroundCommanderSlots(group: number, count: number, anchor: Vec2, yaw: number): Vec2[] {
+export function holdSlots(formation: Formation, count: number, anchor: Vec2, yaw: number, aroundCommander: boolean): FormationSlot[] {
+  if (formation === 'circle') return ringSlots(count, anchor, yaw);
+  const ranks = rankCount(formation);
+  const forward = yawToDir(yaw);
+  const ahead = aroundCommander ? FORMATION.holdLineAhead : ((Math.min(ranks, count) - 1) * FORMATION.rankGap) / 2;
+  return rankSlots(count, { x: anchor.x + forward.x * ahead, z: anchor.z + forward.z * ahead }, yaw, ranks);
+}
+
+/**
+ * Who stands where: soldiers keep their order along the line (or around the ring), so nobody
+ * has to walk through the formation to reach their place. Returns slot indices per position.
+ */
+export function assignHoldSlots(formation: Formation, positions: readonly Vec2[], anchor: Vec2, yaw: number): number[] {
+  const forward = yawToDir(yaw);
+  const right = { x: forward.z, z: -forward.x };
+  const indices = positions.map((_, i) => i);
+  const result = new Array<number>(positions.length);
+  if (formation === 'circle') {
+    const around = (p: Vec2): number => {
+      const relative = dirToYaw(p.x - anchor.x, p.z - anchor.z) - yaw;
+      return ((relative % FULL_TURN) + FULL_TURN) % FULL_TURN;
+    };
+    indices.sort((a, b) => around(positionAt(positions, a)) - around(positionAt(positions, b)) || a - b);
+    indices.forEach((unitIndex, slot) => (result[unitIndex] = slot));
+    return result;
+  }
+  const ahead = (p: Vec2): number => (p.x - anchor.x) * forward.x + (p.z - anchor.z) * forward.z;
+  const side = (p: Vec2): number => (p.x - anchor.x) * right.x + (p.z - anchor.z) * right.z;
+  indices.sort((a, b) => ahead(positionAt(positions, b)) - ahead(positionAt(positions, a)) || a - b);
+  const perRank = Math.ceil(positions.length / rankCount(formation));
+  for (let start = 0; start < indices.length; start += perRank) {
+    const rank = indices.slice(start, start + perRank).sort((a, b) => side(positionAt(positions, a)) - side(positionAt(positions, b)) || a - b);
+    rank.forEach((unitIndex, col) => (result[unitIndex] = start + col));
+  }
+  return result;
+}
+
+function positionAt(positions: readonly Vec2[], index: number): Vec2 {
+  return positions[index] ?? { x: 0, z: 0 };
+}
+
+/**
+ * Hold around the commander for the parked support groups (mixed armies): group 1 (archers)
+ * stand in rows behind, group 2 (cavalry) waits on the flanks.
+ */
+export function supportSlots(group: number, count: number, anchor: Vec2, yaw: number): Vec2[] {
   const forward = yawToDir(yaw);
   const right = { x: forward.z, z: -forward.x };
   const at = (ahead: number, side: number): Vec2 => ({
@@ -65,16 +154,8 @@ export function aroundCommanderSlots(group: number, count: number, anchor: Vec2,
     z: anchor.z + forward.z * ahead + right.z * side,
   });
   const slots: Vec2[] = [];
-  const frontCount = Math.min(count, FORMATION.frontLineSize);
-  const frontHalfWidth = ((FORMATION.frontLineSize - 1) * FORMATION.shieldWallSpacing) / 2;
-  if (group === 0) {
-    for (let i = 0; i < frontCount; i++) slots.push(at(FORMATION.frontLineDistance, (i - (frontCount - 1) / 2) * FORMATION.shieldWallSpacing));
-    const guards = count - frontCount;
-    for (let i = 0; i < guards; i++) {
-      const angle = FRONT_RING_START + ((FRONT_RING_END - FRONT_RING_START) * (i + 0.5)) / guards;
-      slots.push(at(Math.cos(angle) * FORMATION.guardRingRadius, Math.sin(angle) * FORMATION.guardRingRadius));
-    }
-  } else if (group === 1) {
+  const frontHalfWidth = ((FORMATION.frontLineSize - 1) * FORMATION.tightSpacing) / 2;
+  if (group === 1) {
     for (let i = 0; i < count; i++) {
       const row = Math.floor(i / FORMATION.rowWidth);
       const inRow = Math.min(FORMATION.rowWidth, count - row * FORMATION.rowWidth);

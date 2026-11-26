@@ -1,5 +1,6 @@
 import { type Client, Room } from '@colyseus/core';
 import {
+  ARMY,
   applyCommand,
   type ArmySize,
   battleSettings,
@@ -65,7 +66,7 @@ export class BattleRoom extends Room {
   private players: Player[] = [];
   private hostId = '';
   private mode: GameMode = 'ffa';
-  private armySize: ArmySize = 20;
+  private armySize: ArmySize = ARMY.sizes[1];
   private phase: RoomPhase = 'lobby';
   private match: MatchState | null = null;
   private pendingEvents: SimEvent[] = [];
