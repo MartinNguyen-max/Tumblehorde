@@ -1,56 +1,56 @@
-# Tumblehorde — MVP og milepæle
+# Tumblehorde — MVP and milestones
 
-Byg i denne rækkefølge. Hver milepæl skal være spilbar, før vi går videre.
+Build in this order. Each milestone must be playable before we move on.
 
-## M1: Løb på kortet
-- 150 × 150 m kort med usynlige kanter
-- Kanten skubber tilbage og viser beskeden "Mappet stopper, gå tilbage og fight!"
-- Løb, hop og tredjepersonskamera
+## M1: Run around the map
+- 150 × 150 m map with invisible edges
+- The edge pushes you back and shows the message "The map ends here, go back and fight!"
+- Run, jump and third-person camera
 
-**Færdig når:** Man kan løbe rundt og ikke komme ud af kortet.
+**Done when:** You can run around and cannot leave the map.
 
-## M2: Kamp og fysik
-- Sværdmand med sværd og skjold
-- 100 HP, skade, knockback
-- Død og fald med Havok
-- Healthbar over egen karakter
+## M2: Combat and physics
+- Swordsman with sword and shield
+- 100 HP, damage, knockback
+- Death and falling with Havok
+- Health bar above your own character
 
-**Færdig når:** Man kan slå og blokere, og figurer vælter og dør sjovt.
+**Done when:** You can strike and block, and characters topple over and die in a funny way.
 
-## M3: Hær og ordrer
-- Hær med 10/20/30 enheder
-- Ordrerne Følg, Stå, Angrib og Del i grupper
-- Kommandøren genopstår efter ca. 10 sekunder
+## M3: Army and orders
+- Army with 10/20/30 units
+- The orders Follow, Hold, Attack and Split into groups
+- The commander respawns after about 10 seconds
 
-**Færdig når:** Hæren følger ordrer, og kommandøren kan genopstå.
+**Done when:** The army follows orders, and the commander can respawn.
 
-## M4: Bot-AI og lokal kamp
-- Medium bot-AI, der bruger ordrer, skjold og sværd
-- Dig mod 1–3 bot-hære
-- Alle mod alle og 2 hold
+## M4: Bot AI and local battle
+- Medium bot AI that uses orders, shield and sword
+- You against 1–3 bot armies
+- Free-for-all and 2 teams
 
-**Færdig når:** Man kan spille en hel kamp lokalt mod bots.
+**Done when:** You can play a full battle locally against bots.
 
-## M5: Bueskytte
-- Bue og pil
-- Bots bruger buen
+## M5: Archer
+- Bow and arrow
+- Bots use the bow
 
-## M6: Rytter og hest
-- Mount og dismount
-- Hest med egen HP, og når den dør, falder rytteren af
-- Rytteren har spyd
+## M6: Rider and horse
+- Mount and dismount
+- Horse with its own HP; when it dies, the rider falls off
+- The rider has a spear
 
-## M7: Efter kamp
-- Status for begge hære
-- Kampens varighed, dræbte og døde
-- Rematch-knap
+## M7: After the battle
+- Status for both armies
+- Battle duration, kills and deaths
+- Rematch button
 
 ## M8: Online
-- Colyseus-rum med kode eller link
-- 2–4 spillere, alle mod alle eller 2 hold
-- 30 sekunders timer ved frakobling, hvorefter hæren dør
+- Colyseus room with a code or link
+- 2–4 players, free-for-all or 2 teams
+- 30-second timer on disconnect, after which the army dies
 
-**Færdig når:** To spillere kan spille en hel kamp over nettet.
+**Done when:** Two players can play a full battle over the network.
 
-## Uden for v1
-Lyd, login, persistens, mobil, flere kort, online-bots og flere sværhedsgrader.
+## Out of scope for v1
+Sound, login, persistence, mobile, more maps, online bots and more difficulty levels.

@@ -1,28 +1,28 @@
 # CLAUDE.md
 
-Projekt: **Tumblehorde**. Konventioner for Claude Code i dette projekt. Læs `docs/MVP.md` og `docs/GDD.md` før du ændrer kode.
+Project: **Tumblehorde**. Conventions for Claude Code in this project. Read `docs/MVP.md` and `docs/GDD.md` before changing code.
 
-## Sprog og stil
-- TypeScript med `strict: true`. Brug aldrig `any`. Brug `unknown` og smalning i stedet.
-- Små, rene funktioner med ét ansvar. Navngiv med det, de gør.
-- Ingen magiske tal. Saml værdier som HP, skade og hastighed i en konfigurationsfil.
-- Kommentarer skrives kun, hvor koden ikke selv forklarer hvorfor.
+## Language and style
+- TypeScript with `strict: true`. Never use `any`. Use `unknown` and narrowing instead.
+- Small, pure functions with a single responsibility. Name them after what they do.
+- No magic numbers. Collect values such as HP, damage and speed in a config file.
+- Only write comments where the code cannot explain *why* by itself.
 
-## Arkitektur
-- `/shared` er ren spillogik. Må ikke importere Babylon, Havok eller Colyseus.
-- `/client` må ikke afgøre hits eller skade. Det gør `/shared`.
-- `/server` er autoritativ. Input fra klienten valideres, før det bruges.
+## Architecture
+- `/shared` is pure game logic. It must not import Babylon, Havok or Colyseus.
+- `/client` must not decide hits or damage. `/shared` does that.
+- `/server` is authoritative. Input from the client is validated before it is used.
 
-## Test
-- Vitest for al logik i `/shared`. Ny logik kræver tests.
-- Kør tests før hver commit.
+## Tests
+- Vitest for all logic in `/shared`. New logic requires tests.
+- Run tests before every commit.
 
 ## Git
-- Conventional Commits, fx `feat: ...`, `fix: ...`, `refactor: ...`.
-- Én milepæl eller ét lille trin pr. commit.
+- Conventional Commits, e.g. `feat: ...`, `fix: ...`, `refactor: ...`.
+- One milestone or one small step per commit.
 
-## Arbejdsmåde
-- Tilføj ikke nye afhængigheder uden at spørge først.
-- Ændrer du en beslutning i `docs/DECISIONS.md`, skal du spørge først og derefter tilføje en ny linje.
-- Kør én milepæl ad gangen ifølge `docs/MVP.md`. Stop og spørg, hvis en milepæl er uklar.
-- Hvis en version eller API er usikker, verificér den først. Gæt ikke.
+## Way of working
+- Do not add new dependencies without asking first.
+- If you change a decision in `docs/DECISIONS.md`, ask first and then add a new line.
+- Work on one milestone at a time according to `docs/MVP.md`. Stop and ask if a milestone is unclear.
+- If a version or API is uncertain, verify it first. Do not guess.

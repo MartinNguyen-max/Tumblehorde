@@ -1,37 +1,37 @@
 # Tumblehorde
 
-Et goofy, hurtigt 3D-strategispil i browseren. Du løber rundt som kommandør og styrer din egen hær med ordrer. Kampen er færdig, når alle fjender er døde.
+A goofy, fast 3D strategy game in the browser. You run around as the commander and control your own army with orders. The battle is over when all enemies are dead.
 
-## Dokumenter
+## Documents
 
-Læs i denne rækkefølge:
+Read in this order:
 
-1. `docs/MVP.md`: afgrænset scope og milepæle. **Start her.**
-2. `docs/GDD.md`: spildesign (hvad spillet er og hvordan det spilles)
-3. `docs/BALANCE.md`: HP, skade, hastigheder og hærsammensætning
-4. `docs/TECH.md`: teknisk stack, arkitektur og netcode
-5. `docs/DECISIONS.md`: beslutninger og begrundelser
-6. `CLAUDE.md`: regler for kodningen (læses automatisk af Claude Code)
+1. `docs/MVP.md`: limited scope and milestones. **Start here.**
+2. `docs/GDD.md`: game design (what the game is and how it is played)
+3. `docs/BALANCE.md`: HP, damage, speeds and army composition
+4. `docs/TECH.md`: technical stack, architecture and netcode
+5. `docs/DECISIONS.md`: decisions and rationale
+6. `CLAUDE.md`: coding rules (read automatically by Claude Code)
 
-## Visuel reference
+## Visual reference
 
-`docs/style-reference/preview.html` er en kørende Three.js-scene, der viser den ønskede stil: low-poly med flad skygning, farver, proportioner, kameravinkel og terræn. Åbn den i en browser.
+`docs/style-reference/preview.html` is a running Three.js scene that shows the desired style: low-poly with flat shading, colors, proportions, camera angle and terrain. Open it in a browser.
 
-Den er en **stilreference, ikke kode der skal genbruges direkte**. Spillet bygges i Babylon.js, ikke Three.js. Men farveværdier, proportioner på figurerne og terrængenereringen er værd at kigge på.
+It is a **style reference, not code to be reused directly**. The game is built in Babylon.js, not Three.js. But the color values, the proportions of the figures and the terrain generation are worth looking at.
 
-## Opsætning
+## Setup
 
-Projektet er ikke scaffoldet endnu. Første skridt:
+The project is not scaffolded yet. First step:
 
 ```bash
-# Klient
+# Client
 npm create vite@latest client -- --template vanilla-ts
 cd client && npm install @babylonjs/core @babylonjs/havok && cd ..
 
-# Server (først når M8 nås)
+# Server (only once M8 is reached)
 npm create colyseus-app@latest server
 ```
 
-Verificér versioner ved opsætning. De ændrer sig hurtigt.
+Verify versions at setup. They change quickly.
 
-Derefter oprettes `/shared` som et separat TypeScript-modul, der importeres af både klient og server. Se `docs/TECH.md`.
+Then `/shared` is created as a separate TypeScript module that is imported by both client and server. See `docs/TECH.md`.

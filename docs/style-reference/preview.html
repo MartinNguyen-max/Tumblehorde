@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="da">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tumblehorde — 3D-stilreference</title>
+<title>Tumblehorde — 3D style reference</title>
 <style>
   * { box-sizing: border-box; }
   html, body { margin:0; padding:0; height:100%; overflow:hidden;
@@ -58,36 +58,36 @@
 </head>
 <body>
 <div id="wrap">
-  <div id="boot">Bygger scenen…</div>
+  <div id="boot">Building the scene…</div>
 
   <div class="label" id="hp">
     <div id="hpbar"><div id="hpfill"></div></div>
-    <div id="hptext">Dig &middot; 72 HP</div>
+    <div id="hptext">You &middot; 72 HP</div>
   </div>
   <div class="label" id="foe">&times; 14</div>
 
-  <div id="toast">Mappet stopper. Gå tilbage og fight!</div>
+  <div id="toast">The map ends here, go back and fight!</div>
 
   <div id="cams">
-    <button class="cam on" data-v="0">Bag kommandøren</button>
-    <button class="cam" data-v="1">Overblik</button>
-    <button class="cam" data-v="2">Nærkamp</button>
-    <button class="cam" data-v="3">Kanten af mappet</button>
+    <button class="cam on" data-v="0">Behind the commander</button>
+    <button class="cam" data-v="1">Overview</button>
+    <button class="cam" data-v="2">Melee</button>
+    <button class="cam" data-v="3">Edge of the map</button>
   </div>
 
-  <div id="note">Træk for at dreje, scroll for at zoome. Alt er simple kasser og kegler &mdash; det er low-poly-stilen, ikke færdig grafik.</div>
+  <div id="note">Drag to rotate, scroll to zoom. Everything is simple boxes and cones &mdash; this is the low-poly style, not finished graphics.</div>
 
   <div id="hud">
     <div id="cmds">
-      <span class="cmd"><b>1</b>Følg</span>
-      <span class="cmd"><b>2</b>Stå</span>
-      <span class="cmd"><b>3</b>Angrib</span>
-      <span class="cmd off"><b>4</b>Del i grupper</span>
+      <span class="cmd"><b>1</b>Follow</span>
+      <span class="cmd"><b>2</b>Hold</span>
+      <span class="cmd"><b>3</b>Attack</span>
+      <span class="cmd off"><b>4</b>Split into groups</span>
     </div>
     <div id="kit">
-      <span class="slot">Sværd</span>
-      <span class="slot">Skjold &middot; højreklik</span>
-      <span class="slot off">Hest &middot; ikke på hesten</span>
+      <span class="slot">Sword</span>
+      <span class="slot">Shield &middot; right click</span>
+      <span class="slot off">Horse &middot; not mounted</span>
     </div>
   </div>
 </div>
@@ -134,7 +134,7 @@
     return m;
   }
 
-  /* ---------- terræn ---------- */
+  /* ---------- terrain ---------- */
   var tg = new THREE.PlaneGeometry(170, 170, 46, 46);
   var p = tg.attributes.position;
   for (var i = 0; i < p.count; i++) {
@@ -164,7 +164,7 @@
   ground.receiveShadow = true;
   scene.add(ground);
 
-  /* ---------- træer, sten, busk ---------- */
+  /* ---------- trees, rocks, bushes ---------- */
   var CONE = new THREE.ConeGeometry(1, 1, 6);
   var CYL = new THREE.CylinderGeometry(1, 1, 1, 6);
   var ICO = new THREE.IcosahedronGeometry(1, 0);
@@ -214,7 +214,7 @@
     bush(Math.cos(a) * r, Math.sin(a) * r);
   }
 
-  /* ---------- karakterer ---------- */
+  /* ---------- characters ---------- */
   function warrior(team, kind, scale) {
     var body = team === 'blue' ? BLUE : RED;
     var trim = team === 'blue' ? BLUE_D : RED_D;
@@ -317,7 +317,7 @@
   army('blue', -13, Math.PI / 2);
   army('red', 13, -Math.PI / 2);
 
-  /* ---------- kommandør ---------- */
+  /* ---------- commander ---------- */
   var commander = warrior('blue', 'sword', 1.22);
   commander.position.set(-7.5, 0, -2.5);
   commander.rotation.y = Math.PI / 2;
@@ -331,7 +331,7 @@
   scene.add(commander);
   BOBBERS.push({ g: commander, o: 0 });
 
-  /* ---------- kanten af mappet ---------- */
+  /* ---------- edge of the map ---------- */
   var edgeX = 36;
   var edgeGeo = new THREE.PlaneGeometry(90, 9);
   var edge = new THREE.Mesh(edgeGeo, new THREE.MeshBasicMaterial({
@@ -346,7 +346,7 @@
     scene.add(post);
   }
 
-  /* ---------- pile i luften ---------- */
+  /* ---------- arrows in the air ---------- */
   var ARROWS = [];
   var ageo = new THREE.CylinderGeometry(0.045, 0.045, 1.5, 5);
   for (var i = 0; i < 7; i++) {
@@ -356,7 +356,7 @@
     ARROWS.push({ m: a, t: Math.random(), dir: i % 2 ? -1 : 1, lane: (i - 3) * 2.6 });
   }
 
-  /* ---------- kamera ---------- */
+  /* ---------- camera ---------- */
   var VIEWS = [
     { tgt: new THREE.Vector3(-4, 1.4, -1), dist: 15, yaw: 2.52, pitch: 0.22 },
     { tgt: new THREE.Vector3(0, 0, 0),     dist: 52, yaw: 2.40, pitch: 0.56 },
@@ -398,7 +398,7 @@
     });
   }
 
-  /* ---------- HUD-labels ---------- */
+  /* ---------- HUD labels ---------- */
   var hpEl = document.getElementById('hp');
   var foeEl = document.getElementById('foe');
   var tmp = new THREE.Vector3();

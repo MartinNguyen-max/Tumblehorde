@@ -2,119 +2,119 @@
 
 ## 1. Pitch
 
-Et goofy og hurtigt 3D-strategispil i browseren. Du er kommandøren og løber rundt med din egen karakter. Din hær kæmper selv, og du styrer den med få ordrer. Fysikken er overdreven og sjov: man vælter, skubbes, falder og tumler.
+A goofy, fast 3D strategy game in the browser. You are the commander and run around with your own character. Your army fights on its own, and you control it with a few orders. The physics are exaggerated and fun: you topple, get shoved, fall and tumble.
 
-Inspiration: Shieldwall (kamp og skjold), Bannerlord (hær og kommandør), Fall Guys (goofy fysik og tone).
+Inspiration: Shieldwall (combat and shields), Bannerlord (army and commander), Fall Guys (goofy physics and tone).
 
-## 2. Kernesløjfe
+## 2. Core loop
 
-1. Løb rundt på kortet.
-2. Giv ordrer til hæren.
-3. Hæren kæmper selv. Du slår selv med sværdet.
-4. Vind ved at udslette alle fjender.
+1. Run around the map.
+2. Give orders to the army.
+3. The army fights on its own. You strike with your own sword.
+4. Win by wiping out all enemies.
 
-## 3. Kontroller (forslag, skal testes)
+## 3. Controls (proposal, to be tested)
 
-| Input | Handling |
+| Input | Action |
 |---|---|
-| WASD | Bevæg dig |
-| Mellemrum | Hop |
-| Venstreklik | Slå |
-| Højreklik (holdt) | Skjold op |
-| Taster 1–4 | Ordrer (Følg, Stå, Angrib, Del i grupper) |
+| WASD | Move |
+| Space | Jump |
+| Left click | Strike |
+| Right click (held) | Shield up |
+| Keys 1–4 | Orders (Follow, Hold, Attack, Split into groups) |
 
-Ordrer er `Følg`, `Stå`, `Angrib` og `Del i grupper` (1–3 grupper). Tastevalgene er et forslag og er ikke godkendt endnu.
+The orders are `Follow`, `Hold`, `Attack` and `Split into groups` (1–3 groups). The key bindings are a proposal and have not been approved yet.
 
-## 4. Karakter og kommandør
+## 4. Character and commander
 
-- Spilleren er kommandøren og har 100 HP.
-- Har en healthbar over sin egen karakter.
-- Har sværd i v1.
-- Dør kommandøren, genopstår han efter ca. 10 sekunder. Han lapper sig selv sammen.
+- The player is the commander and has 100 HP.
+- Has a health bar above their own character.
+- Has a sword in v1.
+- If the commander dies, they respawn after about 10 seconds. They patch themselves up.
 
-## 5. Hær
+## 5. Army
 
-- Størrelse valgbar: 10, 20 eller 30 enheder pr. hold.
-- Alle enheder styres af AI og følger ordrer.
-- Enhederne har 100 HP hver.
-- Der er ingen healthbar for hele hæren. Man ser fjendens antal ved at kigge på dem.
+- Selectable size: 10, 20 or 30 units per side.
+- All units are AI-controlled and follow orders.
+- Each unit has 100 HP.
+- There is no health bar for the whole army. You see the enemy's numbers by looking at them.
 
-### Enhedstyper i v1
+### Unit types in v1
 
-| Type | Udstyr | Beskrivelse |
+| Type | Equipment | Description |
 |---|---|---|
-| Sværdmand | Sværd + skjold | Blokerer med skjold, slår med sværd |
-| Bueskytte | Bue og pil | Skyder fra afstand |
-| Rytter | Hest + spyd | Kan stige op og af hesten. Hesten har egen HP og kan dø. Dør hesten, falder rytteren af |
+| Swordsman | Sword + shield | Blocks with the shield, strikes with the sword |
+| Archer | Bow and arrow | Shoots from a distance |
+| Rider | Horse + spear | Can mount and dismount the horse. The horse has its own HP and can die. If the horse dies, the rider falls off |
 
-Alle enhedstyper er med i v1.
+All unit types are in v1.
 
-## 6. Fysik og tone
+## 6. Physics and tone
 
-- Knockback er overdreven. Man vælter, skubbes og falder på sjove måder.
-- Når en karakter dør eller falder, skal det være sjovt og goofy.
-- Fysik vises med Havok i klienten. Serveren afgør kun hits og knockback med simpel matematik.
+- Knockback is exaggerated. You topple, get shoved and fall in funny ways.
+- When a character dies or falls, it should be funny and goofy.
+- Physics is shown with Havok in the client. The server only decides hits and knockback with simple math.
 
-## 7. Kamp og sejr
+## 7. Battle and victory
 
-- **Kamp:** Alle mod alle, eller to hold. Sejr når alle fjender er døde.
-- **Hold ude:** En hær er ude, når alle dens enheder er døde.
-- **Kanten:** Mappet har usynlige vægge. Man skubbes tilbage, og der vises en besked: "Mappet stopper, gå tilbage og fight!"
+- **Battle:** Free-for-all, or two teams. Victory when all enemies are dead.
+- **Eliminated:** An army is out when all its units are dead.
+- **The edge:** The map has invisible walls. You are pushed back, and a message is shown: "The map ends here, go back and fight!"
 
 ## 8. Modes
 
-| Mode | Lokalt | Online (senere) |
+| Mode | Local | Online (later) |
 |---|---|---|
-| Alle mod alle | Dig mod 1–3 bot-hære | 2–4 hære (spillere) |
-| 2 hold | Dig og bots mod bots | 2–4 hære i to hold |
+| Free-for-all | You against 1–3 bot armies | 2–4 armies (players) |
+| 2 teams | You and bots against bots | 2–4 armies in two teams |
 
-Lokalt er der maks 4 hære i alt. Bots følger de samme regler som spilleren.
+Locally there are at most 4 armies in total. Bots follow the same rules as the player.
 
 ## 9. Bots
 
-- Lokalt: Medium sværhedsgrad i starten. Flere sværhedsgrader kommer senere.
-- Bots kan give ordrer, bruge skjold og sværd, og skyde med bue.
-- Online-bots er ikke med i v1.
+- Local: Medium difficulty to start with. More difficulty levels come later.
+- Bots can give orders, use shield and sword, and shoot with the bow.
+- Online bots are not in v1.
 
 ## 10. Online
 
-- 2–4 spillere pr. kamp.
-- Forbindelse via kode eller link.
-- Forlader en spiller kampen, fortsætter hans hær uden ordrer. Efter 30 sekunder uden forbindelse dør hele hæren.
+- 2–4 players per battle.
+- Connect with a code or link.
+- If a player leaves the battle, their army continues without orders. After 30 seconds without a connection, the whole army dies.
 
-## 11. Kort
+## 11. Map
 
-- Ét kort i v1, ca. 150 × 150 meter.
-- Åbent terræn, ingen slot og ingen landsbyer.
-- Flere kort kommer senere.
+- One map in v1, about 150 × 150 meters.
+- Open terrain, no castles and no villages.
+- More maps come later.
 
 ## 12. HUD
 
-- **Nederst:** Egen loadout (våben og udstyr). Kommandoer vises, og er de ikke tilgængelige, er de gråtonede.
-- **Over egen karakter:** Healthbar.
-- **Over fjender:** Antal enheder vises, når man kigger på dem.
-- **Ingen** healthbar for hele hæren.
+- **Bottom:** Your own loadout (weapons and equipment). Orders are shown, and if they are not available, they are greyed out.
+- **Above your own character:** Health bar.
+- **Above enemies:** The number of units is shown when you look at them.
+- **No** health bar for the whole army.
 
-## 13. Efter kamp
+## 13. After the battle
 
-- Status for egen hær og fjendens hær.
-- Kampens varighed.
-- Antal dræbte og døde.
-- Rematch-knap.
+- Status of your own army and the enemy's army.
+- Battle duration.
+- Number of kills and deaths.
+- Rematch button.
 
-## 14. Grafik og lyd
+## 14. Graphics and sound
 
-- **Stil:** Low-poly med flad skygning. Lys blå himmel og grønt terræn. Lyse, tydelige holdfarver, så silhuetter er klare. Samme verdensstil som mmaxlab-screenshottet.
-- **Visuel reference:** `docs/style-reference/preview.html`. Åbn den i en browser. Den viser farver, proportioner, kameravinkel, terrænstil og HUD-placering. Den er bygget i Three.js som reference, men spillet bygges i Babylon.js.
-- **Farver (fra referencen):** Himmel `#8EC9EE`, blåt hold `#3C7BD0`, rødt hold `#D1483F`, accent `#F08A24`, terræn grøn `hsl(0.26, 45%, 40-49%)`, sti sand `hsl(0.11, 42%, 70-76%)`.
-- **Animationer:** Gang, løb, slag, skjold, skud, hop og død. Færdige animationer i v1, fx fra Mixamo.
-- **Lyd:** Kommer senere.
+- **Style:** Low-poly with flat shading. Light blue sky and green terrain. Bright, clear team colors so silhouettes are clear. Same world style as the mmaxlab screenshot.
+- **Visual reference:** `docs/style-reference/preview.html`. Open it in a browser. It shows colors, proportions, camera angle, terrain style and HUD placement. It is built in Three.js as a reference, but the game is built in Babylon.js.
+- **Colors (from the reference):** Sky `#8EC9EE`, blue team `#3C7BD0`, red team `#D1483F`, accent `#F08A24`, terrain green `hsl(0.26, 45%, 40-49%)`, path sand `hsl(0.11, 42%, 70-76%)`.
+- **Animations:** Walk, run, strike, shield, shoot, jump and death. Ready-made animations in v1, e.g. from Mixamo.
+- **Sound:** Comes later.
 
-## 15. Uden for v1
+## 15. Out of scope for v1
 
-- Lyd
-- Login og persistens
-- Mobil
-- Flere kort
-- Online-bots
-- Flere sværhedsgrader
+- Sound
+- Login and persistence
+- Mobile
+- More maps
+- Online bots
+- More difficulty levels

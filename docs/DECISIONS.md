@@ -1,28 +1,28 @@
-# Beslutninger
+# Decisions
 
-Format: dato, beslutning, begrundelse. Ændres en beslutning, skrives en ny linje i stedet for at slette den gamle.
+Format: date, decision, rationale. If a decision is changed, a new line is written instead of deleting the old one.
 
 ## 2026-11-26
 
-- **Navn: Tumblehorde.** Repo `tumblehorde`. *Tumble* er den goofy fysik, *horde* er hæren. Navnet undgår "wall", som lå for tæt på Shieldwall. Fravalgt: Tumblewall, Fumblelord (taget), Fumblecharge, Tumblefray.
-- **Browser, 3D, tredjepersonskamera.** Det skal være let at komme i gang, og det passer til det ønskede look.
-- **Hop og goofy fysik.** Inspireret af Fall Guys og Shieldwall.
-- **Bot først, online senere.** Så kan vi teste kernen uden server.
-- **Colyseus til online.** Rum-modellen passer til at oprette og joine kampe. Open source, og gratis at selvhoste.
-- **Babylon.js + Havok i klienten.** Havok er gratis under MIT og giver goofy fysik.
-- **Simpel matematik for hits på serveren.** Så alle ser det samme, og synkronisering holdes simpel.
-- **Fælles simuleringskode i `/shared`.** Samme logik i browser og server. Gør bot-først muligt.
-- **Åbent kort, ca. 150 × 150 m, usynlige kanter.** Lille og overskueligt. Flere kort kommer senere.
-- **Ingen slot og ingen landsbyer i v1.** Holder scope nede.
-- **Sejr: alle fjender døde.** Simpel og tydelig.
-- **Kommandør genopstår efter ca. 10 sekunder.** Hæren kæmper videre imens.
-- **Hær: 10/20/30 enheder pr. hold, valgt af spilleren.**
-- **Alle enhedstyper i v1:** Sværdmand, bueskytte og rytter med hest og spyd. Det er et valg, der øger scope. Milepælene i `MVP.md` gør det håndterbart.
-- **Lokalt: maks 4 hære i alt.** Dig og 1–3 bot-hære.
-- **Online: 2–4 hære.** Bots online er udskudt.
-- **Frakobling: 30 sekunder, derefter dør hæren.**
-- **Ét hold-format i v1:** Alle mod alle og 2 hold. Mere senere.
-- **Healthbar kun over egen karakter.** Holder skærmen ryddelig.
-- **Ordrer på taster 1–4.** Forslag, ikke godkendt endnu.
-- **Grafik: low-poly som screenshottet.** Lyse holdfarver, og silhuetter der er tydelige.
-- **Hosting: egen PC lokalt. Oracle Always Free eller Render Starter til test. Colyseus Cloud senere.** Gratis i starten.
+- **Name: Tumblehorde.** Repo `tumblehorde`. *Tumble* is the goofy physics, *horde* is the army. The name avoids "wall", which was too close to Shieldwall. Rejected: Tumblewall, Fumblelord (taken), Fumblecharge, Tumblefray.
+- **Browser, 3D, third-person camera.** It should be easy to get started, and it fits the desired look.
+- **Jumping and goofy physics.** Inspired by Fall Guys and Shieldwall.
+- **Bots first, online later.** So we can test the core without a server.
+- **Colyseus for online.** The room model fits creating and joining battles. Open source, and free to self-host.
+- **Babylon.js + Havok in the client.** Havok is free under MIT and gives goofy physics.
+- **Simple math for hits on the server.** So everyone sees the same thing, and synchronisation is kept simple.
+- **Shared simulation code in `/shared`.** Same logic in browser and server. Makes bots-first possible.
+- **Open map, about 150 × 150 m, invisible edges.** Small and easy to overview. More maps come later.
+- **No castles and no villages in v1.** Keeps scope down.
+- **Victory: all enemies dead.** Simple and clear.
+- **The commander respawns after about 10 seconds.** The army keeps fighting in the meantime.
+- **Army: 10/20/30 units per side, chosen by the player.**
+- **All unit types in v1:** Swordsman, archer and rider with horse and spear. This is a choice that increases scope. The milestones in `MVP.md` make it manageable.
+- **Local: max 4 armies in total.** You and 1–3 bot armies.
+- **Online: 2–4 armies.** Online bots are postponed.
+- **Disconnect: 30 seconds, then the army dies.**
+- **One team format in v1:** Free-for-all and 2 teams. More later.
+- **Health bar only above your own character.** Keeps the screen tidy.
+- **Orders on keys 1–4.** Proposal, not approved yet.
+- **Graphics: low-poly like the screenshot.** Bright team colors, and clear silhouettes.
+- **Hosting: own PC locally. Oracle Always Free or Render Starter for testing. Colyseus Cloud later.** Free to begin with.

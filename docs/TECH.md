@@ -1,57 +1,57 @@
-# Tumblehorde — teknisk design
+# Tumblehorde — technical design
 
-Versionsnumre skal verificeres ved opsætning, da de ændrer sig hurtigt.
+Version numbers must be verified at setup, since they change quickly.
 
 ## Stack
 
-| Del | Valg | Hvorfor |
+| Part | Choice | Why |
 |---|---|---|
-| 3D-motor | Babylon.js | Spilorienteret, indbygget fysik og debug-værktøjer |
-| Fysik (klient) | Havok (`@babylonjs/havok`) | Gratis under MIT. Bruges til visuel fysik: vælt, skub, fald |
-| Sprog | TypeScript (strict) | Samme sprog i klient og server |
-| Multiplayer | Colyseus 0.18 | Rum, synkronisering og matchmaking. Open source (MIT) |
-| Klient-SDK | `@colyseus/sdk` | Klientsiden af Colyseus |
-| Build | Vite | Hurtig og moderne |
+| 3D engine | Babylon.js | Game-oriented, built-in physics and debug tools |
+| Physics (client) | Havok (`@babylonjs/havok`) | Free under MIT. Used for visual physics: toppling, shoving, falling |
+| Language | TypeScript (strict) | Same language in client and server |
+| Multiplayer | Colyseus 0.18 | Rooms, synchronisation and matchmaking. Open source (MIT) |
+| Client SDK | `@colyseus/sdk` | The client side of Colyseus |
+| Build | Vite | Fast and modern |
 | Test | Vitest | Standard for TypeScript |
-| Hosting (klient) | GitHub Pages eller Cloudflare Pages | Gratis statisk hosting |
+| Hosting (client) | GitHub Pages or Cloudflare Pages | Free static hosting |
 
-## Mappestruktur
+## Folder structure
 
 ```
-/shared      ren spillogik (simulering). Ingen Babylon- eller Colyseus-imports.
-/client      Babylon.js, input, HUD og Havok-fysik
-/server      Colyseus-rum og autoritativ simulering
-/docs        design og beslutninger
+/shared      pure game logic (simulation). No Babylon or Colyseus imports.
+/client      Babylon.js, input, HUD and Havok physics
+/server      Colyseus rooms and authoritative simulation
+/docs        design and decisions
 ```
 
-`/shared` kører både i browseren (lokal bot-kamp) og på serveren (online). Det er derfor, bot-kampe først giver mening.
+`/shared` runs both in the browser (local bot battle) and on the server (online). That is why bot battles make sense first.
 
-## Arkitektur
+## Architecture
 
-- **Lokal kamp:** Kører helt i browseren. Ingen server.
-- **Online kamp:** Serveren kører `/shared`-simuleringen og er autoritativ. Klienten sender input og viser state.
-- **Tick:** Serveren kører med fast tick (forslag: 20 Hz).
-- **Klientens visning:** Fjernspillere interpoleres mellem tick, så bevægelsen er glat.
-- **Egen karakter:** Forudsigelse (prediction), så bevægelsen føles øjeblikkelig. Colyseus 0.18 har indbygget støtte. Det verificeres ved opsætning.
+- **Local battle:** Runs entirely in the browser. No server.
+- **Online battle:** The server runs the `/shared` simulation and is authoritative. The client sends input and displays state.
+- **Tick:** The server runs at a fixed tick (proposal: 20 Hz).
+- **Client display:** Remote players are interpolated between ticks so movement is smooth.
+- **Own character:** Prediction, so movement feels instant. Colyseus 0.18 has built-in support. This is verified at setup.
 
-## Fysik
+## Physics
 
-- **Klient:** Havok styrer visuel fysik. Figurer vælter, skubbes og falder.
-- **Server:** Simpel matematik afgør hits, skade og knockback-vektor.
-- Klienten får knockback-vektoren fra serveren og lader Havok vise den.
+- **Client:** Havok drives visual physics. Characters topple, get shoved and fall.
+- **Server:** Simple math decides hits, damage and the knockback vector.
+- The client receives the knockback vector from the server and lets Havok display it.
 
 ## Hosting
 
-| Fase | Løsning | Pris |
+| Phase | Solution | Price |
 |---|---|---|
-| Lokal udvikling | Egen PC | 0 kr |
-| Test med venner | Oracle Always Free eller Render Starter | 0 kr / $7/md |
-| Offentlig | Colyseus Cloud eller egen VPS | fra $15/md |
+| Local development | Own PC | 0 kr |
+| Testing with friends | Oracle Always Free or Render Starter | 0 kr / $7/mo |
+| Public | Colyseus Cloud or own VPS | from $15/mo |
 
-Klienten hostes statisk gratis.
+The client is hosted statically for free.
 
-## Ydelsesmål (forslag)
+## Performance targets (proposal)
 
-- 60 FPS i browseren med op til 4 hære × 30 enheder + heste.
-- Maks 4 spillere online.
-- Serveren skal kunne køre på en lille VPS.
+- 60 FPS in the browser with up to 4 armies × 30 units + horses.
+- Max 4 players online.
+- The server must be able to run on a small VPS.
