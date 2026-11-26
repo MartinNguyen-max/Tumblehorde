@@ -286,6 +286,38 @@ export const FORMATION_WHEEL = {
   optionDistance: 150,
 } as const;
 
+/** Mixing and behaviour of the synthesized sound. Volumes are linear gains. */
+export const SOUND = {
+  master: 0.8,
+  music: 0.35,
+  effects: 0.9,
+  /** At most this many effects and voices play at once. */
+  maxVoices: 28,
+  /** The same kind of sound waits this long before it may play again. */
+  defaultGap: 0.03,
+  /** In a melee, blows and grunts of one kind are thinned out to this rate. */
+  crowdGap: 0.06,
+  voiceGap: 0.25,
+  /** Seconds a sound keeps its slot. */
+  defaultLength: 0.8,
+  voiceLength: 2,
+  speechLength: 4,
+  /** Sounds fade with distance: half as loud at `falloff` meters, silent beyond `maxDistance`. */
+  falloff: 14,
+  maxDistance: 70,
+  panWidth: 0.8,
+  /** Effects are scheduled this far ahead on the audio clock. */
+  scheduleAhead: 0.02,
+  oofChance: 0.35,
+  /** Somebody mutters every few seconds. */
+  chatterEvery: 3,
+  cheerVoices: 8,
+  glugs: 5,
+  musicTempo: 96,
+  musicTickMs: 50,
+  musicLookahead: 0.2,
+} as const;
+
 export const HUD = {
   enemyLookAngle: 0.22,
   enemyLookMaxDistance: 90,

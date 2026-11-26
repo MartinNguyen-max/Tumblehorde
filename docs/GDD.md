@@ -32,6 +32,7 @@ Inspiration: Shieldwall (combat and shields), Bannerlord (army and commander), F
 | C (held) | Crouch; crouch 4× at another commander up close to offer an alliance |
 | Q / E | Sword or spear / mount or dismount |
 | V | Overview camera |
+| M | Sound on/off (also the speaker button in the top right corner) |
 
 See `DECISIONS.md` for how the controls evolved after playtesting.
 
@@ -113,7 +114,7 @@ Locally there are at most 4 armies in total. Bots follow the same rules as the p
 - **Visual reference:** `docs/style-reference/preview.html`. Open it in a browser. It shows colors, proportions, camera angle, terrain style and HUD placement. It is built in Three.js as a reference, but the game is built in Babylon.js.
 - **Colors (from the reference):** Sky `#8EC9EE`, blue team `#3C7BD0`, red team `#D1483F`, accent `#F08A24`, terrain green `hsl(0.26, 45%, 40-49%)`, path sand `hsl(0.11, 42%, 70-76%)`.
 - **Animations:** Walk, run, strike, shield, shoot, jump and death. Ready-made animations in v1, e.g. from Mixamo.
-- **Sound:** Comes later.
+- **Sound:** Made in the browser, no sound files: a marching tune (war drums, drone, lyre, horn), blows, clangs, splashes, thrown spears, glugs and hiccups, and voices that speak only gibberish (cartoon babble): battle cries, the rally speech and cheers, grunts and death yells. Off by default; a speaker button in the top right corner (and `M`) turns it on, and a small hint points at it the first time.
 
 ## 15. Out of scope for v1
 

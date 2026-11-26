@@ -86,4 +86,4 @@ difficulty levels (see "Out of scope for v1").
 **Done when:** Two players can play a full battle over the network.
 
 ## Out of scope for v1
-Sound, login, persistence, mobile, more maps, online bots and more difficulty levels.
+Login, persistence, mobile, more maps, online bots and more difficulty levels. (Sound was added after v1.)

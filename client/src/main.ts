@@ -12,10 +12,14 @@ import { byId } from './ui/dom.ts';
 import { Hud } from './ui/hud.ts';
 import { Landing, readStoredName } from './ui/landing.ts';
 import { Results } from './ui/results.ts';
-import { MAP_NAMES } from './visualConfig.ts';
+import { CAMERA, MAP_NAMES } from './visualConfig.ts';
+import { AudioEngine } from './audio/engine.ts';
+import { BattleAudio } from './audio/battleAudio.ts';
+import { Music } from './audio/music.ts';
+import { setupSoundToggle } from './ui/soundToggle.ts';
 
 const DEMO_CAMERA = { distance: 62, pitch: 0.55, height: 1 } as const;
-const PLAY_CAMERA = { distance: 9, pitch: 0.32 } as const;
+const PLAY_CAMERA = { distance: CAMERA.distance, pitch: CAMERA.startPitch } as const;
 const MAX_FRAME_TIME = 0.1;
 
 async function boot(): Promise<void> {
@@ -26,6 +30,11 @@ async function boot(): Promise<void> {
   const input = new InputState();
   input.attach(canvas);
   const hud = new Hud();
+  const audio = new AudioEngine();
+  const music = new Music(audio);
+  audio.onEnable = () => music.start();
+  const battleAudio = new BattleAudio(audio);
+  setupSoundToggle(audio, music);
   const clickToPlay = byId('click-to-play');
   const ctpTitle = byId('ctp-title');
   const ctpText = byId('ctp-text');
@@ -86,7 +95,7 @@ async function boot(): Promise<void> {
     rematch = again;
     camera.distance = PLAY_CAMERA.distance;
     camera.pitch = PLAY_CAMERA.pitch;
-    controller = new GameController(session, { world, renderer, camera, input, hud }, {
+    controller = new GameController(session, { world, renderer, camera, input, hud, audio: battleAudio, listener: audio }, {
       onFinished: (view: MatchView) => {
         clickToPlay.hidden = true;
         results.show(view, session.myArmyId, session.online ? 'Back to lobby' : 'Rematch');

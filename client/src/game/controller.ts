@@ -13,6 +13,8 @@ import {
   type Vec3,
   yawToDir,
 } from '@tumblehorde/shared';
+import type { BattleAudio } from '../audio/battleAudio.ts';
+import type { AudioEngine } from '../audio/engine.ts';
 import { FormationWheel } from '../input/formationWheel.ts';
 import type { InputState } from '../input/input.ts';
 import type { BattleRenderer } from '../render/battle.ts';
@@ -57,11 +59,13 @@ export class GameController {
   private readonly camera: FollowCamera;
   private readonly input: InputState;
   private readonly hud: Hud;
+  private readonly audio: BattleAudio;
+  private readonly listener: AudioEngine;
   private readonly hooks: ControllerHooks;
 
   constructor(
     session: Session,
-    parts: { world: World; renderer: BattleRenderer; camera: FollowCamera; input: InputState; hud: Hud },
+    parts: { world: World; renderer: BattleRenderer; camera: FollowCamera; input: InputState; hud: Hud; audio: BattleAudio; listener: AudioEngine },
     hooks: ControllerHooks,
   ) {
     this.session = session;
@@ -70,6 +74,8 @@ export class GameController {
     this.camera = parts.camera;
     this.input = parts.input;
     this.hud = parts.hud;
+    this.audio = parts.audio;
+    this.listener = parts.listener;
     this.hooks = hooks;
     this.input.onPointerLockChange = (locked) => this.setPaused(!locked);
   }
@@ -224,6 +230,7 @@ export class GameController {
 
     const events = this.session.takeEvents();
     this.renderer.handleEvents(events, now);
+    this.audio.handle(events, this.session.view(), this.session.myArmyId);
     if (this.session.myArmyId !== null) this.hud.handleEvents(events, this.session.myArmyId);
 
     const view = this.session.view();
@@ -232,6 +239,9 @@ export class GameController {
     this.renderer.highlight(this.session.myArmyId, this.listening());
     this.renderer.sync(view, active ? dt : 0, now);
     this.updateCamera(view, dt);
+    const ear = this.camera.camera.position;
+    this.listener.setListener(ear.x, ear.z, this.camera.yaw);
+    this.audio.update(view, active ? dt : 0);
     this.updateEdgeWalls(view);
     if (this.session.myArmyId !== null) {
       this.hud.update({ view, myArmyId: this.session.myArmyId, wheel: this.wheel, selectedGroup: this.listening(), scene: this.world.scene, dt });
