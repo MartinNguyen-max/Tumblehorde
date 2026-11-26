@@ -133,3 +133,25 @@ Bot-vs-bot battles now last about 1–3 minutes (median 2:12 over 24 seeded batt
 | Commander body slide when knocked out | – | 50 % of the killing blow's push |
 | Horse jump height | – | 1.4 m |
 | Commander shove share vs. enemies (own soldiers: 0) | 50 % | 30 % |
+
+## Roman legion update (2026-11-26)
+
+The tables above are the original v1 proposal. `shared/src/config.ts` is the source of truth;
+these are the values after the legion update.
+
+| Value | Number |
+|---|---|
+| Army sizes | 15 / 25 / 40 swordsmen (archers and riders parked) |
+| Swordsman | 180 HP, 5 m/s |
+| Sword (Attack) | 25 damage, 2.0 m, 1.1 s, shove 3 m/s |
+| Spear (Follow, Hold) | 14 damage, 2.7 m, 1.1 s, shove 9 m/s that lands through shields |
+| Commander | 300 HP, 6 m/s, back up after 15 s |
+| Horse | 280 HP, 7.5 m/s; tramples above 5 m/s; the commander's charge breaks shield walls (15 damage, 2.8 s down) |
+| Shield | blocks 92 %, in a wall 97 %; braced shield weighs 3× in a crowd |
+| Hold spacing | 0.86 m apart, ranks 1.0 m, shields 0.88 m wide |
+| Thrown spears (once) | 30 m range, 50 damage (60 % through shields), shove 7 m/s |
+| Banquet (once) | 6 s feast; drunk: 55 % damage taken, 40 % shove taken, 130 % damage dealt, 1.8× shove |
+| Water | 1.1 m deep, 55 % speed; soldiers fall for 1.8 s |
+| Crouch | 45 % speed; 4 crouches in 3.5 s at a commander within 16 m offer an alliance |
+| Bot styles | steady, charge, phalanx (3 m steps, swords after 15 s at the line), patient (9 m or 50 s) |
+| Fog of war (city) | 60 m sight, sightings remembered 25 s |
