@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tumblehorde — 3D-stilreference</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; height:100%; overflow:hidden;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #wrap { position:relative; width:100%; height:100%; background:#8EC9EE; }
+  canvas { display:block; }
+
+  .label { position:absolute; transform:translate(-50%,-100%); pointer-events:none;
+    text-align:center; transition:opacity .2s; }
+  #hp { width:120px; }
+  #hpbar { height:9px; background:rgba(0,0,0,.35); border-radius:5px; overflow:hidden;
+    border:1.5px solid rgba(255,255,255,.85); }
+  #hpfill { height:100%; width:72%; background:#5FC24A; }
+  #hptext { margin-top:4px; font-size:12px; font-weight:600; color:#fff;
+    text-shadow:0 1px 3px rgba(0,0,0,.6); }
+  #foe { font-size:15px; font-weight:700; color:#fff;
+    text-shadow:0 2px 4px rgba(0,0,0,.55); background:rgba(214,60,54,.85);
+    padding:3px 10px; border-radius:20px; }
+
+  #hud { position:absolute; left:0; right:0; bottom:0; padding:14px 16px 16px;
+    background:linear-gradient(to top, rgba(14,18,26,.82), rgba(14,18,26,0)); }
+  #cmds { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+  .cmd { font-size:13px; font-weight:600; color:#fff; padding:7px 13px; border-radius:9px;
+    background:rgba(255,255,255,.16); border:1.5px solid rgba(255,255,255,.3);
+    backdrop-filter:blur(6px); }
+  .cmd.off { opacity:.38; }
+  .cmd b { opacity:.65; margin-right:5px; font-weight:700; }
+  #kit { display:flex; gap:8px; flex-wrap:wrap; }
+  .slot { font-size:12px; color:rgba(255,255,255,.9); padding:6px 11px; border-radius:8px;
+    background:rgba(0,0,0,.3); border:1.5px solid rgba(255,255,255,.18); }
+  .slot.off { opacity:.4; }
+
+  #cams { position:absolute; top:14px; left:14px; display:flex; gap:7px; flex-wrap:wrap; }
+  .cam { font-size:12px; font-weight:600; color:#1b2330; background:rgba(255,255,255,.9);
+    border:none; padding:7px 13px; border-radius:8px; cursor:pointer; }
+  .cam:hover { background:#fff; }
+  .cam.on { background:#F08A24; color:#fff; }
+
+  #note { position:absolute; top:14px; right:14px; max-width:240px; font-size:11.5px;
+    line-height:1.5; color:#fff; background:rgba(14,18,26,.62); padding:9px 12px;
+    border-radius:9px; backdrop-filter:blur(6px); }
+
+  #toast { position:absolute; left:50%; top:76px; transform:translateX(-50%);
+    font-size:14px; font-weight:700; color:#6B3A05; background:#FFD166;
+    padding:9px 20px; border-radius:22px; box-shadow:0 4px 14px rgba(0,0,0,.25);
+    opacity:0; transition:opacity .35s; }
+  #toast.on { opacity:1; }
+
+  #boot { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:#8EC9EE; font-size:14px; color:#2b4257; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="boot">Bygger scenen…</div>
+
+  <div class="label" id="hp">
+    <div id="hpbar"><div id="hpfill"></div></div>
+    <div id="hptext">Dig &middot; 72 HP</div>
+  </div>
+  <div class="label" id="foe">&times; 14</div>
+
+  <div id="toast">Mappet stopper. Gå tilbage og fight!</div>
+
+  <div id="cams">
+    <button class="cam on" data-v="0">Bag kommandøren</button>
+    <button class="cam" data-v="1">Overblik</button>
+    <button class="cam" data-v="2">Nærkamp</button>
+    <button class="cam" data-v="3">Kanten af mappet</button>
+  </div>
+
+  <div id="note">Træk for at dreje, scroll for at zoome. Alt er simple kasser og kegler &mdash; det er low-poly-stilen, ikke færdig grafik.</div>
+
+  <div id="hud">
+    <div id="cmds">
+      <span class="cmd"><b>1</b>Følg</span>
+      <span class="cmd"><b>2</b>Stå</span>
+      <span class="cmd"><b>3</b>Angrib</span>
+      <span class="cmd off"><b>4</b>Del i grupper</span>
+    </div>
+    <div id="kit">
+      <span class="slot">Sværd</span>
+      <span class="slot">Skjold &middot; højreklik</span>
+      <span class="slot off">Hest &middot; ikke på hesten</span>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  var wrap = document.getElementById('wrap');
+  document.getElementById('boot').remove();
+
+  var BLUE = 0x3C7BD0, BLUE_D = 0x2A5A9C;
+  var RED  = 0xD1483F, RED_D  = 0x9C332C;
+  var SKIN = 0xE8B88A, WOOD = 0x8A5A32, STEEL = 0xCFD6DC, DARK = 0x3C4450;
+
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x8EC9EE);
+  scene.fog = new THREE.Fog(0x9ED3F0, 55, 125);
+
+  var camera = new THREE.PerspectiveCamera(48, 1, 0.1, 400);
+  var renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  wrap.appendChild(renderer.domElement);
+
+  scene.add(new THREE.HemisphereLight(0xBFE4FF, 0x5E8C3C, 0.85));
+  var sun = new THREE.DirectionalLight(0xFFF4DE, 0.95);
+  sun.position.set(26, 42, 18);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  var sc = sun.shadow.camera;
+  sc.left = -45; sc.right = 45; sc.top = 45; sc.bottom = -45; sc.near = 1; sc.far = 130;
+  sun.shadow.bias = -0.0012;
+  scene.add(sun);
+
+  function mat(color) {
+    return new THREE.MeshLambertMaterial({ color: color, flatShading: true });
+  }
+  var BOX = new THREE.BoxGeometry(1, 1, 1);
+  function box(w, h, d, color, x, y, z) {
+    var m = new THREE.Mesh(BOX, mat(color));
+    m.scale.set(w, h, d);
+    m.position.set(x, y, z);
+    m.castShadow = true;
+    return m;
+  }
+
+  /* ---------- terræn ---------- */
+  var tg = new THREE.PlaneGeometry(170, 170, 46, 46);
+  var p = tg.attributes.position;
+  for (var i = 0; i < p.count; i++) {
+    var x = p.getX(i), y = p.getY(i);
+    var d = Math.sqrt(x * x + y * y);
+    var f = Math.min(1, Math.max(0, (d - 26) / 26));
+    var h = Math.sin(x * 0.07) * Math.cos(y * 0.06) * 2.6
+          + Math.sin(x * 0.17 + y * 0.13) * 0.9;
+    p.setZ(i, h * f);
+  }
+  tg.computeVertexNormals();
+  tg = tg.toNonIndexed();
+  var cols = [], c = new THREE.Color();
+  var tri = tg.attributes.position.count / 3;
+  for (var t = 0; t < tri; t++) {
+    var ax = tg.attributes.position.getX(t * 3);
+    var ay = tg.attributes.position.getY(t * 3);
+    var band = Math.abs(ay + Math.sin(ax * 0.09) * 5);
+    if (band < 6.5) c.setHSL(0.11, 0.42, 0.70 + Math.random() * 0.06);
+    else c.setHSL(0.26, 0.45, 0.40 + Math.random() * 0.09);
+    for (var k = 0; k < 3; k++) cols.push(c.r, c.g, c.b);
+  }
+  tg.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  var ground = new THREE.Mesh(tg,
+    new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  /* ---------- træer, sten, busk ---------- */
+  var CONE = new THREE.ConeGeometry(1, 1, 6);
+  var CYL = new THREE.CylinderGeometry(1, 1, 1, 6);
+  var ICO = new THREE.IcosahedronGeometry(1, 0);
+
+  function tree(x, z, s) {
+    var g = new THREE.Group();
+    var tr = new THREE.Mesh(CYL, mat(0x7A4A28));
+    tr.scale.set(0.35, 2.2, 0.35); tr.position.y = 1.1; tr.castShadow = true;
+    g.add(tr);
+    var tiers = [[2.3, 2.6, 2.6], [1.8, 2.2, 4.1], [1.25, 1.7, 5.4]];
+    for (var i = 0; i < 3; i++) {
+      var cn = new THREE.Mesh(CONE, mat(i === 2 ? 0x59B04A : 0x44933C));
+      cn.scale.set(tiers[i][0], tiers[i][1], tiers[i][0]);
+      cn.position.y = tiers[i][2];
+      cn.rotation.y = Math.random() * 3;
+      cn.castShadow = true;
+      g.add(cn);
+    }
+    g.position.set(x, 0, z);
+    g.scale.setScalar(s);
+    scene.add(g);
+  }
+  function rock(x, z, s) {
+    var m = new THREE.Mesh(ICO, mat(0xA8ADA6));
+    m.position.set(x, s * 0.55, z);
+    m.scale.setScalar(s);
+    m.rotation.set(Math.random(), Math.random(), Math.random());
+    m.castShadow = true; m.receiveShadow = true;
+    scene.add(m);
+  }
+  function bush(x, z) {
+    var m = new THREE.Mesh(ICO, mat(0x4E9E42));
+    m.position.set(x, 0.42, z);
+    m.scale.set(0.85, 0.6, 0.85);
+    m.rotation.y = Math.random() * 3;
+    m.castShadow = true;
+    scene.add(m);
+  }
+  var TREES = [[-30,-18,1.1],[-37,6,0.9],[-26,24,1.25],[32,-22,1.05],[40,4,1.2],
+               [27,27,0.95],[-44,-30,1.0],[46,-36,1.15],[-12,-40,1.0],[14,42,1.1],
+               [-50,18,0.85],[52,22,0.95]];
+  for (var i = 0; i < TREES.length; i++) tree(TREES[i][0], TREES[i][1], TREES[i][2]);
+  var ROCKS = [[-20,10,0.9],[22,-8,1.2],[-8,-26,0.7],[30,16,0.8],[-34,-6,1.0],[12,30,0.75]];
+  for (var i = 0; i < ROCKS.length; i++) rock(ROCKS[i][0], ROCKS[i][1], ROCKS[i][2]);
+  for (var i = 0; i < 16; i++) {
+    var a = Math.random() * Math.PI * 2, r = 16 + Math.random() * 30;
+    bush(Math.cos(a) * r, Math.sin(a) * r);
+  }
+
+  /* ---------- karakterer ---------- */
+  function warrior(team, kind, scale) {
+    var body = team === 'blue' ? BLUE : RED;
+    var trim = team === 'blue' ? BLUE_D : RED_D;
+    var g = new THREE.Group();
+    g.add(box(0.30, 0.60, 0.30, trim, -0.17, 0.30, 0));
+    g.add(box(0.30, 0.60, 0.30, trim,  0.17, 0.30, 0));
+    g.add(box(0.74, 0.80, 0.46, body, 0, 1.00, 0));
+    g.add(box(0.80, 0.14, 0.52, trim, 0, 1.34, 0));
+    g.add(box(0.46, 0.44, 0.44, SKIN, 0, 1.62, 0));
+    g.add(box(0.52, 0.22, 0.50, STEEL, 0, 1.78, 0));
+    var armL = box(0.20, 0.56, 0.20, SKIN, -0.46, 1.06, 0.04);
+    var armR = box(0.20, 0.56, 0.20, SKIN,  0.46, 1.06, 0.04);
+    g.add(armL); g.add(armR);
+
+    if (kind === 'archer') {
+      var bow = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.045, 5, 10, Math.PI * 1.25),
+                               mat(WOOD));
+      bow.position.set(-0.56, 1.10, 0.18);
+      bow.rotation.set(0, Math.PI / 2, Math.PI * 0.42);
+      bow.castShadow = true;
+      g.add(bow);
+      g.add(box(0.22, 0.46, 0.14, WOOD, 0.16, 1.26, -0.30));
+    } else {
+      var sh = box(0.12, 0.68, 0.58, trim, -0.60, 1.06, 0.06);
+      g.add(sh);
+      g.add(box(0.07, 0.30, 0.34, STEEL, -0.55, 1.06, 0.06));
+      if (kind === 'spear') {
+        var sp = box(0.09, 2.3, 0.09, WOOD, 0.58, 1.40, 0.10);
+        sp.rotation.z = -0.22;
+        g.add(sp);
+        g.add(box(0.10, 0.34, 0.10, STEEL, 0.83, 2.48, 0.10));
+      } else {
+        var sw = box(0.09, 1.00, 0.09, STEEL, 0.62, 1.52, 0.10);
+        sw.rotation.z = -0.30;
+        g.add(sw);
+        g.add(box(0.26, 0.10, 0.12, 0x6E4A26, 0.56, 1.05, 0.10));
+      }
+    }
+    g.userData.arms = [armL, armR];
+    g.scale.setScalar(scale || 1);
+    return g;
+  }
+
+  function horse(team) {
+    var g = new THREE.Group();
+    var hide = team === 'blue' ? 0x6B4A32 : 0x4A3A30;
+    g.add(box(1.90, 0.92, 0.80, hide, 0, 1.35, 0));
+    g.add(box(0.60, 0.92, 0.62, hide, 1.00, 1.70, 0));
+    g.add(box(0.52, 0.52, 0.50, hide, 1.34, 2.14, 0));
+    g.add(box(0.26, 0.26, 0.16, 0x2E2117, 0, 2.08, 0));
+    var legs = [[-0.68, 0.34], [-0.68, -0.34], [0.66, 0.34], [0.66, -0.34]];
+    for (var i = 0; i < 4; i++)
+      g.add(box(0.26, 0.95, 0.26, hide, legs[i][0], 0.48, legs[i][1]));
+    g.add(box(0.14, 0.80, 0.14, 0x2E2117, -0.98, 1.50, 0));
+    g.add(box(1.10, 0.14, 0.86, team === 'blue' ? BLUE_D : RED_D, 0.05, 1.84, 0));
+    return g;
+  }
+
+  var FALLEN = [];
+  function place(g, x, z, face, fallen) {
+    g.position.set(x, 0, z);
+    g.rotation.y = face + (Math.random() - 0.5) * 0.35;
+    if (fallen) {
+      g.rotation.z = (Math.random() > 0.5 ? 1 : -1) * (1.3 + Math.random() * 0.3);
+      g.rotation.x = (Math.random() - 0.5) * 0.5;
+      g.position.y = 0.42;
+      FALLEN.push(g);
+    }
+    scene.add(g);
+    return g;
+  }
+
+  var BOBBERS = [];
+  function army(team, originX, face) {
+    var sign = Math.sign(originX);
+    for (var r = 0; r < 3; r++) {
+      for (var cN = 0; cN < 5; cN++) {
+        var x = originX + sign * r * -2.3 + (Math.random() - 0.5) * 0.7;
+        var z = (cN - 2) * 2.5 + (Math.random() - 0.5) * 0.8;
+        var fallen = Math.random() < 0.1;
+        var w = warrior(team, 'sword', 0.95 + Math.random() * 0.12);
+        place(w, x, z, face, fallen);
+        if (!fallen) BOBBERS.push({ g: w, o: Math.random() * 7 });
+      }
+    }
+    for (var a = 0; a < 4; a++) {
+      var w2 = warrior(team, 'archer', 0.95);
+      place(w2, originX + sign * 7.5, (a - 1.5) * 2.9, face, false);
+      BOBBERS.push({ g: w2, o: Math.random() * 7 });
+    }
+    var hg = new THREE.Group();
+    var h = horse(team);
+    hg.add(h);
+    var rider = warrior(team, 'spear', 0.92);
+    rider.position.y = 1.72;
+    hg.add(rider);
+    place(hg, originX + sign * 5.5, team === 'blue' ? -8.5 : 8.5, face, false);
+    BOBBERS.push({ g: hg, o: Math.random() * 7 });
+  }
+  army('blue', -13, Math.PI / 2);
+  army('red', 13, -Math.PI / 2);
+
+  /* ---------- kommandør ---------- */
+  var commander = warrior('blue', 'sword', 1.22);
+  commander.position.set(-7.5, 0, -2.5);
+  commander.rotation.y = Math.PI / 2;
+  var plume = new THREE.Mesh(CONE, mat(0xF08A24));
+  plume.scale.set(0.22, 0.60, 0.22);
+  plume.position.y = 2.22;
+  plume.castShadow = true;
+  commander.add(plume);
+  var cape = box(0.12, 0.95, 0.62, 0xF08A24, -0.18, 1.00, 0);
+  commander.add(cape);
+  scene.add(commander);
+  BOBBERS.push({ g: commander, o: 0 });
+
+  /* ---------- kanten af mappet ---------- */
+  var edgeX = 36;
+  var edgeGeo = new THREE.PlaneGeometry(90, 9);
+  var edge = new THREE.Mesh(edgeGeo, new THREE.MeshBasicMaterial({
+    color: 0xFFD166, transparent: true, opacity: 0.2,
+    side: THREE.DoubleSide, depthWrite: false
+  }));
+  edge.rotation.y = -Math.PI / 2;
+  edge.position.set(edgeX, 4.5, 0);
+  scene.add(edge);
+  for (var i = -4; i <= 4; i++) {
+    var post = box(0.26, 3.4, 0.26, 0xE8E2CF, edgeX, 1.7, i * 9);
+    scene.add(post);
+  }
+
+  /* ---------- pile i luften ---------- */
+  var ARROWS = [];
+  var ageo = new THREE.CylinderGeometry(0.045, 0.045, 1.5, 5);
+  for (var i = 0; i < 7; i++) {
+    var a = new THREE.Mesh(ageo, mat(0x6E4A26));
+    a.castShadow = true;
+    scene.add(a);
+    ARROWS.push({ m: a, t: Math.random(), dir: i % 2 ? -1 : 1, lane: (i - 3) * 2.6 });
+  }
+
+  /* ---------- kamera ---------- */
+  var VIEWS = [
+    { tgt: new THREE.Vector3(-4, 1.4, -1), dist: 15, yaw: 2.52, pitch: 0.22 },
+    { tgt: new THREE.Vector3(0, 0, 0),     dist: 52, yaw: 2.40, pitch: 0.56 },
+    { tgt: new THREE.Vector3(2, 1.5, 1),   dist: 11, yaw: 1.05, pitch: 0.16 },
+    { tgt: new THREE.Vector3(30, 1.6, 0),  dist: 19, yaw: 2.05, pitch: 0.25 }
+  ];
+  var cur = { tgt: VIEWS[0].tgt.clone(), dist: VIEWS[0].dist,
+              yaw: VIEWS[0].yaw, pitch: VIEWS[0].pitch };
+  var want = { tgt: VIEWS[0].tgt.clone(), dist: VIEWS[0].dist,
+               yaw: VIEWS[0].yaw, pitch: VIEWS[0].pitch };
+
+  var drag = false, lx = 0, ly = 0;
+  renderer.domElement.addEventListener('pointerdown', function (e) {
+    drag = true; lx = e.clientX; ly = e.clientY;
+    renderer.domElement.setPointerCapture(e.pointerId);
+  });
+  renderer.domElement.addEventListener('pointerup', function () { drag = false; });
+  renderer.domElement.addEventListener('pointermove', function (e) {
+    if (!drag) return;
+    want.yaw -= (e.clientX - lx) * 0.006;
+    want.pitch = Math.max(0.04, Math.min(1.15, want.pitch + (e.clientY - ly) * 0.004));
+    lx = e.clientX; ly = e.clientY;
+  });
+  renderer.domElement.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    want.dist = Math.max(7, Math.min(80, want.dist + e.deltaY * 0.035));
+  }, { passive: false });
+
+  var toast = document.getElementById('toast');
+  var btns = document.querySelectorAll('.cam');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].addEventListener('click', function () {
+      for (var j = 0; j < btns.length; j++) btns[j].classList.remove('on');
+      this.classList.add('on');
+      var v = VIEWS[+this.dataset.v];
+      want.tgt.copy(v.tgt); want.dist = v.dist;
+      want.yaw = v.yaw; want.pitch = v.pitch;
+      toast.classList.toggle('on', this.dataset.v === '3');
+    });
+  }
+
+  /* ---------- HUD-labels ---------- */
+  var hpEl = document.getElementById('hp');
+  var foeEl = document.getElementById('foe');
+  var tmp = new THREE.Vector3();
+  function pin(el, obj, dy) {
+    tmp.setFromMatrixPosition(obj.matrixWorld);
+    tmp.y += dy;
+    tmp.project(camera);
+    if (tmp.z > 1) { el.style.opacity = 0; return; }
+    el.style.opacity = 1;
+    el.style.left = ((tmp.x * 0.5 + 0.5) * wrap.clientWidth) + 'px';
+    el.style.top = ((-tmp.y * 0.5 + 0.5) * wrap.clientHeight) + 'px';
+  }
+  var foeAnchor = new THREE.Object3D();
+  foeAnchor.position.set(14, 0, 0);
+  scene.add(foeAnchor);
+
+  /* ---------- loop ---------- */
+  function resize() {
+    var w = wrap.clientWidth, h = wrap.clientHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(w, h);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  var clock = new THREE.Clock();
+  function tick() {
+    requestAnimationFrame(tick);
+    var dt = Math.min(clock.getDelta(), 0.05);
+    var now = clock.elapsedTime;
+
+    cur.yaw += (want.yaw - cur.yaw) * 0.12;
+    cur.pitch += (want.pitch - cur.pitch) * 0.12;
+    cur.dist += (want.dist - cur.dist) * 0.08;
+    cur.tgt.lerp(want.tgt, 0.07);
+    var cp = Math.cos(cur.pitch);
+    camera.position.set(
+      cur.tgt.x + Math.sin(cur.yaw) * cp * cur.dist,
+      cur.tgt.y + Math.sin(cur.pitch) * cur.dist,
+      cur.tgt.z + Math.cos(cur.yaw) * cp * cur.dist
+    );
+    camera.lookAt(cur.tgt);
+
+    for (var i = 0; i < BOBBERS.length; i++) {
+      var b = BOBBERS[i];
+      b.g.position.y = Math.abs(Math.sin(now * 2.1 + b.o)) * 0.075;
+      var arms = b.g.userData.arms;
+      if (arms) {
+        var sw = Math.sin(now * 4.4 + b.o) * 0.42;
+        arms[0].rotation.x = sw;
+        arms[1].rotation.x = -sw;
+      }
+    }
+    for (var i = 0; i < FALLEN.length; i++) {
+      FALLEN[i].rotation.y += Math.sin(now * 1.6 + i) * 0.004;
+    }
+
+    for (var i = 0; i < ARROWS.length; i++) {
+      var a = ARROWS[i];
+      a.t += dt * 0.34;
+      if (a.t > 1) a.t -= 1;
+      var x = (-20 + 40 * a.t) * a.dir;
+      var y = 1.6 + Math.sin(a.t * Math.PI) * 7.5;
+      a.m.position.set(x, y, a.lane);
+      a.m.rotation.set(0, 0, a.dir * (Math.PI / 2 - (a.t - 0.5) * 1.5));
+    }
+
+    pin(hpEl, commander, 3.2);
+    pin(foeEl, foeAnchor, 3.6);
+    renderer.render(scene, camera);
+  }
+  tick();
+})();
+</script>
+</body>
+</html>
