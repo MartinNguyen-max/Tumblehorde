@@ -131,6 +131,10 @@ export function loadMap(world: World, map: MapId): void {
   createScenery(world.parts, root, map, theme);
   for (const s of mapStructures(map)) createStructure(world.parts, root, map, s, theme);
   createEdge(scene, world.parts, root, map, world.edgeMaterial);
+  // Scenery never moves: compute its transforms once instead of every frame.
+  root.computeWorldMatrix(true);
+  for (const node of root.getChildTransformNodes(false)) node.freezeWorldMatrix();
+  for (const mesh of root.getChildMeshes(false)) mesh.freezeWorldMatrix();
   world.map = map;
   world.mapRoot = root;
   world.terrainBody = body;

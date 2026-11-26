@@ -1,4 +1,4 @@
-import { TransformNode, type Scene } from './babylon.ts';
+import { type InstancedMesh, TransformNode, type Scene } from './babylon.ts';
 import { approach, lerp, meleeStatsForKind, type UnitKind, type UnitView, type Weapon } from '@tumblehorde/shared';
 import { ANIMATION, type ArmyPalette, COLORS, ROMAN } from '../visualConfig.ts';
 import { buildBean } from './beans.ts';
@@ -31,6 +31,15 @@ const SPEAR_LANCE = -1.25;
 const ARM_SPEAR_GUARD = -2.2;
 const ARM_LANCE = -1.15;
 const BROW_SCOWL = 0.4;
+/** How long the commander's speech and the soldiers' cheering last. */
+const SPEECH_TIME = 2.4;
+const CHEER_TIME = 2.6;
+const BUBBLE_COUNT = 3;
+/** Sword held straight up: the total pitch of the blade. */
+const BLADE_UP = -3.1;
+
+export type CheerStyle = 'pump' | 'bang' | 'hop';
+const CHEER_STYLES: readonly CheerStyle[] = ['pump', 'bang', 'hop'];
 
 /** How a swing looks. Purely visual: the simulation only knows "a strike". */
 export type SwingStyle = 'chop' | 'swipe' | 'thrust' | 'spin' | 'slash' | 'lance';
@@ -42,7 +51,14 @@ export interface PersonRig extends PersonBody {
   root: TransformNode;
   body: TransformNode;
   stars: TransformNode;
+  /** Tipsy bubbles floating over a drunk's head. */
+  bubbles: InstancedMesh[];
   pupilRest: { x: number; y: number }[];
+  /** Seconds into the commander's rousing speech, or null. */
+  speechAge: number | null;
+  /** Seconds into a cheer (negative: about to start), or null. */
+  cheerAge: number | null;
+  cheerStyle: CheerStyle;
   walkPhase: number;
   swingAge: number | null;
   swingStyle: SwingStyle;
@@ -78,6 +94,16 @@ const GLOSS = { gloss: true } as const;
 const METAL = { metal: true } as const;
 const NO_SHADOW_GLOSS = { gloss: true, castShadow: false } as const;
 
+function addBubbles(parts: PartFactory, head: TransformNode): InstancedMesh[] {
+  const bubbles: InstancedMesh[] = [];
+  for (let i = 0; i < BUBBLE_COUNT; i++) {
+    const bubble = parts.part('roundSphere', COLORS.bubble, head, [1, 1, 1], [0, 0.4, 0], NO_SHADOW_GLOSS);
+    bubble.setEnabled(false);
+    bubbles.push(bubble);
+  }
+  return bubbles;
+}
+
 function addStars(parts: PartFactory, head: TransformNode): TransformNode {
   const stars = childNode('stars', head, 0, 0.5, 0);
   for (let i = 0; i < STAR_COUNT; i++) {
@@ -96,6 +122,10 @@ export function createPersonRig(scene: Scene, parts: PartFactory, kind: UnitKind
   const roman = kind === 'swordsman' || kind === 'commander';
   const built = roman ? buildRoman(parts, body, palette, kind === 'commander') : buildBean(parts, body, kind, palette);
   const stars = addStars(parts, built.head);
+  const bubbles = addBubbles(parts, built.head);
+  const animated = [...built.pupils, ...built.brows, built.mouth, built.mouthOpen, built.drool, ...bubbles];
+  const pupilRest = built.pupils.map((p) => ({ x: p.position.x, y: p.position.y }));
+  parts.bake(root, `${kind}:${palette.body}`, new Set(animated.filter((m): m is InstancedMesh => m !== null)));
   return {
     ...built,
     type: 'person',
@@ -104,7 +134,11 @@ export function createPersonRig(scene: Scene, parts: PartFactory, kind: UnitKind
     root,
     body,
     stars,
-    pupilRest: built.pupils.map((p) => ({ x: p.position.x, y: p.position.y })),
+    bubbles,
+    pupilRest,
+    speechAge: null,
+    cheerAge: null,
+    cheerStyle: 'pump',
     walkPhase: Math.random() * Math.PI * 2,
     swingAge: null,
     swingStyle: 'chop',
@@ -160,6 +194,7 @@ export function createHorseRig(scene: Scene, parts: PartFactory, palette: ArmyPa
     parts.part('roundCylinder', COLORS.boot, leg, [0.22, 0.12, 0.22], [0, -0.92, 0], GLOSS);
     legs.push(leg);
   }
+  parts.bake(root, `horse:${hide}:${palette.body}`, new Set());
   return { type: 'horse', scale: 1, root, body, head, legs, walkPhase: Math.random() * 6, hitAge: HIT_REACTION_TIME };
 }
 
@@ -167,6 +202,8 @@ export interface AnimationContext {
   dt: number;
   now: number;
   mounted: boolean;
+  /** The unit's army is at the banquet. */
+  feasting: boolean;
   /** Mounted riders sit facing along the horse, twisting a little towards their target. */
   displayYaw: number;
 }
@@ -234,9 +271,10 @@ function swingPose(rig: PersonRig, mounted: boolean, weapon: Weapon): SwingPose 
   }
 }
 
-function showWeapon(rig: PersonRig, weapon: Weapon): void {
-  for (const [key, n] of Object.entries(rig.weapons)) n.setEnabled(key === weapon);
-  rig.sheathed?.setEnabled(weapon !== 'sword');
+function showWeapon(rig: PersonRig, weapon: Weapon, feasting: boolean): void {
+  for (const [key, n] of Object.entries(rig.weapons)) n.setEnabled(key === weapon && !feasting);
+  rig.cup?.setEnabled(feasting);
+  rig.sheathed?.setEnabled(weapon !== 'sword' || feasting);
   rig.shield?.setEnabled(weapon !== 'bow');
 }
 
@@ -334,7 +372,8 @@ export function animatePerson(rig: PersonRig, view: UnitView, ctx: AnimationCont
   const { dt, now, mounted } = ctx;
   rig.root.position.set(view.x, view.y, view.z);
   rig.root.rotation.y = ctx.displayYaw;
-  showWeapon(rig, view.weapon);
+  const feasting = ctx.feasting && !mounted;
+  showWeapon(rig, view.weapon, feasting);
   const groundSpeed = Math.hypot(view.vx, view.vz);
   const speed = mounted ? 0 : groundSpeed;
   const stride = Math.min(1, speed / 4);
@@ -382,7 +421,132 @@ export function animatePerson(rig: PersonRig, view: UnitView, ctx: AnimationCont
   const dizzy = view.stunTimer > DIZZY_STUN;
   rig.stars.setEnabled(dizzy);
   if (dizzy) rig.stars.rotation.y = now * 6;
+
+  let shouting = animateSpeech(rig, dt);
+  if (!stunned && !mounted) shouting = animateCheer(rig, dt) || shouting;
+  else if (rig.cheerAge !== null) rig.cheerAge = null;
+  if (feasting) animateDrinking(rig, view.id, now);
+  const grinning = animateDrunk(rig, view, now);
+  rig.mouth.setEnabled(!shouting && !grinning);
+  rig.mouthOpen?.setEnabled(shouting || grinning);
   rig.root.setEnabled(!view.invulnerable || Math.sin(now * BLINK_RATE) > -0.3);
+}
+
+/** Pose the weapon arm with the blade (or spear) pointing at the sky. */
+function brandishWeapon(rig: PersonRig, armPitch: number, sweep: number): void {
+  rig.armR.rotation.set(armPitch, 0, sweep);
+  rig.armR.position.z = 0.01;
+  const sword = rig.weapons.sword;
+  if (sword) sword.rotation.x = BLADE_UP - armPitch;
+  const spear = rig.weapons.spear;
+  if (spear) spear.rotation.x = SPEAR_UPRIGHT - armPitch;
+}
+
+/** The commander's speech: sword thrust at the sky, the other hand waving, head back, shouting. */
+function animateSpeech(rig: PersonRig, dt: number): boolean {
+  if (rig.speechAge === null) return false;
+  rig.speechAge += dt;
+  if (rig.speechAge > SPEECH_TIME) {
+    rig.speechAge = null;
+    return false;
+  }
+  const t = rig.speechAge;
+  const raise = ease(t / 0.25);
+  brandishWeapon(rig, lerp(ARM_REST, -2.9, raise) + Math.sin(t * 7) * 0.15 * raise, 0);
+  rig.armL.rotation.set(-1.1 + Math.sin(t * 5) * 0.4, 0, -0.5);
+  rig.body.rotation.x -= 0.12 * raise;
+  rig.head.rotation.x = -0.25 * raise;
+  return true;
+}
+
+/** Soldiers answering the speech: weapons punched at the sky, swords banged on shields, little hops. */
+function animateCheer(rig: PersonRig, dt: number): boolean {
+  if (rig.cheerAge === null) return false;
+  rig.cheerAge += dt;
+  if (rig.cheerAge > CHEER_TIME) {
+    rig.cheerAge = null;
+    return false;
+  }
+  const t = rig.cheerAge;
+  if (t < 0) return false;
+  const fade = Math.min(1, t / 0.2, (CHEER_TIME - t) / 0.3);
+  switch (rig.cheerStyle) {
+    case 'pump':
+      brandishWeapon(rig, lerp(ARM_REST, -2.8 + Math.sin(t * 12) * 0.35, fade), 0);
+      break;
+    case 'bang': {
+      // Hammer the sword hand across onto the raised shield.
+      brandishWeapon(rig, lerp(ARM_REST, -1.25 + Math.sin(t * 15) * 0.45, fade), -0.55 * fade);
+      if (rig.shield) {
+        const { rest, raised } = rig.shieldPose;
+        rig.shield.position.set(lerp(rest[0], raised[0], 0.5 * fade), lerp(rest[1], raised[1], 0.5 * fade), lerp(rest[2], raised[2], 0.5 * fade));
+        rig.shield.rotation.y = lerp(rig.shieldPose.restYaw, Math.PI / 2, 0.5 * fade);
+      }
+      break;
+    }
+    case 'hop':
+      brandishWeapon(rig, lerp(ARM_REST, -2.7, fade), 0);
+      rig.armL.rotation.set(lerp(-0.25, -2.5, fade), 0, -0.3);
+      rig.body.position.y += Math.abs(Math.sin(t * 9)) * 0.22 * fade;
+      break;
+  }
+  rig.head.rotation.x = -0.2 * fade;
+  return Math.sin(t * 6) > -0.4;
+}
+
+/** At the banquet: lift the cup, tip head and wine back, lower it, repeat. Each soldier at their own pace. */
+function animateDrinking(rig: PersonRig, id: number, now: number): void {
+  const cycle = (now * 0.45 + id * 0.37) % 1;
+  const sip = Math.sin(Math.min(1, Math.max(0, (cycle - 0.3) / 0.4)) * Math.PI);
+  const armPitch = lerp(-0.55, -2.1, sip);
+  rig.armR.rotation.set(armPitch, 0, -0.4 * sip);
+  rig.armR.position.z = 0.01;
+  if (rig.cup) rig.cup.rotation.x = -armPitch - 1.3 * sip;
+  rig.head.rotation.x = -0.35 * sip;
+}
+
+/** Drunk for good: swaying, lolling head, crossed eyes, red nose, drool and bubbles. Returns true while grinning. */
+function animateDrunk(rig: PersonRig, view: UnitView, now: number): boolean {
+  const drunk = view.drunk && view.alive;
+  rig.drunkFace?.setEnabled(drunk);
+  for (const b of rig.bubbles) b.setEnabled(drunk);
+  if (!drunk) return false;
+  const id = view.id;
+  rig.body.rotation.z += Math.sin(now * 1.7 + id) * 0.17;
+  rig.body.rotation.x += Math.sin(now * 1.1 + id * 2) * 0.07;
+  rig.head.rotation.z += Math.sin(now * 2.3 + id) * 0.3;
+  rig.head.rotation.y = Math.sin(now * 0.9 + id * 3) * 0.3;
+  // A hiccup now and then.
+  if ((now * 0.25 + id * 0.31) % 1 < 0.04) rig.body.position.y += 0.08;
+  rig.pupils.forEach((p, i) => {
+    const rest = rig.pupilRest[i];
+    if (!rest) return;
+    p.position.x = rest.x * 0.35 + Math.sin(now * 3 + i) * PUPIL_JIGGLE;
+    p.position.y = rest.y - 0.012;
+  });
+  if (rig.drool) {
+    const drip = (now * 0.7 + id * 0.19) % 1;
+    rig.drool.scaling.y = 0.04 + drip * 0.12;
+    rig.drool.position.y = -0.1 - drip * 0.06;
+  }
+  rig.bubbles.forEach((b, i) => {
+    const phase = (now * 0.45 + i / BUBBLE_COUNT + id * 0.13) % 1;
+    b.position.set(Math.sin(phase * 6 + i * 2) * 0.12, 0.32 + phase * 0.5, Math.cos(phase * 5 + i) * 0.08);
+    b.scaling.setAll(0.07 * (1 - phase) + 0.025);
+  });
+  return Math.sin(now * 0.8 + id) > 0.3;
+}
+
+/** The commander starts a rousing speech. */
+export function startSpeech(rig: Rig): void {
+  if (rig.type === 'person') rig.speechAge = 0;
+}
+
+/** A soldier joins the cheering after `delay` seconds, in their own style. */
+export function startCheer(rig: Rig, delay: number, id: number): void {
+  if (rig.type !== 'person') return;
+  rig.cheerAge = -delay;
+  rig.cheerStyle = CHEER_STYLES[id % CHEER_STYLES.length] ?? 'pump';
 }
 
 export function animateHorse(rig: HorseRig, view: UnitView, ctx: AnimationContext): void {

@@ -15,6 +15,8 @@ export type ArmySize = 15 | 25 | 40;
 export type Formation = 'line' | 'double' | 'circle';
 /** `legion` is swordsmen only. `mixed` (swordsmen, archers, cavalry) is parked for now but still works. */
 export type ArmyMix = 'legion' | 'mixed';
+/** The banquet: once per battle the army feasts around its commander and is drunk ever after. */
+export type BanquetState = 'ready' | 'feasting' | 'drunk';
 
 /** What a unit is doing with its weapon right now. */
 export type ActionKind = 'none' | 'melee' | 'shoot';
@@ -71,6 +73,8 @@ export interface Unit {
   lastHitByArmy: number | null;
   invulnerableTimer: number;
   respawnTimer: number;
+  /** After the banquet: sways and stumbles, but hits hard and shrugs blows off. */
+  drunk: boolean;
   intent: Intent;
   ai: AiMemory;
 }
@@ -111,6 +115,11 @@ export interface Army {
   groupOrders: GroupOrder[];
   /** The formation the next Hold uses. */
   formation: Formation;
+  banquet: BanquetState;
+  /** Seconds of feasting left. */
+  feastTimer: number;
+  /** Seconds until the commander can give another rousing speech. */
+  rallyTimer: number;
   eliminated: boolean;
   /** When the commander dies for good (forfeit), they never respawn. */
   forfeited: boolean;
@@ -170,6 +179,10 @@ export type SimEvent =
   | { type: 'edgePush'; unitId: EntityId }
   | { type: 'order'; armyId: number; group: number | null; order: Order; formation: Formation }
   | { type: 'split'; armyId: number; groupCount: number }
+  | { type: 'banquet'; armyId: number }
+  | { type: 'drunk'; armyId: number }
+  | { type: 'rally'; armyId: number; commanderId: EntityId }
+  | { type: 'stumble'; unitId: EntityId }
   | { type: 'armyEliminated'; armyId: number }
   | { type: 'matchOver'; winnerTeam: number | null };
 
@@ -207,4 +220,6 @@ export type Command =
   /** Picks the formation and holds in it right away. */
   | { type: 'formation'; formation: Formation }
   | { type: 'mount' }
-  | { type: 'weapon'; weapon: Weapon };
+  | { type: 'weapon'; weapon: Weapon }
+  | { type: 'banquet' }
+  | { type: 'rally' };

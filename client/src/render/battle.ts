@@ -1,14 +1,30 @@
-import { clamp, type MapId, type MatchView, type SimEvent, terrainHeightAt, type UnitView, wrapAngle } from '@tumblehorde/shared';
-import type { ArmyPalette } from '../visualConfig.ts';
+import { BODY, clamp, type MapId, type MatchView, type SimEvent, terrainHeightAt, type UnitView, wrapAngle } from '@tumblehorde/shared';
+import { type ArmyPalette, EFFECTS } from '../visualConfig.ts';
 import { paletteForArmy } from '../palettes.ts';
 import { Effects } from './effects.ts';
 import { Ragdolls } from './ragdolls.ts';
-import { animateDowned, animateHorse, animatePerson, createHorseRig, createPersonRig, reactToHit, type Rig, standUp, startSwing } from './rigs.ts';
+import {
+  animateDowned,
+  animateHorse,
+  animatePerson,
+  createHorseRig,
+  createPersonRig,
+  reactToHit,
+  type Rig,
+  standUp,
+  startCheer,
+  startSpeech,
+  startSwing,
+} from './rigs.ts';
 import type { World } from './world.ts';
 
 const HIT_HEIGHT = 1.2;
 /** A rider may twist this far in the saddle towards whatever they are fighting. */
 const SADDLE_TWIST = 0.7;
+const MOUTH_HEIGHT = 1.75;
+/** Soldiers take up the cheer one after another, within this many seconds. */
+const CHEER_SPREAD = 0.7;
+const CHEER_FIRST = 0.25;
 
 /** Turns match views and simulation events into animated characters and effects. */
 export class BattleRenderer {
@@ -75,6 +91,22 @@ export class BattleRenderer {
           if (rig?.type === 'person') standUp(rig);
           break;
         }
+        case 'rally':
+          this.rally(event.armyId, event.commanderId);
+          break;
+        case 'banquet': {
+          const commander = units?.[this.lastView?.armies[event.armyId]?.commanderId ?? -1];
+          if (commander) {
+            const ground = this.ragdolls.groundAt(commander.x, commander.z);
+            this.effects.feast(commander.x, ground, commander.z, now + EFFECTS.feastPropSeconds);
+          }
+          break;
+        }
+        case 'stumble': {
+          const unit = units?.[event.unitId];
+          if (unit) this.effects.burst('dust', unit.x, unit.y + 0.2, unit.z, 6);
+          break;
+        }
         case 'arrowLanded':
           this.effects.stickArrow(event.pos, event.dir, now);
           this.effects.burst('dust', event.pos.x, event.pos.y + 0.1, event.pos.z, 3);
@@ -89,6 +121,22 @@ export class BattleRenderer {
         default:
           break;
       }
+    }
+  }
+
+  /** The commander shouts, sound rolls out of their mouth, and their soldiers cheer back. */
+  private rally(armyId: number, commanderId: number): void {
+    const view = this.lastView;
+    const commander = view?.units[commanderId];
+    const rig = this.rigs.get(commanderId);
+    if (!view || !commander || !rig) return;
+    startSpeech(rig);
+    const saddle = commander.mountId !== null ? BODY.saddleHeight * 0.2 : 0;
+    this.effects.shout(commander.x, commander.y + MOUTH_HEIGHT * rig.scale + saddle, commander.z, commander.yaw);
+    for (const unit of view.units) {
+      if (!unit.alive || unit.armyId !== armyId || unit.kind === 'commander' || unit.kind === 'horse') continue;
+      const soldier = this.rigs.get(unit.id);
+      if (soldier) startCheer(soldier, CHEER_FIRST + Math.random() * CHEER_SPREAD, unit.id);
     }
   }
 
@@ -117,7 +165,8 @@ export class BattleRenderer {
         continue;
       }
       rig ??= this.createRig(view, unit);
-      const ctx = { dt, now, mounted: unit.mountId !== null, displayYaw: this.displayYaw(view, unit) };
+      const feasting = view.armies[unit.armyId]?.banquet === 'feasting' && unit.kind !== 'commander';
+      const ctx = { dt, now, mounted: unit.mountId !== null, feasting, displayYaw: this.displayYaw(view, unit) };
       if (rig.type === 'horse') {
         animateHorse(rig, unit, ctx);
       } else {

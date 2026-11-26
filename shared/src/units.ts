@@ -1,5 +1,6 @@
 import {
   ARCHER,
+  BANQUET,
   BODY,
   COMMANDER,
   COMMANDER_WEAPONS,
@@ -74,6 +75,7 @@ export function createUnit(id: EntityId, kind: UnitKind, armyId: number, pos: Ve
     lastHitByArmy: null,
     invulnerableTimer: 0,
     respawnTimer: 0,
+    drunk: false,
     intent: emptyIntent(yaw),
     ai: { targetId: null, thinkTimer: 0, shieldTimer: 0, chargePoint: null, horseTargetId: null },
   };
@@ -100,7 +102,8 @@ export function bodyRadius(unit: Unit): number {
 }
 
 export function bodyMass(unit: Unit): number {
-  return isHorse(unit) ? BODY.horseMass : BODY.personMass;
+  if (isHorse(unit)) return BODY.horseMass;
+  return unit.drunk ? BANQUET.mass : BODY.personMass;
 }
 
 export function meleeStatsForKind(kind: UnitKind, mounted: boolean, weapon: Weapon = defaultWeapon(kind)): MeleeStats | null {

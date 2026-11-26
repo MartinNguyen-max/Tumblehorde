@@ -1,4 +1,4 @@
-import { COMMANDER, HORSE, KNOCKBACK, MELEE, SHIELD, type KnockbackStats } from './config.ts';
+import { BANQUET, COMMANDER, HORSE, KNOCKBACK, MELEE, SHIELD, type KnockbackStats } from './config.ts';
 import { normalizeXZ, yawToDir, type Vec2, type Vec3 } from './math.ts';
 import { throwRider } from './mounts.ts';
 import { nextRandom } from './random.ts';
@@ -66,10 +66,15 @@ export function applyHit(
 ): void {
   if (!target.alive || target.invulnerableTimer > 0) return;
   const blocked = !source.breaksGuard && isBlockingFrom(target, source.from);
-  const wall = blocked && inShieldWall(state, target);
+  // A drunk's blow still glances off the shield, but no shield wall holds against it.
+  const drunkBlow = source.attacker?.drunk === true;
+  const wall = blocked && !drunkBlow && inShieldWall(state, target);
   const blockFraction = wall ? SHIELD.wallBlockFraction : SHIELD.blockFraction;
-  const dealt = blocked ? damage * (1 - blockFraction) : damage;
+  const strength = damage * (drunkBlow ? BANQUET.damageDealtFactor : 1) * (target.drunk ? BANQUET.damageTakenFactor : 1);
+  const dealt = blocked ? strength * (1 - blockFraction) : strength;
   let factor = wall ? 0 : blocked ? SHIELD.blockedKnockbackFactor : 1;
+  if (drunkBlow) factor *= BANQUET.strikeKnockbackFactor;
+  if (target.drunk) factor *= BANQUET.knockbackTakenFactor;
   if (isHorse(target)) factor *= HORSE.knockbackTaken;
   // Riders stay in the saddle; only the horse can throw them.
   if (isMounted(target)) factor = 0;
@@ -154,7 +159,7 @@ export function startMelee(state: MatchState, unit: Unit): boolean {
   if (!stats || !isFreeToAct(unit)) return false;
   unit.action = 'melee';
   unit.actionTimer = stats.windup;
-  unit.cooldownTimer = stats.cooldown;
+  unit.cooldownTimer = stats.cooldown * (unit.drunk ? BANQUET.cooldownFactor : 1);
   state.events.push({ type: 'swing', unitId: unit.id });
   return true;
 }

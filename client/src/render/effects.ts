@@ -1,6 +1,6 @@
 import { type InstancedMesh, TransformNode, type Scene } from './babylon.ts';
 import type { ArrowView, Vec3 } from '@tumblehorde/shared';
-import { COLORS, EFFECTS } from '../visualConfig.ts';
+import { COLORS, EFFECTS, ROMAN } from '../visualConfig.ts';
 import type { PartFactory } from './parts.ts';
 
 const PARTICLE_GRAVITY = 14;
@@ -15,6 +15,22 @@ interface Particle {
   vz: number;
   life: number;
   size: number;
+}
+
+/** A ring of sound rolling out of a shouting mouth. */
+interface ShoutRing {
+  mesh: InstancedMesh;
+  age: number;
+  x: number;
+  y: number;
+  z: number;
+  dirX: number;
+  dirZ: number;
+}
+
+interface Prop {
+  node: TransformNode;
+  until: number;
 }
 
 interface StuckArrow {
@@ -47,6 +63,8 @@ export class Effects {
   private readonly stuck: StuckArrow[] = [];
   private readonly particles: Particle[] = [];
   private readonly free: Map<BurstKind, InstancedMesh[]> = new Map();
+  private readonly rings: ShoutRing[] = [];
+  private readonly props: Prop[] = [];
 
   constructor(scene: Scene, parts: PartFactory) {
     this.scene = scene;
@@ -111,7 +129,58 @@ export class Effects {
     }
   }
 
+  /** Rings of sound rolling out from a shouting commander, towards `yaw`. */
+  shout(x: number, y: number, z: number, yaw: number): void {
+    for (let i = 0; i < EFFECTS.shoutRings; i++) {
+      const mesh = this.parts.part('tube', COLORS.shout, null, [1, 1, 1], [x, y, z], { castShadow: false });
+      mesh.rotation.set(Math.PI / 2, yaw, 0);
+      mesh.setEnabled(false);
+      this.rings.push({ mesh, age: -i * EFFECTS.shoutRingGap, x, y, z, dirX: Math.sin(yaw), dirZ: Math.cos(yaw) });
+    }
+  }
+
+  /** A little feast where the commander stands: a table, amphorae of wine and a cheese. */
+  feast(x: number, y: number, z: number, until: number): void {
+    const node = new TransformNode('feast', this.scene);
+    node.position.set(x, y, z);
+    this.parts.part('roundCylinder', COLORS.darkWood, node, [1.4, 0.08, 1.4], [0, 0.72, 0]);
+    this.parts.part('roundCylinder', COLORS.darkWood, node, [0.14, 0.7, 0.14], [0, 0.36, 0]);
+    this.parts.part('roundSphere', '#F2D16B', node, [0.3, 0.16, 0.3], [0.25, 0.82, 0.1], { gloss: true });
+    for (const [ax, az] of [[1.1, 0.4], [-0.9, 0.8], [0.2, -1.2]] as const) {
+      this.parts.part('roundSphere', ROMAN.terracotta, node, [0.42, 0.62, 0.42], [ax, 0.36, az], { gloss: true });
+      this.parts.part('roundCylinder', ROMAN.terracotta, node, [0.14, 0.28, 0.14], [ax, 0.78, az], { gloss: true });
+      this.parts.part('tube', ROMAN.terracotta, node, [0.22, 0.6, 0.22], [ax, 0.9, az], { gloss: true });
+    }
+    for (const [cx, cz] of [[-0.3, -0.2], [0.1, 0.4], [-0.2, 0.3]] as const) {
+      this.parts.part('frustum', ROMAN.brass, node, [0.1, 0.1, 0.1], [cx, 0.81, cz], { metal: true }).rotation.x = Math.PI;
+    }
+    this.props.push({ node, until });
+  }
+
   update(dt: number, now: number): void {
+    for (let i = this.rings.length - 1; i >= 0; i--) {
+      const ring = this.rings[i];
+      if (!ring) continue;
+      ring.age += dt;
+      const t = ring.age / EFFECTS.shoutRingLife;
+      if (t >= 1) {
+        ring.mesh.dispose();
+        this.rings.splice(i, 1);
+        continue;
+      }
+      ring.mesh.setEnabled(t >= 0);
+      if (t < 0) continue;
+      const travel = t * EFFECTS.shoutRingTravel;
+      ring.mesh.position.set(ring.x + ring.dirX * travel, ring.y + t * 0.3, ring.z + ring.dirZ * travel);
+      ring.mesh.scaling.setAll(0.25 + t * 1.1);
+    }
+    for (let i = this.props.length - 1; i >= 0; i--) {
+      const prop = this.props[i];
+      if (prop && now > prop.until) {
+        prop.node.dispose();
+        this.props.splice(i, 1);
+      }
+    }
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
       if (!p) continue;
@@ -143,6 +212,10 @@ export class Effects {
     for (const s of this.stuck) s.node.dispose();
     this.stuck.length = 0;
     for (const p of this.particles) p.life = 0;
+    for (const ring of this.rings) ring.mesh.dispose();
+    this.rings.length = 0;
+    for (const prop of this.props) prop.node.dispose();
+    this.props.length = 0;
     this.update(0, Number.POSITIVE_INFINITY);
   }
 }

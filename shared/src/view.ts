@@ -1,7 +1,7 @@
 import { lerp, wrapAngle } from './math.ts';
 import { matchDuration } from './match.ts';
 import { livingSoldiers } from './orders.ts';
-import type { ActionKind, ArmySize, Formation, GameMode, MatchPhase, MatchState, Order, Unit, UnitKind, Weapon } from './types.ts';
+import type { ActionKind, ArmySize, BanquetState, Formation, GameMode, MatchPhase, MatchState, Order, Unit, UnitKind, Weapon } from './types.ts';
 
 /** What a client needs to draw a unit. Built from the simulation or decoded from the network. */
 export interface UnitView {
@@ -29,6 +29,7 @@ export interface UnitView {
   respawnTimer: number;
   group: number;
   weapon: Weapon;
+  drunk: boolean;
 }
 
 export interface ArrowView {
@@ -52,6 +53,7 @@ export interface ArmyView {
   orders: Order[];
   /** The formation Hold uses. */
   formation: Formation;
+  banquet: BanquetState;
   kills: number;
   deaths: number;
   commanderDeaths: number;
@@ -99,6 +101,7 @@ export function unitView(u: Unit): UnitView {
     respawnTimer: u.respawnTimer,
     group: u.group,
     weapon: u.weapon,
+    drunk: u.drunk,
   };
 }
 
@@ -122,6 +125,7 @@ export function matchView(state: MatchState): MatchView {
       groupCount: army.groupCount,
       orders: army.groupOrders.map((g) => g.order),
       formation: army.formation,
+      banquet: army.banquet,
       kills: army.stats.kills,
       deaths: army.stats.deaths,
       commanderDeaths: army.stats.commanderDeaths,

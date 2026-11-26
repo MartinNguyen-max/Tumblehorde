@@ -1,10 +1,12 @@
 import {
   Color3,
-  type InstancedMesh,
+  InstancedMesh,
+  Matrix,
   Mesh,
   MeshBuilder,
   type Node,
   type Scene,
+  Quaternion,
   type ShadowGenerator,
   StandardMaterial,
   TransformNode,
@@ -70,6 +72,8 @@ export function childNode(name: string, parent: TransformNode, x = 0, y = 0, z =
  */
 export class PartFactory {
   private readonly sources = new Map<string, Mesh>();
+  /** Merged rigid pieces of characters, one per character look and body node. Null: could not merge. */
+  private readonly baked = new Map<string, Mesh | null>();
   private readonly materials = new Map<string, StandardMaterial>();
   private readonly scene: Scene;
   private readonly shadows: ShadowGenerator;
@@ -132,18 +136,53 @@ export class PartFactory {
       case 'eye':
         return MeshBuilder.CreateSphere(name, { diameter: 1, segments: 6 }, s);
       case 'roundSphere':
-        return MeshBuilder.CreateSphere(name, { diameter: 1, segments: 8 }, s);
+        return MeshBuilder.CreateSphere(name, { diameter: 1, segments: 5 }, s);
       case 'roundCapsule':
         return roundCapsule(name, s);
       case 'roundCylinder':
-        return MeshBuilder.CreateCylinder(name, { diameter: 1, height: 1, tessellation: 14 }, s);
+        return MeshBuilder.CreateCylinder(name, { diameter: 1, height: 1, tessellation: 12 }, s);
       case 'roundDome':
-        return MeshBuilder.CreateSphere(name, { diameter: 1, segments: 8, slice: 0.5 }, s);
+        return MeshBuilder.CreateSphere(name, { diameter: 1, segments: 5, slice: 0.5 }, s);
       case 'frustum':
-        return MeshBuilder.CreateCylinder(name, { diameterTop: 0.82, diameterBottom: 1, height: 1, tessellation: 14 }, s);
+        return MeshBuilder.CreateCylinder(name, { diameterTop: 0.82, diameterBottom: 1, height: 1, tessellation: 12 }, s);
       case 'tube':
-        return MeshBuilder.CreateTorus(name, { diameter: 1, thickness: 0.08, tessellation: 18 }, s);
+        return MeshBuilder.CreateTorus(name, { diameter: 1, thickness: 0.08, tessellation: 14 }, s);
     }
+  }
+
+  /**
+   * Thousands of tiny parts cost a lot of CPU every frame. A character's parts that move
+   * together (everything directly under one of its nodes) are merged into one mesh, built
+   * once per `look` and then instanced. Parts in `keep` stay separate because they are
+   * animated or toggled on their own.
+   */
+  bake(root: TransformNode, look: string, keep: ReadonlySet<InstancedMesh>): void {
+    const nodes = [root, ...root.getChildTransformNodes(false)];
+    nodes.forEach((node, index) => {
+      const pieces = node.getChildMeshes(true).filter((m): m is InstancedMesh => m instanceof InstancedMesh && !keep.has(m));
+      if (pieces.length < 2) return;
+      const key = `${look}#${index}:${node.name}`;
+      let merged = this.baked.get(key);
+      if (merged === undefined) {
+        merged = mergePieces(pieces, key);
+        this.baked.set(key, merged);
+      }
+      if (!merged) return;
+      const castShadow = pieces.some((p) => this.casts(p));
+      for (const piece of pieces) piece.dispose();
+      const instance = merged.createInstance(`${key}-baked`);
+      instance.parent = node;
+      if (castShadow) this.castShadow(instance);
+    });
+  }
+
+  private casts(mesh: InstancedMesh): boolean {
+    return this.shadows.getShadowMap()?.renderList?.includes(mesh) ?? false;
+  }
+
+  private castShadow(instance: InstancedMesh): void {
+    this.shadows.addShadowCaster(instance, false);
+    instance.onDisposeObservable.addOnce(() => this.shadows.removeShadowCaster(instance, false));
   }
 
   /**
@@ -163,10 +202,7 @@ export class PartFactory {
     instance.parent = parent;
     instance.scaling.set(size[0], size[1], size[2]);
     instance.position.set(position[0], position[1], position[2]);
-    if (options.castShadow ?? true) {
-      this.shadows.addShadowCaster(instance, false);
-      instance.onDisposeObservable.addOnce(() => this.shadows.removeShadowCaster(instance, false));
-    }
+    if (options.castShadow ?? true) this.castShadow(instance);
     return instance;
   }
 }
@@ -176,10 +212,28 @@ export class PartFactory {
  * equals its diameter has a degenerate middle ring that shades as a dark band.
  */
 function roundCapsule(name: string, scene: Scene): Mesh {
-  const mesh = MeshBuilder.CreateCapsule(name, { height: 1, radius: 0.25, tessellation: 12, capSubdivisions: 4 }, scene);
+  const mesh = MeshBuilder.CreateCapsule(name, { height: 1, radius: 0.25, tessellation: 10, capSubdivisions: 3 }, scene);
   mesh.scaling.set(2, 1, 2);
   mesh.bakeCurrentTransformIntoVertices();
   return mesh;
+}
+
+/** One hidden mesh from several instanced pieces, each piece keeping its own material. */
+function mergePieces(pieces: readonly InstancedMesh[], name: string): Mesh | null {
+  const copies = pieces.map((piece) => {
+    const copy = piece.sourceMesh.clone(`${name}-piece`, null, true);
+    copy.makeGeometryUnique();
+    const r = piece.rotation;
+    const rotation = piece.rotationQuaternion ?? Quaternion.RotationYawPitchRoll(r.y, r.x, r.z);
+    copy.bakeTransformIntoVertices(Matrix.Compose(piece.scaling, rotation, piece.position));
+    return copy;
+  });
+  const merged = Mesh.MergeMeshes(copies, true, true, undefined, false, true);
+  if (!merged) return null;
+  merged.name = name;
+  merged.isVisible = false;
+  merged.receiveShadows = true;
+  return merged;
 }
 
 function flat(mesh: Mesh): Mesh {

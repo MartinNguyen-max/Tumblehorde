@@ -411,6 +411,37 @@ export const BOT = {
   selfDefenseDistance: 12,
 } as const;
 
+/** The banquet: soldiers gather round, drink, and stay very drunk for the rest of the battle. */
+export const BANQUET = {
+  feastTime: 6,
+  /** The feasting ring stands this much wider than a circle formation. */
+  gatherExtraRadius: 1.2,
+  damageTakenFactor: 0.55,
+  damageDealtFactor: 1.3,
+  knockbackTakenFactor: 0.4,
+  /** Drunk blows shove much harder, and locked shield walls do not hold against them. */
+  strikeKnockbackFactor: 1.8,
+  cooldownFactor: 0.75,
+  /** Heavier in the crowd: drunks barge through formations. */
+  mass: 2.5,
+  /** Walking direction wobbles by up to this angle (radians)... */
+  swayAngle: 0.75,
+  swaySpeed: 2.3,
+  /** ...and standing still they drift around their place like this (fraction of full speed). */
+  idleDrift: 0.35,
+  /** Running drunks trip at this rate (chance per second)... */
+  tripPerSecond: 0.1,
+  tripMinSpeed: 3,
+  /** ...and lie there for this long. */
+  tripStun: 1.6,
+  tripPop: 2.5,
+} as const;
+
+/** The commander's rousing speech: only for show, so it just needs a pause between speeches. */
+export const RALLY = {
+  cooldown: 6,
+} as const;
+
 export const MATCH = {
   /** Armies form up this long before bots start to march. */
   prepareTime: 20,

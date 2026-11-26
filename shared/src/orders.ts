@@ -1,4 +1,5 @@
-import { ARMY, MOVEMENT } from './config.ts';
+import { finishFeast } from './banquet.ts';
+import { ARMY, BANQUET, MOVEMENT, RALLY } from './config.ts';
 import { assignHoldSlots, followCenter, formationSlots, holdSlots, supportSlots, type FormationSlot } from './formation.ts';
 import { clamp, dirToYaw, distanceXZ, normalizeXZ, turnTowards, type Vec2 } from './math.ts';
 import { toggleMount } from './mounts.ts';
@@ -93,6 +94,8 @@ function orderFor(state: MatchState, army: Army, order: Order, group: number, le
 export function issueOrder(state: MatchState, army: Army, order: Order, group: number | null, leaderless = false): boolean {
   if (!(leaderless ? canActLeaderless(state, army) : canGiveOrders(state, army))) return false;
   if (group !== null && (group < 0 || group >= army.groupCount)) return false;
+  // An order breaks up the party; the wine has done its work by then.
+  finishFeast(state, army);
   for (let g = 0; g < army.groupCount; g++) {
     if (group === null || group === g) army.groupOrders[g] = orderFor(state, army, order, g, leaderless);
   }
@@ -114,6 +117,23 @@ export function advanceArmy(state: MatchState, army: Army, target: Vec2, step: n
   for (let g = 0; g < army.groupCount; g++) {
     army.groupOrders[g] = { order: 'hold', anchor, anchorYaw, aroundCommander: false, formation: army.formation };
   }
+  return true;
+}
+
+/** Once per battle: the army gathers round the commander, drinks, and is drunk for good. */
+export function startBanquet(state: MatchState, army: Army): boolean {
+  if (army.banquet !== 'ready' || !canGiveOrders(state, army)) return false;
+  army.banquet = 'feasting';
+  army.feastTimer = BANQUET.feastTime;
+  state.events.push({ type: 'banquet', armyId: army.id });
+  return true;
+}
+
+/** A rousing speech. It changes nothing but the soldiers' mood, so it only needs a short pause. */
+export function rally(state: MatchState, army: Army): boolean {
+  if (army.rallyTimer > 0 || army.commanderId === null || !canGiveOrders(state, army)) return false;
+  army.rallyTimer = RALLY.cooldown;
+  state.events.push({ type: 'rally', armyId: army.id, commanderId: army.commanderId });
   return true;
 }
 
@@ -153,6 +173,10 @@ export function applyCommand(state: MatchState, armyId: number, command: Command
       return splitArmy(state, army, command.groupCount);
     case 'formation':
       return setFormation(state, army, command.formation);
+    case 'banquet':
+      return startBanquet(state, army);
+    case 'rally':
+      return rally(state, army);
     case 'mount': {
       const commander = getUnit(state, army.commanderId);
       return commander ? toggleMount(state, commander) : false;

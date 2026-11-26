@@ -99,6 +99,10 @@ export class GameController {
         this.order(order);
       } else if (code === HOLD_KEY) {
         this.wheel.press();
+      } else if (code === 'Digit4') {
+        this.session.command({ type: 'banquet' });
+      } else if (code === 'Digit5') {
+        this.session.command({ type: 'rally' });
       } else if (code === 'KeyE') {
         this.session.command({ type: 'mount' });
       } else if (code === 'KeyV') {

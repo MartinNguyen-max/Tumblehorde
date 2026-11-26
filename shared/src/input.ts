@@ -76,6 +76,10 @@ export function sanitizeCommand(raw: unknown): Command | null {
       return isFormation(raw.formation) ? { type: 'formation', formation: raw.formation } : null;
     case 'mount':
       return { type: 'mount' };
+    case 'banquet':
+      return { type: 'banquet' };
+    case 'rally':
+      return { type: 'rally' };
     case 'weapon':
       return isWeapon(raw.weapon) ? { type: 'weapon', weapon: raw.weapon } : null;
     default:

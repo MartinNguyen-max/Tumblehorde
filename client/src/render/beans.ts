@@ -98,6 +98,9 @@ export function buildBean(parts: PartFactory, body: TransformNode, kind: UnitKin
     pupils,
     brows: [],
     mouth,
+    mouthOpen: null,
+    drunkFace: null,
+    drool: null,
     deadEyes,
     legL,
     legR,
@@ -107,6 +110,7 @@ export function buildBean(parts: PartFactory, body: TransformNode, kind: UnitKin
     shieldPose: BEAN_SHIELD_POSE,
     weapons,
     sheathed: null,
+    cup: null,
     cape: null,
   };
 }

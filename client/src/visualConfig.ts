@@ -25,6 +25,8 @@ export const COLORS = {
   horseDark: '#4A3A30',
   mane: '#2E2117',
   edgeWall: '#FFD166',
+  bubble: '#E9D8FF',
+  shout: '#FFF1B8',
   edgePost: '#E8E2CF',
 } as const;
 
@@ -45,6 +47,11 @@ export const ROMAN = {
   wood: '#8A5A32',
   scabbard: '#5B2620',
   drool: '#BFE6FF',
+  mouthInside: '#5A1E1A',
+  drunkNose: '#E0544A',
+  blush: '#F08A8A',
+  wine: '#6E1630',
+  terracotta: '#C2693D',
 } as const;
 
 export interface ArmyPalette {
@@ -236,6 +243,13 @@ export const EFFECTS = {
   deathLaunchScale: 1.4,
   deathLiftMin: 3.5,
   popupLifetime: 0.9,
+  shoutPopupLifetime: 1.6,
+  shoutRings: 4,
+  shoutRingGap: 0.14,
+  shoutRingLife: 0.7,
+  shoutRingTravel: 3,
+  /** The feast table stays a while after the banquet, for the drunks to stagger around. */
+  feastPropSeconds: 40,
 } as const;
 
 export const FORMATION_WHEEL = {

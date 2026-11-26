@@ -1,4 +1,5 @@
 import { runArmyAi } from './ai.ts';
+import { updateBanquets, updateStumbles } from './banquet.ts';
 import { fireArrow, stepArrows } from './arrows.ts';
 import { runBotArmy, runLeaderlessArmy } from './bot.ts';
 import { ARCHER, COMMANDER, MATCH, SIM } from './config.ts';
@@ -236,8 +237,10 @@ export function stepMatch(state: MatchState, inputs: ReadonlyMap<number, Command
   updateWeapons(state);
   progressActions(state, step);
   stepMovement(state, step);
+  updateStumbles(state, step);
   stepArrows(state, step);
   updateFollowAnchors(state, step);
+  updateBanquets(state, step);
   updateRespawns(state, step);
   updateDisconnects(state, step);
   updateElimination(state);

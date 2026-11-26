@@ -24,12 +24,18 @@ const KIND_LABEL: Record<UnitKind, string> = {
   rider: 'rider',
   horse: 'horse',
 };
+const COMMANDER_SHOUTS = ['FOR ROME!', 'ROMA VICTRIX!', 'HOLD THE LINE!', 'NO RETREAT!', 'WITH ME, BROTHERS!', 'GLORY AWAITS!'];
+const SOLDIER_CHEERS = ['ROMA!', 'HUZZAH!', 'AVE!', 'RAAAH!', 'HOO-RAH!', '!!!', 'FOR ROME!'];
+const CHEER_POPUPS = 6;
+const SHOUT_HEIGHT = 2.6;
+const HIC_CHANCE = 0.5;
 const HP_LABEL_HEIGHT = 2.75;
 const FOE_LABEL_HEIGHT = 3.4;
 const POPUP_RISE = 40;
 
 interface Popup {
   el: HTMLElement;
+  /** Negative while waiting to appear. */
   x: number;
   y: number;
   z: number;
@@ -63,6 +69,9 @@ export class Hud {
   private readonly centerMsg = byId('center-msg');
   private readonly flash = byId('damage-flash');
   private readonly cmds = byId('hud-cmds');
+  private readonly banquetCmd = byId('hud-banquet');
+  private readonly banquetLabel = byId('hud-banquet-label');
+  private readonly rallyCmd = byId('hud-rally');
   private readonly holdLabel = byId('hud-hold-label');
   private readonly wheel = byId('formation-wheel');
   private wheelDot: HTMLElement = this.wheel;
@@ -130,12 +139,27 @@ export class Hud {
     this.bannerTimer = 1.2;
   }
 
-  private addPopup(unit: UnitView, text: string, className: string): void {
+  private addPopup(unit: UnitView, text: string, className: string, delay = 0, height = 2.2): void {
     const el = document.createElement('div');
     el.className = `popup ${className}`;
     el.textContent = text;
+    el.style.opacity = '0';
     this.popupLayer.append(el);
-    this.popups.push({ el, x: unit.x + (Math.random() - 0.5) * 0.6, y: unit.y + 2.2, z: unit.z, age: 0 });
+    this.popups.push({ el, x: unit.x + (Math.random() - 0.5) * 0.6, y: unit.y + height, z: unit.z, age: -delay });
+  }
+
+  /** Words fly from the commander's mouth and the soldiers shout back. */
+  private showRally(view: MatchView, armyId: number, commanderId: number): void {
+    const commander = view.units[commanderId];
+    if (!commander) return;
+    const lines = [...COMMANDER_SHOUTS].sort(() => Math.random() - 0.5).slice(0, 2);
+    lines.forEach((line, i) => this.addPopup(commander, line, 'shout', i * 0.7, SHOUT_HEIGHT + (commander.mountId !== null ? 1 : 0)));
+    const soldiers = view.units.filter((u) => u.alive && u.armyId === armyId && u.kind === 'swordsman');
+    for (let i = 0; i < Math.min(CHEER_POPUPS, soldiers.length); i++) {
+      const soldier = soldiers[Math.floor(Math.random() * soldiers.length)];
+      const cheer = SOLDIER_CHEERS[Math.floor(Math.random() * SOLDIER_CHEERS.length)] ?? 'ROMA!';
+      if (soldier) this.addPopup(soldier, cheer, 'cheer', 0.4 + Math.random() * 1.2);
+    }
   }
 
   handleEvents(events: readonly SimEvent[], myArmyId: number): void {
@@ -185,6 +209,20 @@ export class Hud {
             this.showBanner(event.order === 'hold' ? `Hold: ${FORMATION_LABEL[event.formation]}!` : `${ORDER_LABEL[event.order]}!`);
           }
           break;
+        case 'rally':
+          this.showRally(view, event.armyId, event.commanderId);
+          break;
+        case 'banquet':
+          if (event.armyId === myArmyId) this.showBanner('Banquet! Wine for everyone! 🍷');
+          break;
+        case 'drunk':
+          if (event.armyId === myArmyId) this.showBanner('Your legion is VERY drunk!');
+          break;
+        case 'stumble': {
+          const unit = view.units[event.unitId];
+          if (unit && Math.random() < HIC_CHANCE) this.addPopup(unit, '*hic*', 'hic', 0, 1.6);
+          break;
+        }
         case 'mount':
           if (event.riderId === myCommander) this.showBanner('Giddy up!');
           break;
@@ -244,6 +282,11 @@ export class Hud {
       cmd.classList.toggle('off', !canOrder);
       cmd.classList.toggle('active', canOrder && cmd.dataset.order === active);
     }
+    this.banquetCmd.classList.toggle('off', !canOrder || army.banquet === 'drunk');
+    this.banquetCmd.classList.toggle('active', army.banquet === 'feasting');
+    const banquetText = army.banquet === 'drunk' ? 'Drunk! 🍷' : 'Banquet 🍷';
+    if (this.banquetLabel.textContent !== banquetText) this.banquetLabel.textContent = banquetText;
+    this.rallyCmd.classList.toggle('off', !canOrder);
     const label = `Hold · ${FORMATION_LABEL[army.formation]}`;
     if (this.holdLabel.textContent !== label) this.holdLabel.textContent = label;
   }
@@ -377,7 +420,8 @@ export class Hud {
   private updatePopups(ctx: HudContext): void {
     this.popups = this.popups.filter((p) => {
       p.age += ctx.dt;
-      const life = p.age / EFFECTS.popupLifetime;
+      if (p.age < 0) return true;
+      const life = p.age / (p.el.classList.contains('shout') ? EFFECTS.shoutPopupLifetime : EFFECTS.popupLifetime);
       if (life >= 1) {
         p.el.remove();
         return false;

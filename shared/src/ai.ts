@@ -1,5 +1,6 @@
 import { AI, ARCHER, FORMATION, HORSE } from './config.ts';
 import { dirToYaw, distanceXZ, normalizeXZ, wrapAngle, yawToDir, type Vec2 } from './math.ts';
+import { feastSlots, staggerIntent } from './banquet.ts';
 import type { FormationSlot } from './formation.ts';
 import { mount, nearestFreeHorse } from './mounts.ts';
 import { formationTargets, orderOf } from './orders.ts';
@@ -326,8 +327,28 @@ function meleeApproachOnly(unit: Unit, target: Unit): void {
   }
 }
 
+/** Feasting: walk to your place in the ring around the commander and drink. */
+function runFeast(state: MatchState, army: Army): void {
+  const commander = getUnit(state, army.commanderId);
+  if (!commander) return;
+  const soldiers = army.soldierIds.map((id) => state.units[id]).filter((u): u is Unit => u?.alive === true);
+  const slots = feastSlots(commander.pos, soldiers);
+  for (const unit of soldiers) {
+    resetIntent(unit);
+    const slot = slots.get(unit.id);
+    if (!slot || unit.stunTimer > 0) continue;
+    const d = distanceXZ(unit.pos, slot);
+    if (d > FORMATION.arriveRadius) walkToSlot(state, unit, slot, d);
+    unit.intent.faceYaw = d > AI.faceWalkingDistance ? dirToYaw(slot.x - unit.pos.x, slot.z - unit.pos.z) : slot.yaw;
+  }
+}
+
 /** Runs thinking (staggered) and steering for every soldier in the army. */
 export function runArmyAi(state: MatchState, army: Army, dt: number): void {
+  if (army.banquet === 'feasting') {
+    runFeast(state, army);
+    return;
+  }
   const slots = formationTargets(state, army);
   for (const id of army.soldierIds) {
     const unit = state.units[id];
@@ -345,6 +366,7 @@ export function runArmyAi(state: MatchState, army: Army, dt: number): void {
       thinkSoldier(state, unit, order, slot);
     }
     soldierIntent(state, unit, order, slot);
+    if (unit.drunk) staggerIntent(unit.intent, unit.id, state.time);
   }
 }
 

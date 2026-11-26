@@ -32,6 +32,11 @@ export interface PersonBody {
   pupils: InstancedMesh[];
   brows: InstancedMesh[];
   mouth: InstancedMesh;
+  /** A wide-open mouth for shouting, cheering and drunken grinning. */
+  mouthOpen: InstancedMesh | null;
+  /** Red nose, rosy cheeks and droopy lids, shown once drunk. */
+  drunkFace: TransformNode | null;
+  drool: InstancedMesh | null;
   deadEyes: TransformNode;
   legL: TransformNode;
   legR: TransformNode;
@@ -42,6 +47,8 @@ export interface PersonBody {
   weapons: Partial<Record<Weapon, TransformNode>>;
   /** The sword in its scabbard, shown while another weapon is in hand. */
   sheathed: TransformNode | null;
+  /** A wine cup for the banquet. */
+  cup: TransformNode | null;
   cape: TransformNode | null;
 }
 
@@ -75,7 +82,7 @@ function addArm(parts: PartFactory, torso: TransformNode, side: number, sleeve: 
 }
 
 /** A face that reads from afar: eyes with pupils, brows that can scowl, a nose and a mouth. */
-function addFace(parts: PartFactory, head: TransformNode): Pick<PersonBody, 'pupils' | 'brows' | 'mouth' | 'deadEyes'> {
+function addFace(parts: PartFactory, head: TransformNode): Pick<PersonBody, 'pupils' | 'brows' | 'mouth' | 'mouthOpen' | 'deadEyes' | 'drunkFace' | 'drool'> {
   parts.part('roundSphere', ROMAN.skin, head, [0.27, 0.31, 0.28], [0, 0, 0], GLOSS);
   const pupils: InstancedMesh[] = [];
   const brows: InstancedMesh[] = [];
@@ -93,7 +100,28 @@ function addFace(parts: PartFactory, head: TransformNode): Pick<PersonBody, 'pup
   deadEyes.setEnabled(false);
   parts.part('roundSphere', ROMAN.skinShade, head, [0.05, 0.085, 0.06], [0, -0.025, 0.138], SMALL);
   const mouth = parts.part('box', ROMAN.mouth, head, [0.065, 0.014, 0.012], [0, -0.083, 0.128], SMALL);
-  return { pupils, brows, mouth, deadEyes };
+  const mouthOpen = parts.part('roundSphere', ROMAN.mouthInside, head, [0.07, 0.06, 0.03], [0, -0.088, 0.124], SMALL);
+  mouthOpen.setEnabled(false);
+  const drunkFace = childNode('drunk-face', head);
+  parts.part('roundSphere', ROMAN.drunkNose, drunkFace, [0.065, 0.065, 0.06], [0, -0.03, 0.15], SMALL);
+  for (const side of [-1, 1]) {
+    parts.part('roundSphere', ROMAN.blush, drunkFace, [0.06, 0.04, 0.02], [side * 0.085, -0.045, 0.118], SMALL);
+    // Heavy eyelids, half shut.
+    parts.part('roundSphere', ROMAN.skinShade, drunkFace, [0.078, 0.04, 0.04], [side * PUPIL_X, 0.034, 0.13], SMALL);
+  }
+  const drool = parts.part('roundCapsule', ROMAN.drool, drunkFace, [0.016, 0.06, 0.016], [0.022, -0.12, 0.13], SMALL);
+  drunkFace.setEnabled(false);
+  return { pupils, brows, mouth, mouthOpen, deadEyes, drunkFace, drool };
+}
+
+/** A brass goblet with wine in it, held in the sword hand at the banquet. */
+function addCup(parts: PartFactory, grip: TransformNode): TransformNode {
+  const cup = childNode('cup', grip, 0, 0.02, 0.04);
+  parts.part('roundCylinder', ROMAN.brass, cup, [0.025, 0.08, 0.025], [0, 0.02, 0], SMALL_METAL);
+  parts.part('frustum', ROMAN.brass, cup, [0.11, 0.09, 0.11], [0, 0.1, 0], SMALL_METAL).rotation.x = Math.PI;
+  parts.part('roundCylinder', ROMAN.wine, cup, [0.09, 0.01, 0.09], [0, 0.14, 0], SMALL);
+  cup.setEnabled(false);
+  return cup;
 }
 
 /** Imperial Gallic helmet: bowl, brow ridge, sloped neck guard, cheek guards and a crest. */
@@ -257,6 +285,7 @@ export function buildRoman(parts: PartFactory, body: TransformNode, palette: Arm
   const grip = childNode('grip', armR, 0, -0.55, 0.03);
   const weapons: Partial<Record<Weapon, TransformNode>> = { sword: addGladius(parts, grip), spear: addPilum(parts, grip) };
   const sheathed = addScabbard(parts, torso);
+  const cup = addCup(parts, grip);
   const shield = officer ? addOfficerShield(parts, torso, palette) : addScutum(parts, torso, palette);
 
   let cape: TransformNode | null = null;
@@ -279,6 +308,7 @@ export function buildRoman(parts: PartFactory, body: TransformNode, palette: Arm
     shieldPose: officer ? COMMANDER_SHIELD_POSE : SCUTUM_POSE,
     weapons,
     sheathed,
+    cup,
     cape,
   };
 }

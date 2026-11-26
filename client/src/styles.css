@@ -575,6 +575,20 @@ kbd {
   color: var(--toast);
   font-size: 17px;
 }
+.popup.shout {
+  font-size: 30px;
+  color: #ffe27a;
+  text-shadow: 0 3px 0 rgba(90, 40, 0, 0.6), 0 0 12px rgba(255, 180, 60, 0.6);
+}
+.popup.cheer {
+  font-size: 17px;
+  color: #fff;
+}
+.popup.hic {
+  font-size: 15px;
+  color: #e9d8ff;
+  font-style: italic;
+}
 .popup.hurt {
   color: #ff8a7a;
 }

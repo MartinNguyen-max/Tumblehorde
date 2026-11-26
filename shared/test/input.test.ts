@@ -30,6 +30,8 @@ describe('sanitizeCommand', () => {
     expect(sanitizeCommand({ type: 'split', groupCount: 3 })).toEqual({ type: 'split', groupCount: 3 });
     expect(sanitizeCommand({ type: 'mount' })).toEqual({ type: 'mount' });
     expect(sanitizeCommand({ type: 'formation', formation: 'circle' })).toEqual({ type: 'formation', formation: 'circle' });
+    expect(sanitizeCommand({ type: 'banquet', extra: 1 })).toEqual({ type: 'banquet' });
+    expect(sanitizeCommand({ type: 'rally' })).toEqual({ type: 'rally' });
   });
 
   it.each([

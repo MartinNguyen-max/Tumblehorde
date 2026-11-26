@@ -139,6 +139,7 @@ const FLAG_ALIVE = 1;
 const FLAG_GROUND = 2;
 const FLAG_SHIELD = 4;
 const FLAG_INVULNERABLE = 8;
+const FLAG_DRUNK = 16;
 
 const HEADER_BYTES = 4 + 4 + 1 + 1 + 2 + 2;
 const ALIVE_UNIT_BYTES = 1 + 6 + 2 + 6 + 2 + 1 + 1 + 1 + 2 + 2 + 1 + 1 + 1;
@@ -180,6 +181,7 @@ export function encodeSnapshot(view: MatchView): Uint8Array {
     if (u.onGround) flags |= FLAG_GROUND;
     if (u.shieldUp) flags |= FLAG_SHIELD;
     if (u.invulnerable) flags |= FLAG_INVULNERABLE;
+    if (u.drunk) flags |= FLAG_DRUNK;
     d.setUint8(o++, flags);
     if (!u.alive) {
       d.setUint8(o++, quantizeTimer(u.respawnTimer));
@@ -316,6 +318,7 @@ export function decodeSnapshot(bytes: Uint8Array, ctx: SnapshotContext): MatchVi
       onGround: (flags & FLAG_GROUND) !== 0,
       shieldUp: (flags & FLAG_SHIELD) !== 0,
       invulnerable: (flags & FLAG_INVULNERABLE) !== 0,
+      drunk: (flags & FLAG_DRUNK) !== 0,
       stunTimer,
       action,
       actionTimer,
@@ -376,5 +379,6 @@ function emptyUnit(info: Roster[number]): UnitView {
     respawnTimer: 0,
     group: 0,
     weapon: 'sword',
+    drunk: false,
   };
 }
