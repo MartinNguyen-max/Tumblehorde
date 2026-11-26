@@ -17,3 +17,5 @@ export * from './bot.ts';
 export * from './match.ts';
 export * from './input.ts';
 export * from './view.ts';
+export * from './net.ts';
+export * from './predict.ts';

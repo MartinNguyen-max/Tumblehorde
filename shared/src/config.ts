@@ -6,10 +6,8 @@ const DEG = Math.PI / 180;
 export const SIM = {
   /** Fixed step used for local (in-browser) battles. */
   localTickRate: 60,
-  /** Fixed step used by the authoritative server. */
-  serverTickRate: 30,
-  /** How often the server sends snapshots to clients. */
-  serverPatchRate: 20,
+  /** Fixed step used by the authoritative server. A snapshot is sent every tick. */
+  serverTickRate: 20,
   gravity: 25,
   groundAccel: 40,
   airAccel: 8,
@@ -303,5 +301,10 @@ export const NET = {
   minPlayers: 2,
   roomCodeLength: 5,
   maxNameLength: 16,
-  inputRate: 30,
+  inputRate: 20,
+  /** Remote units are drawn this far in the past so there are always two snapshots to blend. */
+  interpolationDelay: 0.1,
+  /** Inputs queued on the server beyond this are dropped so lag cannot pile up. */
+  maxQueuedInputs: 4,
+  port: 2567,
 } as const;

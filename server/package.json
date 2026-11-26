@@ -4,12 +4,16 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch src/index.ts",
-    "start": "node src/index.ts"
+    "start": "node src/index.ts",
+    "smoke": "node scripts/smoke.ts"
   },
   "dependencies": {
     "@tumblehorde/shared": "*",
     "@colyseus/core": "^0.18.30",
     "@colyseus/schema": "^5.0.51",
     "@colyseus/ws-transport": "^0.18.5"
+  },
+  "devDependencies": {
+    "@colyseus/sdk": "^0.18.10"
   }
 }
