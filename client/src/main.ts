@@ -1,5 +1,5 @@
 import { Vector3 } from './render/babylon.ts';
-import { defaultSettings, type MatchSettings, type MatchView } from '@tumblehorde/shared';
+import { defaultSettings, type MapId, mapFromRandom, type MatchSettings, type MatchView } from '@tumblehorde/shared';
 import { GameController } from './game/controller.ts';
 import { LocalSession, type Session } from './game/session.ts';
 import { InputState } from './input/input.ts';
@@ -7,11 +7,12 @@ import { OnlineLobby, roomCodeFromUrl } from './online/lobby.ts';
 import { OnlineSession } from './online/onlineSession.ts';
 import { BattleRenderer } from './render/battle.ts';
 import { FollowCamera } from './render/camera.ts';
-import { createWorld, setShadowArea } from './render/world.ts';
+import { createWorld, loadMap, setShadowArea } from './render/world.ts';
 import { byId } from './ui/dom.ts';
 import { Hud } from './ui/hud.ts';
 import { Landing, readStoredName } from './ui/landing.ts';
 import { Results } from './ui/results.ts';
+import { MAP_NAMES } from './visualConfig.ts';
 
 const DEMO_ARMY_SIZE = 20;
 const DEMO_CAMERA = { distance: 34, pitch: 0.42, height: 1 } as const;
@@ -34,12 +35,22 @@ async function boot(): Promise<void> {
   let demo: Session | null = null;
   let rematch: (() => void) | null = null;
 
-  const startDemo = (): void => {
+  const useMap = (map: MapId): void => {
     renderer.clear();
+    loadMap(world, map);
+    renderer.setMap(map);
+    camera.map = map;
+    hud.setMapName(MAP_NAMES[map]);
+  };
+
+  const startDemo = (preview?: MapId | null): void => {
+    const map = preview ?? landing?.chosenMap() ?? mapFromRandom(Math.random());
+    useMap(map);
     demo = new LocalSession(
       defaultSettings({
         armySize: DEMO_ARMY_SIZE,
         seed: Date.now() | 0,
+        map,
         armies: [
           { name: 'Blue', team: 0, isBot: true },
           { name: 'Red', team: 1, isBot: true },
@@ -80,7 +91,7 @@ async function boot(): Promise<void> {
   const startSession = (session: Session, again: () => void): void => {
     demo = null;
     stopBattle();
-    renderer.clear();
+    useMap(session.map);
     hud.reset();
     landing.setVisible(false);
     hud.setVisible(true);
@@ -98,7 +109,7 @@ async function boot(): Promise<void> {
   };
 
   const startLocal = (settings: MatchSettings): void => {
-    startSession(new LocalSession(settings, 0), () => startLocal({ ...settings, seed: (settings.seed + 1) | 0 }));
+    startSession(new LocalSession(settings, 0), () => startLocal({ ...settings, seed: (settings.seed + 1) | 0, map: landing.pickMap() }));
   };
 
   const onlineLobby = new OnlineLobby({
@@ -132,6 +143,9 @@ async function boot(): Promise<void> {
     },
     onCreateRoom: (name) => void enterOnline(() => onlineLobby.create(name)),
     onJoinRoom: (name, code) => void enterOnline(() => onlineLobby.join(name, code)),
+    onMapPreview: (map) => {
+      if (!controller) startDemo(map);
+    },
   });
 
   const results = new Results({
@@ -206,6 +220,7 @@ async function boot(): Promise<void> {
         },
         fps: () => world.engine.getFps(),
         scene: world.scene,
+        camera,
         session: () => controller?.session ?? null,
         shadows: world.shadows,
         createRoom: (name: string) => enterOnline(() => onlineLobby.create(name)),

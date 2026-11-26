@@ -113,3 +113,20 @@ describe('message validation', () => {
     expect(normalizeRoomCode(' ab-cde ')).toBe('ABCDE');
   });
 });
+
+describe('downed commanders in snapshots', () => {
+  it('carry the body position so clients see where they will get up', async () => {
+    const { killUnit } = await import('../src/combat.ts');
+    const settings = defaultSettings();
+    const state = createMatch(settings);
+    const commander = state.units[state.armies[0]!.commanderId]!;
+    killUnit(state, commander, 1, { x: 5, y: 3, z: 0 });
+    for (let i = 0; i < 20; i++) stepMatch(state, new Map(), 1 / 20);
+    const view = matchView(state);
+    const decoded = decodeSnapshot(encodeSnapshot(view), { roster: rosterFor(settings), mode: view.mode, armySize: view.armySize, armies: view.armies, previous: null });
+    const body = decoded.units[commander.id]!;
+    expect(body.alive).toBe(false);
+    expect(body.x).toBeCloseTo(commander.pos.x, 1);
+    expect(body.z).toBeCloseTo(commander.pos.z, 1);
+  });
+});

@@ -1,12 +1,14 @@
 import { Vector3 } from '../render/babylon.ts';
 import {
-  ARMY,
   type CommanderInput,
   distanceToEdge,
   MAP,
   type MatchView,
   type Order,
+  terrainHeightAt,
   type UnitView,
+  type Vec3,
+  WEAPONS,
   yawToDir,
 } from '@tumblehorde/shared';
 import type { InputState } from '../input/input.ts';
@@ -18,9 +20,16 @@ import { CAMERA } from '../visualConfig.ts';
 import type { Session } from './session.ts';
 
 const ORDER_KEYS: Record<string, Order> = { Digit1: 'follow', Digit2: 'hold', Digit3: 'attack' };
+/** 6 = whole army, 7 = swordsmen, 8 = archers, 9 = cavalry. The choice sticks until changed. */
+const SELECT_KEYS: Record<string, number | null> = { Digit6: null, Digit7: 0, Digit8: 1, Digit9: 2 };
 const EDGE_FADE_DISTANCE = 12;
 const EDGE_MAX_ALPHA = 0.28;
 const SPECTATE_HEIGHT = 6;
+const CORPSE_CAMERA_HEIGHT = 2.5;
+const BOW_SHOULDER_OFFSET = 0.9;
+const AIM_STEP = 1;
+const AIM_MAX_DISTANCE = 90;
+const AIM_FALLBACK_DISTANCE = 60;
 
 export interface ControllerHooks {
   onFinished(view: MatchView): void;
@@ -29,12 +38,13 @@ export interface ControllerHooks {
 
 /** Runs one battle on screen: reads input, drives the session, and updates camera, renderer and HUD. */
 export class GameController {
-  private selectedGroup: number | null = null;
   private overview = false;
   private paused = true;
   private finished = false;
   private lastFocus = { x: 0, y: 0, z: 0 };
   private cameraSnapped = false;
+  /** Which group listens to 1/2/3; null is the whole army. */
+  private selectedGroup: number | null = null;
   readonly session: Session;
   private readonly world: World;
   private readonly renderer: BattleRenderer;
@@ -68,31 +78,55 @@ export class GameController {
     this.hooks.onPauseChange(paused);
   }
 
-  private myCommander(view: MatchView): UnitView | undefined {
+  private myCommander(view: MatchView | null): UnitView | undefined {
     const id = this.session.myArmyId;
-    if (id === null) return undefined;
+    if (id === null || !view) return undefined;
     const army = view.armies[id];
     return army ? view.units[army.commanderId] : undefined;
   }
 
-  private handlePresses(view: MatchView | null): void {
-    const army = view && this.session.myArmyId !== null ? view.armies[this.session.myArmyId] : undefined;
+  private order(order: Order, group: number | null): void {
+    this.session.command({ type: 'order', order, group });
+  }
+
+  private handleKeys(): void {
     for (const code of this.input.takePressed()) {
       const order = ORDER_KEYS[code];
       if (order) {
-        this.session.command({ type: 'order', order, group: this.selectedGroup });
-      } else if (code === 'Digit4' && army) {
-        this.session.command({ type: 'split', groupCount: (army.groupCount % ARMY.maxGroups) + 1 });
-        this.selectedGroup = null;
-      } else if (code === 'Tab' && army) {
-        this.selectedGroup = nextGroup(this.selectedGroup, army.groupCount);
+        this.order(order, this.selectedGroup);
+      } else if (code in SELECT_KEYS) {
+        this.selectedGroup = SELECT_KEYS[code] ?? null;
       } else if (code === 'KeyE') {
         this.session.command({ type: 'mount' });
       } else if (code === 'KeyV') {
         this.overview = !this.overview;
+      } else if (code === 'KeyQ') {
+        this.cycleWeapon();
       }
     }
-    if (army && this.selectedGroup !== null && this.selectedGroup >= army.groupCount) this.selectedGroup = null;
+    this.input.takeReleased();
+  }
+
+  private cycleWeapon(): void {
+    const me = this.myCommander(this.session.view());
+    if (!me) return;
+    const next = WEAPONS[(WEAPONS.indexOf(me.weapon) + 1) % WEAPONS.length] ?? 'sword';
+    this.session.command({ type: 'weapon', weapon: next });
+  }
+
+  /** Where the middle of the screen meets the ground: the bow's target. */
+  private aimPoint(): Vec3 {
+    const cam = this.world.scene.activeCamera;
+    if (!cam) return { x: 0, y: 0, z: 0 };
+    const origin = cam.position;
+    const dir = cam.getDirection(Vector3.Forward());
+    for (let t = AIM_STEP; t <= AIM_MAX_DISTANCE; t += AIM_STEP) {
+      const x = origin.x + dir.x * t;
+      const y = origin.y + dir.y * t;
+      const z = origin.z + dir.z * t;
+      if (y <= terrainHeightAt(this.session.map, x, z)) return { x, y, z };
+    }
+    return { x: origin.x + dir.x * AIM_FALLBACK_DISTANCE, y: origin.y + dir.y * AIM_FALLBACK_DISTANCE, z: origin.z + dir.z * AIM_FALLBACK_DISTANCE };
   }
 
   private buildInput(): CommanderInput {
@@ -114,20 +148,20 @@ export class GameController {
       jump: this.input.isHeld('Space'),
       attack: this.input.mouseLeft,
       shield: this.input.mouseRight,
+      aim: this.aimPoint(),
     };
   }
 
   frame(dt: number, now: number): void {
     const active = !this.paused || this.session.online;
-    const before = this.session.view();
     if (!this.paused) {
-      this.handlePresses(before);
+      this.handleKeys();
       const look = this.input.takeLook();
       this.camera.look(look.x, look.y);
       this.camera.zoom(this.input.takeWheel());
       this.session.setInput(this.buildInput());
     } else {
-      this.session.setInput({ moveX: 0, moveZ: 0, faceYaw: this.camera.yaw, jump: false, attack: false, shield: false });
+      this.session.setInput({ moveX: 0, moveZ: 0, faceYaw: this.camera.yaw, jump: false, attack: false, shield: false, aim: null });
     }
     if (active) this.session.update(dt);
 
@@ -137,6 +171,7 @@ export class GameController {
 
     const view = this.session.view();
     if (!view) return;
+    this.renderer.highlight(this.session.myArmyId, this.selectedGroup);
     this.renderer.sync(view, active ? dt : 0, now);
     this.updateCamera(view, dt);
     this.updateEdgeWalls(view);
@@ -152,40 +187,43 @@ export class GameController {
 
   private updateCamera(view: MatchView, dt: number): void {
     const me = this.myCommander(view);
+    let height: number = CAMERA.height;
     if (me?.alive) {
       this.lastFocus = { x: me.x, y: me.y, z: me.z };
       if (!this.cameraSnapped) {
         this.camera.snap(this.lastFocus, me.yaw);
         this.cameraSnapped = true;
       }
+    } else if (me && !view.armies[me.armyId]?.eliminated) {
+      // Stay with the body while the commander patches themselves up.
+      this.lastFocus = { x: me.x, y: me.y, z: me.z };
+      height = CORPSE_CAMERA_HEIGHT;
     } else {
       const center = this.armyFocus(view);
       if (center) this.lastFocus = center;
+      height = SPECTATE_HEIGHT;
     }
-    const height = this.overview ? CAMERA.overviewHeight : me?.alive ? CAMERA.height : SPECTATE_HEIGHT;
-    this.camera.update(dt, this.lastFocus, height);
+    if (this.overview) height = CAMERA.overviewHeight;
+    const aiming = me?.alive === true && me.weapon === 'bow';
+    this.camera.update(dt, this.lastFocus, height, aiming ? BOW_SHOULDER_OFFSET : 0);
     const f = this.camera.focusPoint();
     setShadowArea(this.world.sun, new Vector3(f.x, 0, f.z));
   }
 
-  /** Where to look while the commander is down: our own army, or whoever is left. */
+  /** Where to look once your army is out: whoever is left. */
   private armyFocus(view: MatchView): { x: number; y: number; z: number } | null {
-    const mine = this.session.myArmyId;
-    const pick = (filter: (u: UnitView) => boolean): { x: number; y: number; z: number } | null => {
-      let x = 0;
-      let y = 0;
-      let z = 0;
-      let n = 0;
-      for (const u of view.units) {
-        if (!u.alive || u.kind === 'horse' || !filter(u)) continue;
-        x += u.x;
-        y += u.y;
-        z += u.z;
-        n++;
-      }
-      return n > 0 ? { x: x / n, y: y / n, z: z / n } : null;
-    };
-    return pick((u) => u.armyId === mine) ?? pick(() => true);
+    let x = 0;
+    let y = 0;
+    let z = 0;
+    let n = 0;
+    for (const u of view.units) {
+      if (!u.alive || u.kind === 'horse') continue;
+      x += u.x;
+      y += u.y;
+      z += u.z;
+      n++;
+    }
+    return n > 0 ? { x: x / n, y: y / n, z: z / n } : null;
   }
 
   private updateEdgeWalls(view: MatchView): void {
@@ -199,10 +237,4 @@ export class GameController {
     this.input.onPointerLockChange = null;
     this.session.dispose();
   }
-}
-
-function nextGroup(current: number | null, groupCount: number): number | null {
-  if (groupCount <= 1) return null;
-  if (current === null) return 0;
-  return current + 1 >= groupCount ? null : current + 1;
 }

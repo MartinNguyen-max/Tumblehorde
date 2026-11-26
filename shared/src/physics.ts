@@ -231,8 +231,20 @@ function tryTrample(state: MatchState, horse: Unit, victim: Unit): void {
 }
 
 /** Runs one movement step for every unit: steering, gravity, ground, edges, obstacles, crowding. */
+/**
+ * A knocked-out commander's body keeps flying and sliding from the blow, so they get back up
+ * where they actually landed.
+ */
+function slideDownedCommander(state: MatchState, unit: Unit, dt: number): void {
+  applyFriction(unit, dt);
+  integrateBody(unit, dt, state.settings.map);
+  applyMapEdge(unit);
+  resolveObstacles(unit, state.settings.map);
+}
+
 export function stepMovement(state: MatchState, dt: number): void {
   for (const unit of state.units) {
+    if (!unit.alive && unit.kind === 'commander' && unit.respawnTimer > 0) slideDownedCommander(state, unit, dt);
     if (!unit.alive || isMounted(unit)) continue;
     if (isHorse(unit)) steerHorse(state, unit, dt);
     else steerPerson(unit, dt);

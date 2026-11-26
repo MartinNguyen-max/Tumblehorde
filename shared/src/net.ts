@@ -143,6 +143,8 @@ const FLAG_INVULNERABLE = 8;
 const HEADER_BYTES = 4 + 4 + 1 + 1 + 2 + 2;
 const ALIVE_UNIT_BYTES = 1 + 6 + 2 + 6 + 2 + 1 + 1 + 1 + 2 + 2 + 1 + 1 + 1;
 const DEAD_UNIT_BYTES = 1 + 1;
+/** A downed commander also sends where their body lies, since they get up there. */
+const DOWNED_COMMANDER_EXTRA_BYTES = 6;
 const ARROW_BYTES = 4 + 6 + 6;
 
 function quantizeTimer(seconds: number): number {
@@ -155,7 +157,10 @@ function clampInt16(value: number): number {
 
 export function encodeSnapshot(view: MatchView): Uint8Array {
   let size = HEADER_BYTES + view.arrows.length * ARROW_BYTES;
-  for (const u of view.units) size += u.alive ? ALIVE_UNIT_BYTES : DEAD_UNIT_BYTES;
+  for (const u of view.units) {
+    size += u.alive ? ALIVE_UNIT_BYTES : DEAD_UNIT_BYTES;
+    if (!u.alive && u.kind === 'commander') size += DOWNED_COMMANDER_EXTRA_BYTES;
+  }
   const buffer = new ArrayBuffer(size);
   const d = new DataView(buffer);
   let o = 0;
@@ -178,6 +183,12 @@ export function encodeSnapshot(view: MatchView): Uint8Array {
     d.setUint8(o++, flags);
     if (!u.alive) {
       d.setUint8(o++, quantizeTimer(u.respawnTimer));
+      if (u.kind === 'commander') {
+        d.setInt16(o, clampInt16(u.x * POSITION_SCALE));
+        d.setInt16(o + 2, clampInt16(u.y * POSITION_SCALE));
+        d.setInt16(o + 4, clampInt16(u.z * POSITION_SCALE));
+        o += 6;
+      }
       continue;
     }
     d.setInt16(o, clampInt16(u.x * POSITION_SCALE));
@@ -248,8 +259,16 @@ export function decodeSnapshot(bytes: Uint8Array, ctx: SnapshotContext): MatchVi
     if (!alive) {
       const respawnTimer = d.getUint8(o++) / TIMER_SCALE;
       const before = ctx.previous?.units[i];
+      const body: Partial<UnitView> = {};
+      if (info.kind === 'commander') {
+        body.x = d.getInt16(o) / POSITION_SCALE;
+        body.y = d.getInt16(o + 2) / POSITION_SCALE;
+        body.z = d.getInt16(o + 4) / POSITION_SCALE;
+        o += 6;
+      }
       units.push({
         ...(before ?? emptyUnit(info)),
+        ...body,
         ...info,
         alive: false,
         hp: 0,

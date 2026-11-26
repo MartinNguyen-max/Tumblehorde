@@ -94,7 +94,7 @@ export class Effects {
     for (let i = 0; i < count; i++) {
       if (this.particles.length >= EFFECTS.particleCount) return;
       const pool = this.free.get(kind) ?? [];
-      const mesh = pool.pop() ?? this.parts.part('box', BURST_COLORS[kind], null, [1, 1, 1], [0, 0, 0], false);
+      const mesh = pool.pop() ?? this.parts.part('box', BURST_COLORS[kind], null, [1, 1, 1], [0, 0, 0], { castShadow: false });
       mesh.setEnabled(true);
       const size = 0.08 + Math.random() * 0.1;
       mesh.position.set(x, y, z);

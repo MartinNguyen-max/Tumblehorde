@@ -1,5 +1,5 @@
 import { FreeCamera, type Scene, Vector3 } from './babylon.ts';
-import { clamp, terrainHeightAt, wrapAngle, type Vec3 } from '@tumblehorde/shared';
+import { clamp, type MapId, terrainHeightAt, wrapAngle, type Vec3 } from '@tumblehorde/shared';
 import { CAMERA } from '../visualConfig.ts';
 
 const MIN_CLEARANCE = 0.6;
@@ -19,6 +19,8 @@ export class FollowCamera {
   private smoothedPitch = this.pitch;
   private smoothedDistance = this.distance;
   private initialized = false;
+  private smoothedSide = 0;
+  map: MapId = 'meadow';
 
   constructor(scene: Scene) {
     this.camera = new FreeCamera('camera', new Vector3(0, 10, -10), scene);
@@ -50,9 +52,12 @@ export class FollowCamera {
     this.yaw = wrapAngle(this.yaw + dt * ORBIT_SPEED);
   }
 
-  update(dt: number, target: Vec3, heightOffset: number = CAMERA.height): void {
-    const goal = new Vector3(target.x, target.y + heightOffset, target.z);
+  /** `sideOffset` shifts the view over the right shoulder, e.g. while aiming a bow. */
+  update(dt: number, target: Vec3, heightOffset: number = CAMERA.height, sideOffset = 0): void {
     const k = 1 - Math.exp(-CAMERA.smoothing * dt);
+    this.smoothedSide += (sideOffset - this.smoothedSide) * k;
+    const right = { x: Math.cos(this.smoothedYaw), z: -Math.sin(this.smoothedYaw) };
+    const goal = new Vector3(target.x + right.x * this.smoothedSide, target.y + heightOffset, target.z + right.z * this.smoothedSide);
     if (!this.initialized) {
       this.focus.copyFrom(goal);
       this.initialized = true;
@@ -69,7 +74,7 @@ export class FollowCamera {
       this.focus.y + Math.sin(this.smoothedPitch) * this.smoothedDistance,
       this.focus.z - Math.cos(this.smoothedYaw) * cosPitch * this.smoothedDistance,
     );
-    position.y = Math.max(position.y, terrainHeightAt(position.x, position.z) + MIN_CLEARANCE);
+    position.y = Math.max(position.y, terrainHeightAt(this.map, position.x, position.z) + MIN_CLEARANCE);
     this.camera.position.copyFrom(position);
     this.camera.setTarget(this.focus);
   }

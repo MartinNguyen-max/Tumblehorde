@@ -135,6 +135,9 @@ export function killUnit(state: MatchState, unit: Unit, killerArmyId: number | n
     victimArmy.stats.deaths++;
     if (unit.kind === 'commander') {
       victimArmy.stats.commanderDeaths++;
+      const slide = COMMANDER.downedSlideFactor;
+      unit.vel = { x: knockback.x * slide, y: knockback.y * slide, z: knockback.z * slide };
+      unit.onGround = false;
       unit.respawnTimer = victimArmy.forfeited ? 0 : COMMANDER.respawnTime;
     }
     const killerArmy = killerArmyId === null ? null : state.armies[killerArmyId];

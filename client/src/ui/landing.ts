@@ -1,4 +1,4 @@
-import { type ArmySetup, type ArmySize, type GameMode, MAP, type MatchSettings } from '@tumblehorde/shared';
+import { type ArmySetup, type ArmySize, type GameMode, isMapId, MAP, type MapId, mapFromRandom, type MatchSettings } from '@tumblehorde/shared';
 import { paletteForArmy } from '../palettes.ts';
 import { byId, escapeHtml, segmented } from './dom.ts';
 
@@ -6,6 +6,8 @@ export interface LandingHooks {
   onStartLocal(settings: MatchSettings): void;
   onCreateRoom(name: string): void;
   onJoinRoom(name: string, code: string): void;
+  /** The battlefield choice changed: show it behind the menu (null = random). */
+  onMapPreview(map: MapId | null): void;
 }
 
 const NAME_STORAGE_KEY = 'tumblehorde.name';
@@ -34,6 +36,7 @@ function storeName(name: string): void {
 export class Landing {
   private readonly root = byId('landing');
   private readonly size = segmented(byId('opt-size'));
+  private readonly map = segmented(byId('opt-map'), (value) => this.hooks.onMapPreview(isMapId(value) ? value : null));
   private readonly mode = segmented(byId('opt-mode'), () => this.renderTeams());
   private readonly bots = segmented(byId('opt-bots'), () => {
     this.teams = defaultTeams(Number(this.bots.get()) + 1);
@@ -46,8 +49,10 @@ export class Landing {
   private readonly codeInput = byId('room-code', HTMLInputElement);
   readonly onlineHint = byId('online-hint');
   private teams = defaultTeams(2);
+  private readonly hooks: LandingHooks;
 
   constructor(hooks: LandingHooks) {
+    this.hooks = hooks;
     this.nameInput.value = readStoredName();
     this.teamList.addEventListener('click', (e) => {
       const chip = e.target instanceof HTMLElement ? e.target.closest<HTMLButtonElement>('.team-chip') : null;
@@ -108,6 +113,19 @@ export class Landing {
       armySize: Number(this.size.get()) as ArmySize,
       armies: this.armySetups(mode),
       seed: (Date.now() ^ MAP.seed) | 0,
+      map: this.pickMap(),
     };
+  }
+
+  /** The chosen battlefield, or null for random. */
+  chosenMap(): MapId | null {
+    const chosen = this.map.get();
+    return isMapId(chosen) ? chosen : null;
+  }
+
+  /** "Random" picks a new battlefield every battle. */
+  pickMap(): MapId {
+    const chosen = this.map.get();
+    return isMapId(chosen) ? chosen : mapFromRandom(Math.random());
   }
 }

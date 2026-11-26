@@ -49,8 +49,9 @@ npm run build        # production build of the client into client/dist
 |---|---|
 | WASD / Space | Move / jump |
 | Left click / right click (hold) | Strike / shield |
-| 1 / 2 / 3 | Follow / Hold / Attack |
-| 4, Tab | Split into groups (cycles 1–3), pick which group gets orders |
+| 1 / 2 / 3 | Follow / Hold (form up around you) / Attack |
+| 6 / 7 / 8 / 9 | Orders go to: whole army / swordsmen / archers / cavalry |
+| Q | Switch weapon: sword, spear, bow |
 | E | Mount or dismount a free horse |
 | V, mouse wheel | Overview camera, zoom |
 | Esc | Pause (local) / release the mouse |

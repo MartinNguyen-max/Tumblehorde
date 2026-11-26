@@ -1,10 +1,11 @@
 /** Keys that act once per press rather than while held. */
-const PRESS_KEYS = new Set(['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Tab', 'KeyE', 'KeyV', 'KeyQ']);
+const PRESS_KEYS = new Set(['Digit1', 'Digit2', 'Digit3', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'KeyE', 'KeyV', 'KeyQ']);
 
 /** Raw keyboard and mouse state for the game, with pointer lock for mouse look. */
 export class InputState {
   private readonly held = new Set<string>();
   private readonly pressed: string[] = [];
+  private readonly released: string[] = [];
   mouseLeft = false;
   mouseRight = false;
   private lookX = 0;
@@ -20,6 +21,7 @@ export class InputState {
     this.held.add(e.code);
   };
   private readonly onKeyUp = (e: KeyboardEvent): void => {
+    if (PRESS_KEYS.has(e.code) && this.held.has(e.code)) this.released.push(e.code);
     this.held.delete(e.code);
   };
   private readonly onMouseDown = (e: MouseEvent): void => {
@@ -94,6 +96,10 @@ export class InputState {
     return this.pressed.splice(0, this.pressed.length);
   }
 
+  takeReleased(): string[] {
+    return this.released.splice(0, this.released.length);
+  }
+
   takeLook(): { x: number; y: number } {
     const look = { x: this.lookX, y: this.lookY };
     this.lookX = 0;
@@ -112,6 +118,7 @@ export class InputState {
     this.mouseLeft = false;
     this.mouseRight = false;
     this.pressed.length = 0;
+    this.released.length = 0;
   }
 }
 

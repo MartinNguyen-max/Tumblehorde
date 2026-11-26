@@ -112,6 +112,8 @@ export const COMMANDER = {
   respawnShield: 3,
   /** Getting back up shoves nearby enemies away. */
   respawnShove: { radius: 5, strength: 8, stun: 1 } satisfies KnockbackStats & { radius: number },
+  /** A knocked-out commander's body flies with this fraction of the killing blow's push. */
+  downedSlideFactor: 0.5,
   /** Out of combat the commander patches themselves up. */
   regenDelay: 5,
   regenPerSecond: 6,

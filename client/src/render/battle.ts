@@ -1,12 +1,14 @@
-import type { MatchView, SimEvent, UnitView } from '@tumblehorde/shared';
+import { clamp, type MapId, type MatchView, type SimEvent, terrainHeightAt, type UnitView, wrapAngle } from '@tumblehorde/shared';
 import type { ArmyPalette } from '../visualConfig.ts';
 import { paletteForArmy } from '../palettes.ts';
 import { Effects } from './effects.ts';
 import { Ragdolls } from './ragdolls.ts';
-import { animateHorse, animatePerson, createHorseRig, createPersonRig, type Rig, startSwing } from './rigs.ts';
+import { animateDowned, animateHorse, animatePerson, createHorseRig, createPersonRig, reactToHit, type Rig, standUp, startSwing } from './rigs.ts';
 import type { World } from './world.ts';
 
 const HIT_HEIGHT = 1.2;
+/** A rider may twist this far in the saddle towards whatever they are fighting. */
+const SADDLE_TWIST = 0.7;
 
 /** Turns match views and simulation events into animated characters and effects. */
 export class BattleRenderer {
@@ -15,11 +17,23 @@ export class BattleRenderer {
   readonly ragdolls: Ragdolls;
   readonly effects: Effects;
   private lastView: MatchView | null = null;
+  private highlightArmy: number | null = null;
+  private highlightGroup: number | null = null;
 
   constructor(world: World) {
     this.world = world;
     this.ragdolls = new Ragdolls(world.scene);
     this.effects = new Effects(world.scene, world.parts);
+  }
+
+  /** Marks the soldiers of `group` in `armyId` (none when group is null: the whole army listens). */
+  highlight(armyId: number | null, group: number | null): void {
+    this.highlightArmy = armyId;
+    this.highlightGroup = group;
+  }
+
+  setMap(map: MapId): void {
+    this.ragdolls.groundAt = (x, z) => terrainHeightAt(map, x, z);
   }
 
   private palette(view: MatchView, armyId: number): ArmyPalette {
@@ -42,11 +56,14 @@ export class BattleRenderer {
       switch (event.type) {
         case 'swing': {
           const rig = this.rigs.get(event.unitId);
-          if (rig) startSwing(rig);
+          const unit = units?.[event.unitId];
+          if (rig) startSwing(rig, unit?.weapon ?? 'sword');
           break;
         }
         case 'hit': {
           const target = units?.[event.targetId];
+          const rig = this.rigs.get(event.targetId);
+          if (rig) reactToHit(rig, event.blocked);
           if (target) this.effects.burst(event.blocked ? 'block' : 'hit', target.x, target.y + HIT_HEIGHT, target.z, event.blocked ? 7 : 5, event.knockback);
           break;
         }
@@ -54,10 +71,16 @@ export class BattleRenderer {
           const rig = this.rigs.get(event.unitId);
           const unit = units?.[event.unitId];
           if (unit) this.effects.burst('death', unit.x, unit.y + HIT_HEIGHT, unit.z, 10, event.knockback);
-          if (rig) {
+          // Commanders stay where the simulation says their body lies; they get up there.
+          if (rig && unit?.kind !== 'commander') {
             this.rigs.delete(event.unitId);
-            this.ragdolls.add(rig, event.knockback, now);
+            this.ragdolls.add(event.unitId, rig, event.knockback, now);
           }
+          break;
+        }
+        case 'respawn': {
+          const rig = this.rigs.get(event.unitId);
+          if (rig?.type === 'person') standUp(rig);
           break;
         }
         case 'arrowLanded':
@@ -77,22 +100,39 @@ export class BattleRenderer {
     }
   }
 
+  /** Riders face along their horse and only twist part of the way; commanders turn freely to block. */
+  private displayYaw(view: MatchView, unit: UnitView): number {
+    if (unit.mountId === null || unit.kind === 'commander') return unit.yaw;
+    const horse = view.units[unit.mountId];
+    if (!horse) return unit.yaw;
+    return horse.yaw + clamp(wrapAngle(unit.yaw - horse.yaw), -SADDLE_TWIST, SADDLE_TWIST);
+  }
+
   sync(view: MatchView, dt: number, now: number): void {
     this.lastView = view;
     for (const unit of view.units) {
       let rig = this.rigs.get(unit.id);
+      if (!unit.alive && unit.kind === 'commander') {
+        if (rig?.type === 'person') animateDowned(rig, unit, dt, now);
+        continue;
+      }
       if (!unit.alive) {
         if (rig) {
           // Died without us seeing the event (e.g. joined late): still let it fall.
           this.rigs.delete(unit.id);
-          this.ragdolls.add(rig, { x: 0, y: 2, z: 0 }, now);
+          this.ragdolls.add(unit.id, rig, { x: 1, y: 2, z: 0 }, now);
         }
         continue;
       }
       rig ??= this.createRig(view, unit);
-      const ctx = { dt, now, mounted: unit.mountId !== null };
-      if (rig.type === 'horse') animateHorse(rig, unit, ctx);
-      else animatePerson(rig, unit, ctx);
+      const ctx = { dt, now, mounted: unit.mountId !== null, displayYaw: this.displayYaw(view, unit) };
+      if (rig.type === 'horse') {
+        animateHorse(rig, unit, ctx);
+      } else {
+        animatePerson(rig, unit, ctx);
+        const selected = this.highlightGroup !== null && unit.armyId === this.highlightArmy && unit.kind !== 'commander' && unit.group === this.highlightGroup;
+        rig.marker.setEnabled(selected);
+      }
     }
     this.effects.syncArrows(view.arrows);
     this.effects.update(dt, now);

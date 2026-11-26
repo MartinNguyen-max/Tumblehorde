@@ -1,10 +1,18 @@
 // Visual-only constants for the client. Gameplay numbers live in shared/src/config.ts.
+import type { MapId } from '@tumblehorde/shared';
 
 export const COLORS = {
   sky: '#8EC9EE',
   fog: '#9ED3F0',
   accent: '#F08A24',
-  skin: '#E8B88A',
+  skin: '#F2C29B',
+  gold: '#E8C14A',
+  eyeWhite: '#FFFFFF',
+  pupil: '#1B1B24',
+  boot: '#3A2E25',
+  emblem: '#F2C94C',
+  star: '#FFD84D',
+  toast: '#FFD166',
   wood: '#8A5A32',
   darkWood: '#6E4A26',
   steel: '#CFD6DC',
@@ -46,22 +54,108 @@ export const TEAM_PALETTES: readonly (readonly ArmyPalette[])[] = [
   ],
 ];
 
-export const TERRAIN_COLORS = {
-  grassHue: 0.26,
-  grassSaturation: 0.45,
-  grassLightMin: 0.4,
-  grassLightMax: 0.49,
-  sandHue: 0.11,
-  sandSaturation: 0.42,
-  sandLightMin: 0.7,
-  sandLightMax: 0.76,
-} as const;
+export interface HslRange {
+  hue: number;
+  saturation: number;
+  lightMin: number;
+  lightMax: number;
+}
+
+export interface MapTheme {
+  sky: string;
+  fog: string;
+  hemiSky: string;
+  hemiGround: string;
+  sun: string;
+  ground: HslRange;
+  path: HslRange;
+  /** High or steep ground turns into this (rocky highlands). Null keeps the ground color. */
+  rock: HslRange | null;
+  /** Height above which ground counts as rock. */
+  rockHeight: number;
+  treeTrunk: string;
+  leaves: string;
+  leavesTop: string;
+  rockColor: string;
+  cactus: string;
+  bush: string;
+  bushCount: number;
+  /** Little tufts or pebbles scattered for texture. */
+  tuft: string;
+  tuftCount: number;
+}
+
+export const MAP_THEMES: Record<MapId, MapTheme> = {
+  meadow: {
+    sky: '#8EC9EE',
+    fog: '#9ED3F0',
+    hemiSky: '#BFE4FF',
+    hemiGround: '#5E8C3C',
+    sun: '#FFF4DE',
+    ground: { hue: 0.26, saturation: 0.45, lightMin: 0.4, lightMax: 0.49 },
+    path: { hue: 0.11, saturation: 0.42, lightMin: 0.7, lightMax: 0.76 },
+    rock: null,
+    rockHeight: 99,
+    treeTrunk: '#7A4A28',
+    leaves: '#44933C',
+    leavesTop: '#59B04A',
+    rockColor: '#A8ADA6',
+    cactus: '#5E9E4A',
+    bush: '#4E9E42',
+    bushCount: 70,
+    tuft: '#6FBF4A',
+    tuftCount: 260,
+  },
+  desert: {
+    sky: '#8FCBEA',
+    fog: '#F1DDB4',
+    hemiSky: '#DDEEFF',
+    hemiGround: '#C9A56A',
+    sun: '#FFE9C4',
+    ground: { hue: 0.1, saturation: 0.5, lightMin: 0.66, lightMax: 0.74 },
+    path: { hue: 0.08, saturation: 0.42, lightMin: 0.55, lightMax: 0.61 },
+    rock: null,
+    rockHeight: 99,
+    treeTrunk: '#7A5A38',
+    leaves: '#6E9B3C',
+    leavesTop: '#86B04A',
+    rockColor: '#C98B5A',
+    cactus: '#4E9445',
+    bush: '#9A9A52',
+    bushCount: 40,
+    tuft: '#C7A46B',
+    tuftCount: 160,
+  },
+  highlands: {
+    sky: '#A6C6E2',
+    fog: '#C4D2DD',
+    hemiSky: '#D6E6F5',
+    hemiGround: '#5F6E58',
+    sun: '#F4F1E6',
+    ground: { hue: 0.27, saturation: 0.25, lightMin: 0.4, lightMax: 0.47 },
+    path: { hue: 0.09, saturation: 0.22, lightMin: 0.47, lightMax: 0.53 },
+    rock: { hue: 0.6, saturation: 0.05, lightMin: 0.5, lightMax: 0.6 },
+    rockHeight: 1.6,
+    treeTrunk: '#5E3F26',
+    leaves: '#2F6B3A',
+    leavesTop: '#3E8048',
+    rockColor: '#8E9399',
+    cactus: '#4E9445',
+    bush: '#4F7B44',
+    bushCount: 45,
+    tuft: '#7F8A86',
+    tuftCount: 220,
+  },
+};
+
+export const MAP_NAMES: Record<MapId, string> = {
+  meadow: 'Green Meadow',
+  desert: 'Sunbaked Dunes',
+  highlands: 'Rocky Highlands',
+};
 
 export const LIGHTING = {
-  hemiSky: '#BFE4FF',
-  hemiGround: '#5E8C3C',
   hemiIntensity: 0.85,
-  sun: '#FFF4DE',
   sunIntensity: 0.95,
   sunDirection: [-26, -42, -18] as const,
   shadowMapSize: 2048,
@@ -99,6 +193,9 @@ export const ANIMATION = {
 export const EFFECTS = {
   maxCorpses: 220,
   corpseSettleSeconds: 7,
+  /** Bodies sink into the ground after a while so the field stays readable. */
+  corpseSinkAfter: 25,
+  corpseSinkSeconds: 3,
   stuckArrowLifetime: 12,
   maxStuckArrows: 300,
   particleCount: 240,

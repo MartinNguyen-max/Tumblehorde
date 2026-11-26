@@ -6,6 +6,7 @@ import {
   interpolateViews,
   type MatchSettings,
   type MatchState,
+  type MapId,
   type MatchView,
   matchView,
   neutralInput,
@@ -19,6 +20,7 @@ export interface Session {
   readonly online: boolean;
   /** The army this client commands, or null when only watching. */
   readonly myArmyId: number | null;
+  readonly map: MapId;
   update(dt: number): void;
   view(): MatchView | null;
   takeEvents(): SimEvent[];
@@ -34,6 +36,7 @@ export class LocalSession implements Session {
   readonly online = false;
   readonly myArmyId: number | null;
   readonly settings: MatchSettings;
+  readonly map: MapId;
   private readonly state: MatchState;
   private readonly inputs = new Map<number, CommanderInput>();
   private readonly step = 1 / SIM.localTickRate;
@@ -44,6 +47,7 @@ export class LocalSession implements Session {
 
   constructor(settings: MatchSettings, myArmyId: number | null) {
     this.settings = settings;
+    this.map = settings.map;
     this.myArmyId = myArmyId;
     this.state = createMatch(settings);
     this.current = matchView(this.state);

@@ -7,6 +7,7 @@ import {
   type InputMessage,
   interpolateViews,
   lerp,
+  type MapId,
   type MatchView,
   NET,
   neutralInput,
@@ -46,6 +47,7 @@ function copyVec(v: Vec3): Vec3 {
 export class OnlineSession implements Session {
   readonly online = true;
   readonly myArmyId: number;
+  readonly map: MapId;
   private readonly room: Room;
   private readonly start: StartMessage;
   private readonly roster: Roster;
@@ -67,6 +69,7 @@ export class OnlineSession implements Session {
   constructor(room: Room, start: StartMessage) {
     this.room = room;
     this.start = start;
+    this.map = start.settings.map;
     const armyId = start.armies[room.sessionId];
     if (armyId === undefined) throw new Error('This player has no army in the battle');
     this.myArmyId = armyId;
@@ -123,7 +126,7 @@ export class OnlineSession implements Session {
     me.action = server.action;
     me.mountId = null;
     this.pending = this.pending.filter((p) => p.seq > ack);
-    for (const p of this.pending) predictCommanderStep(me, p.input, this.step);
+    for (const p of this.pending) predictCommanderStep(me, p.input, this.step, this.map);
     if (!this.predicting) {
       this.predicting = true;
       this.predictedPrevious = copyVec(me.pos);
@@ -150,7 +153,7 @@ export class OnlineSession implements Session {
       this.pending.push(message);
       if (this.pending.length > SIM.serverTickRate * 2) this.pending.shift();
       this.predictedPrevious = copyVec(this.predicted.pos);
-      if (this.predicting) predictCommanderStep(this.predicted, message.input, this.step);
+      if (this.predicting) predictCommanderStep(this.predicted, message.input, this.step, this.map);
     }
     const decay = Math.exp(-dt / CORRECTION_TIME);
     this.correction.x *= decay;

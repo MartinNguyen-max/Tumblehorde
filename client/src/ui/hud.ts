@@ -3,6 +3,7 @@ import {
   distanceXZ,
   wrapAngle,
   HORSE,
+  MATCH,
   type MatchView,
   type Order,
   type SimEvent,
@@ -25,11 +26,7 @@ const HP_LABEL_HEIGHT = 2.75;
 const FOE_LABEL_HEIGHT = 3.4;
 const POPUP_RISE = 40;
 
-export function groupNames(groupCount: number): string[] {
-  if (groupCount === 2) return ['Melee', 'Archers'];
-  if (groupCount === 3) return ['Swords', 'Archers', 'Riders'];
-  return ['Army'];
-}
+export const GROUP_NAMES = ['Swordsmen', 'Archers', 'Cavalry'] as const;
 
 interface Popup {
   el: HTMLElement;
@@ -42,6 +39,7 @@ interface Popup {
 export interface HudContext {
   view: MatchView;
   myArmyId: number;
+  /** The group that listens to 1/2/3 (null = whole army). */
   selectedGroup: number | null;
   scene: Scene;
   dt: number;
@@ -53,6 +51,11 @@ export class Hud {
   private readonly army = byId('hud-army');
   private readonly time = byId('hud-time');
   private readonly notice = byId('hud-notice');
+  private readonly mapName = byId('hud-map');
+  private readonly prepare = byId('prepare');
+  private readonly crosshair = byId('crosshair');
+  private readonly kit = byId('hud-kit');
+  private readonly groupTip = byId('hud-group-tip');
   private readonly hpLabel = byId('hp-label');
   private readonly hpFill = byId('hp-fill');
   private readonly hpText = byId('hp-text');
@@ -76,6 +79,10 @@ export class Hud {
 
   setVisible(visible: boolean): void {
     this.root.hidden = !visible;
+  }
+
+  setMapName(name: string): void {
+    this.mapName.textContent = name;
   }
 
   reset(): void {
@@ -161,13 +168,9 @@ export class Hud {
           break;
         case 'order':
           if (event.armyId === myArmyId) {
-            const army = view.armies[myArmyId];
-            const who = event.group === null ? 'All' : groupNames(army?.groupCount ?? 1)[event.group] ?? 'Group';
+            const who = event.group === null ? 'All' : (GROUP_NAMES[event.group] ?? 'Group');
             this.showBanner(`${who}: ${ORDER_LABEL[event.order]}!`);
           }
-          break;
-        case 'split':
-          if (event.armyId === myArmyId) this.showBanner(event.groupCount === 1 ? 'Regrouped!' : `Split into ${event.groupCount} groups`);
           break;
         case 'mount':
           if (event.riderId === myCommander) this.showBanner('Giddy up!');
@@ -192,6 +195,7 @@ export class Hud {
     this.army.textContent = `Your army: ${army.soldiersAlive}/${army.startingSoldiers}`;
     this.time.textContent = formatTime(view.duration);
     this.updateDisconnectNotice(view);
+    this.updatePrepare(view);
 
     this.updateOrders(view, ctx.selectedGroup, me);
     this.updateKit(view, me);
@@ -221,31 +225,37 @@ export class Hud {
     const army = view.armies[this.myArmyId];
     if (!army) return;
     const canOrder = me?.alive === true && army.soldiersAlive > 0 && view.phase === 'playing';
-    const names = groupNames(army.groupCount);
-    const groupHtml =
-      army.groupCount > 1
-        ? [`<span class="group ${selected === null ? 'on' : ''}">All</span>`, ...names.map((n, i) => `<span class="group ${selected === i ? 'on' : ''}">${i + 1} · ${n}: ${ORDER_LABEL[army.orders[i] ?? 'hold']}</span>`), `<span class="group">Tab to switch</span>`].join('')
-        : '';
-    if (this.groups.dataset.html !== groupHtml) {
-      this.groups.innerHTML = groupHtml;
-      this.groups.dataset.html = groupHtml;
+    const counts = [0, 0, 0];
+    for (const u of view.units) {
+      if (u.alive && u.armyId === this.myArmyId && u.kind !== 'commander' && u.kind !== 'horse') counts[u.group] = (counts[u.group] ?? 0) + 1;
     }
-    const activeOrder = selected === null ? (army.orders.every((o) => o === army.orders[0]) ? army.orders[0] : null) : army.orders[selected];
-    for (const cmd of this.cmds.querySelectorAll<HTMLElement>('.cmd')) {
-      const order = cmd.dataset.order;
+    const chips = [`<span class="group ${selected === null ? 'on' : ''}"><b>6</b>Whole army</span>`];
+    GROUP_NAMES.forEach((name, i) => {
+      const order = ORDER_LABEL[army.orders[i] ?? 'hold'];
+      chips.push(`<span class="group ${selected === i ? 'on' : ''}"><b>${i + 7}</b>${name} ${counts[i] ?? 0} · ${order}</span>`);
+    });
+    const html = chips.join('');
+    if (this.groups.dataset.html !== html) {
+      this.groups.innerHTML = html;
+      this.groups.dataset.html = html;
+    }
+    const active = selected === null ? (army.orders.every((o) => o === army.orders[0]) ? army.orders[0] : null) : army.orders[selected];
+    for (const cmd of this.cmds.querySelectorAll<HTMLElement>('.cmd[data-order]')) {
       cmd.classList.toggle('off', !canOrder);
-      cmd.classList.toggle('active', canOrder && order === activeOrder);
-      if (order === 'split') {
-        const next = (army.groupCount % 3) + 1;
-        cmd.innerHTML = `<b>4</b>${next === 1 ? 'Regroup' : `Split into ${next} groups`}`;
-      }
+      cmd.classList.toggle('active', canOrder && cmd.dataset.order === active);
     }
+    this.groupTip.textContent = selected === null ? 'Orders go to the whole army' : `Orders go to: ${GROUP_NAMES[selected] ?? ''}`;
   }
 
   private updateKit(view: MatchView, me: UnitView | undefined): void {
     const mounted = me?.mountId !== null && me?.mountId !== undefined;
-    this.kitShield.classList.toggle('off', mounted || me?.alive !== true);
-    this.kitShield.textContent = mounted ? 'Shield · not on horseback' : 'Shield · right click';
+    for (const slot of this.kit.querySelectorAll<HTMLElement>('.slot.weapon')) {
+      slot.classList.toggle('on', me?.weapon === slot.dataset.weapon);
+      slot.classList.toggle('off', me?.alive !== true);
+    }
+    this.kitShield.classList.toggle('off', me?.weapon === 'bow' || me?.alive !== true);
+    this.kitShield.textContent = me?.weapon === 'bow' ? 'Shield · not with the bow' : 'Shield · right click';
+    this.crosshair.hidden = !(me?.alive && me.weapon === 'bow');
     let horseText = 'Horse · none nearby';
     let ready = false;
     if (mounted) {
@@ -263,10 +273,18 @@ export class Hud {
     this.kitHorse.classList.toggle('ready', ready && !mounted);
   }
 
+  /** The form-up phase: bots plan and hold, giving the player time to set up. */
+  private updatePrepare(view: MatchView): void {
+    const left = MATCH.prepareTime - view.time;
+    const hasBots = view.armies.some((a) => a.isBot);
+    const html = left > 0 && hasBots && view.phase === 'playing' ? `Form up! ${Math.ceil(left)}<small>The enemy marches when the timer runs out</small>` : '';
+    if (this.prepare.innerHTML !== html) this.prepare.innerHTML = html;
+  }
+
   private updateCenterMessage(eliminated: boolean, me: UnitView | undefined): void {
     let html = '';
     if (eliminated) html = 'Your army is out!<small>Watching the rest of the battle…</small>';
-    else if (me && !me.alive) html = `Knocked out!<small>Patching yourself up… ${Math.ceil(me.respawnTimer)}</small>`;
+    else if (me && !me.alive) html = `Knocked out!<small>Patching yourself up… ${Math.ceil(me.respawnTimer)} · your army fights on by itself</small>`;
     if (this.centerMsg.innerHTML !== html) this.centerMsg.innerHTML = html;
   }
 

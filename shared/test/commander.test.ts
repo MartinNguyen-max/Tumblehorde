@@ -7,6 +7,7 @@ import { progressActions, stepMatch } from '../src/match.ts';
 import { distanceXZ } from '../src/math.ts';
 import { applyCommand } from '../src/orders.ts';
 import { meleeStatsFor, rangedStatsFor, canUseShield } from '../src/units.ts';
+import { terrainHeightAt } from '../src/terrain.ts';
 import { commanderOf, firstOfKind, newMatch, place } from './helpers.ts';
 
 const DT = 1 / 30;
@@ -122,5 +123,17 @@ describe('bot strategy', () => {
     for (let t = 0; t < MATCH.prepareTime - 0.5; t += DT) stepMatch(state, new Map(), DT);
     expect(state.armies.reduce((n, a) => n + a.stats.deaths, 0)).toBe(0);
     expect(state.armies.every((a) => a.groupOrders.every((g) => g.order === 'hold'))).toBe(true);
+  });
+});
+
+describe('knocked-out commander', () => {
+  it('slides with the blow and gets back up where the body landed', () => {
+    const state = newMatch();
+    const me = place(commanderOf(state, 0), 0, 0);
+    killUnit(state, me, 1, { x: 14, y: 6, z: 0 });
+    for (let t = 0; t < COMMANDER.respawnTime + 0.2; t += DT) stepMatch(state, new Map(), DT);
+    expect(me.alive).toBe(true);
+    expect(me.pos.x).toBeGreaterThan(2);
+    expect(me.pos.y).toBeCloseTo(terrainHeightAt('meadow', me.pos.x, me.pos.z), 1);
   });
 });

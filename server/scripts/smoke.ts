@@ -5,6 +5,8 @@ import assert from 'node:assert/strict';
 import { Client, type Room } from '@colyseus/sdk';
 import {
   decodeSnapshot,
+  FORMATION,
+  MAP,
   type LobbyMessage,
   NET,
   neutralInput,
@@ -71,8 +73,9 @@ const view = decodeSnapshot(new Uint8Array(last.bytes), {
   previous: null,
 });
 const commander = view.units[view.armies[0]!.commanderId]!;
-assert.ok(commander.x > -35, `host commander moved (x=${commander.x.toFixed(1)})`);
-assert.deepEqual(view.armies[0]!.orders, ['attack'], 'order applied');
+const startX = -(MAP.armySpawnRadius - FORMATION.commanderSpawnAhead);
+assert.ok(commander.x > startX + 5, `host commander moved (x=${commander.x.toFixed(1)}, start ${startX})`);
+assert.deepEqual(view.armies[0]!.orders, ['attack', 'attack', 'attack'], 'order applied');
 assert.equal(view.armies[1]!.disconnectTimer, null);
 console.log(`snapshot bytes: ${last.bytes.byteLength}, events so far: ${hostSeen.snaps.reduce((n, s) => n + s.events.length, 0)}`);
 
