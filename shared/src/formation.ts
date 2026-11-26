@@ -49,6 +49,47 @@ export function formationSlots(kinds: readonly UnitKind[], center: Vec2, yaw: nu
   return slots;
 }
 
+const FRONT_RING_START = (70 * Math.PI) / 180;
+const FRONT_RING_END = (290 * Math.PI) / 180;
+
+/**
+ * Hold around the commander at `anchor`, facing `yaw`: group 0 (swordsmen) form a shield-wall
+ * front line ahead and a guard ring around the commander, group 1 (archers) stand in rows
+ * behind, group 2 (cavalry) waits on the flanks.
+ */
+export function aroundCommanderSlots(group: number, count: number, anchor: Vec2, yaw: number): Vec2[] {
+  const forward = yawToDir(yaw);
+  const right = { x: forward.z, z: -forward.x };
+  const at = (ahead: number, side: number): Vec2 => ({
+    x: anchor.x + forward.x * ahead + right.x * side,
+    z: anchor.z + forward.z * ahead + right.z * side,
+  });
+  const slots: Vec2[] = [];
+  const frontCount = Math.min(count, FORMATION.frontLineSize);
+  const frontHalfWidth = ((FORMATION.frontLineSize - 1) * FORMATION.shieldWallSpacing) / 2;
+  if (group === 0) {
+    for (let i = 0; i < frontCount; i++) slots.push(at(FORMATION.frontLineDistance, (i - (frontCount - 1) / 2) * FORMATION.shieldWallSpacing));
+    const guards = count - frontCount;
+    for (let i = 0; i < guards; i++) {
+      const angle = FRONT_RING_START + ((FRONT_RING_END - FRONT_RING_START) * (i + 0.5)) / guards;
+      slots.push(at(Math.cos(angle) * FORMATION.guardRingRadius, Math.sin(angle) * FORMATION.guardRingRadius));
+    }
+  } else if (group === 1) {
+    for (let i = 0; i < count; i++) {
+      const row = Math.floor(i / FORMATION.rowWidth);
+      const inRow = Math.min(FORMATION.rowWidth, count - row * FORMATION.rowWidth);
+      const col = i % FORMATION.rowWidth;
+      slots.push(at(-(FORMATION.archerRowsDistance + row * FORMATION.spacing), (col - (inRow - 1) / 2) * FORMATION.spacing));
+    }
+  } else {
+    for (let i = 0; i < count; i++) {
+      const side = i % 2 === 0 ? 1 : -1;
+      slots.push(at(FORMATION.frontLineDistance - Math.floor(i / 2) * FORMATION.groupSideOffset * 0.3, side * (frontHalfWidth + FORMATION.cavalryFlankGap)));
+    }
+  }
+  return slots;
+}
+
 /**
  * Where a following group's formation is centered relative to its commander:
  * swordsmen right behind, archers behind them, riders on the right flank.

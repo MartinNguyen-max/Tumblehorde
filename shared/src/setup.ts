@@ -106,6 +106,7 @@ function createArmy(
       order: 'hold' as const,
       anchor: centroid(soldiers.filter((s) => s.group === g)) ?? { ...spawn.position },
       anchorYaw: spawn.yaw,
+      aroundCommander: false,
     })),
     eliminated: false,
     forfeited: false,

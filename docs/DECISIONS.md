@@ -63,3 +63,5 @@ Decisions made while building v1. None of them replace an earlier line.
 - **Roman shield wall:** swordsmen on Hold close ranks, lock shields towards the nearest enemy and stab out from behind them; a raised shield next to another blocks 97 % and cannot be pushed.
 - **Bot strategy:** form up (15 s) → march as a column → standoff with a shield wall while archers shoot → engage (swords charge, cavalry hunts archers) → regroup at the starting area when badly outnumbered. The bot commander stays behind the line and uses the bow.
 - **Holding units face the enemy**, and idle soldiers look at the nearest enemy.
+- **A player's Hold forms the army up around the commander** (replaces "Hold means stay where you are" for players), facing where the commander looks: up to 8 swordsmen in a shield-wall front line ahead, the remaining swordsmen as a guard ring, archers in rows behind, cavalry on the flanks. Bots and leaderless armies still hold where they stand, facing the enemy.
+- **Shields work on horseback** for the commander (with sword or spear). AI cavalry keeps both hands on the lance.

@@ -119,7 +119,6 @@ export function rangedStatsFor(unit: Unit): RangedStats | null {
 }
 
 export function canUseShield(unit: Unit): boolean {
-  if (isMounted(unit)) return false;
   if (unit.kind === 'commander') return unit.weapon !== 'bow';
   return unit.kind === 'swordsman' || unit.kind === 'rider';
 }

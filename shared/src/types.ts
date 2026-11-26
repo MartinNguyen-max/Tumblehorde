@@ -76,6 +76,8 @@ export interface GroupOrder {
   /** Hold point and facing, captured when the order was given. */
   anchor: Vec2;
   anchorYaw: number;
+  /** Hold formed around the commander (front line, guard ring, archers behind) rather than in place. */
+  aroundCommander: boolean;
 }
 
 export interface ArmyStats {

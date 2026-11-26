@@ -1,6 +1,6 @@
 import { ARMY, MOVEMENT } from './config.ts';
 import { FORMATION } from './config.ts';
-import { followCenter, formationSlots, type FormationShape } from './formation.ts';
+import { aroundCommanderSlots, followCenter, formationSlots, type FormationShape } from './formation.ts';
 import { clamp, dirToYaw, distanceXZ, turnTowards, type Vec2 } from './math.ts';
 import { toggleMount } from './mounts.ts';
 import type { Army, Command, EntityId, GroupOrder, MatchState, Order, Unit, UnitKind } from './types.ts';
@@ -71,16 +71,21 @@ export function nearestEnemyCenter(state: MatchState, army: Army, from: Vec2): V
   return best;
 }
 
-function orderFor(state: MatchState, army: Army, order: Order, group: number): GroupOrder {
+function orderFor(state: MatchState, army: Army, order: Order, group: number, leaderless: boolean): GroupOrder {
   const commander = state.units[army.commanderId];
   const yaw = commander?.yaw ?? 0;
-  if (order === 'hold') {
-    const here = centroid(groupMembers(state, army, group)) ?? { x: commander?.pos.x ?? 0, z: commander?.pos.z ?? 0 };
-    // A holding line faces the enemy, whichever way the commander happened to look.
-    const enemy = nearestEnemyCenter(state, army, here);
-    return { order, anchor: here, anchorYaw: enemy ? dirToYaw(enemy.x - here.x, enemy.z - here.z) : yaw };
+  const commanderPos = { x: commander?.pos.x ?? 0, z: commander?.pos.z ?? 0 };
+  if (order === 'hold' && !leaderless && !army.isBot && commander?.alive) {
+    // A player's Hold: form up around me, facing where I look.
+    return { order, anchor: commanderPos, anchorYaw: yaw, aroundCommander: true };
   }
-  return { order, anchor: { x: commander?.pos.x ?? 0, z: commander?.pos.z ?? 0 }, anchorYaw: yaw };
+  if (order === 'hold') {
+    const here = centroid(groupMembers(state, army, group)) ?? commanderPos;
+    // Bots and leaderless armies hold where they stand, facing the enemy.
+    const enemy = nearestEnemyCenter(state, army, here);
+    return { order, anchor: here, anchorYaw: enemy ? dirToYaw(enemy.x - here.x, enemy.z - here.z) : yaw, aroundCommander: false };
+  }
+  return { order, anchor: commanderPos, anchorYaw: yaw, aroundCommander: false };
 }
 
 /** `leaderless` lets an army without a standing commander order itself. */
@@ -88,7 +93,7 @@ export function issueOrder(state: MatchState, army: Army, order: Order, group: n
   if (!(leaderless ? canActLeaderless(state, army) : canGiveOrders(state, army))) return false;
   if (group !== null && (group < 0 || group >= army.groupCount)) return false;
   for (let g = 0; g < army.groupCount; g++) {
-    if (group === null || group === g) army.groupOrders[g] = orderFor(state, army, order, g);
+    if (group === null || group === g) army.groupOrders[g] = orderFor(state, army, order, g, leaderless);
   }
   state.events.push({ type: 'order', armyId: army.id, group, order });
   return true;
@@ -108,7 +113,7 @@ export function splitArmy(state: MatchState, army: Army, groupCount: number, lea
     if (unit) unit.group = groupForKind(unit.kind, count);
   }
   army.groupOrders = [];
-  for (let g = 0; g < count; g++) army.groupOrders.push(orderFor(state, army, previous, g));
+  for (let g = 0; g < count; g++) army.groupOrders.push(orderFor(state, army, previous, g, leaderless));
   state.events.push({ type: 'split', armyId: army.id, groupCount: count });
   return true;
 }
@@ -157,6 +162,14 @@ export function formationTargets(state: MatchState, army: Army): Map<EntityId, V
     if (!groupOrder) continue;
     const members = groupMembers(state, army, g);
     if (members.length === 0) continue;
+    if (groupOrder.order === 'hold' && groupOrder.aroundCommander) {
+      const around = aroundCommanderSlots(g, members.length, groupOrder.anchor, groupOrder.anchorYaw);
+      members.forEach((m, i) => {
+        const slot = around[i];
+        if (slot) targets.set(m.id, slot);
+      });
+      continue;
+    }
     const center =
       groupOrder.order === 'follow'
         ? followCenter(groupOrder.anchor, groupOrder.anchorYaw, g, army.groupCount, members.length)

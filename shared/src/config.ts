@@ -296,6 +296,12 @@ export const FORMATION = {
   /** Following archers walk behind the swordsmen; riders ride on the flank. */
   followArcherDepth: 7,
   followRiderSide: 7,
+  /** Hold around the commander: a shield-wall front line ahead, the rest guarding around them. */
+  frontLineSize: 8,
+  frontLineDistance: 2.6,
+  guardRingRadius: 2.2,
+  archerRowsDistance: 4.5,
+  cavalryFlankGap: 3,
   /** Sideways offset between groups when several groups follow. */
   groupSideOffset: 9,
   /** A unit closer to its slot than this counts as arrived. */

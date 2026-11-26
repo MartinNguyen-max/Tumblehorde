@@ -60,15 +60,19 @@ describe('orders', () => {
     expect(center.z).toBeLessThan(me.pos.z);
   });
 
-  it('Hold keeps the army where it stands', () => {
-    const state = quietMatch();
-    const before = armyCenter(state, state.armies[0]!)!;
+  it('Hold forms up around the commander: shield wall ahead, archers behind', () => {
+    const state = quietMatch(20);
+    const me = place(commanderOf(state, 0), -20, 0, Math.PI / 2);
     applyCommand(state, 0, { type: 'order', order: 'hold', group: null });
-    run(state, 4, 0, 1);
-    const after = armyCenter(state, state.armies[0]!)!;
-    const soldiersOnly = livingSoldiers(state, state.armies[0]!);
-    expect(soldiersOnly.length).toBe(10);
-    expect(distanceXZ(before, after)).toBeLessThan(4);
+    run(state, 8);
+    const soldiers = livingSoldiers(state, state.armies[0]!);
+    const swords = soldiers.filter((u) => u.kind === 'swordsman');
+    const archers = soldiers.filter((u) => u.kind === 'archer');
+    const ahead = (u: { pos: { x: number } }) => u.pos.x - me.pos.x;
+    expect(swords.filter((u) => ahead(u) > 1.5).length).toBeGreaterThanOrEqual(6);
+    expect(swords.every((u) => distanceXZ(u.pos, me.pos) < 5)).toBe(true);
+    expect(archers.every((u) => ahead(u) < -2)).toBe(true);
+    expect(swords.filter((u) => u.shieldUp).length).toBe(0);
   });
 
   it('Attack sends the army towards the enemy', () => {

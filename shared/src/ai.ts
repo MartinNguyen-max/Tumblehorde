@@ -125,7 +125,8 @@ export function thinkSoldier(state: MatchState, unit: Unit, order: GroupOrder, s
 }
 
 function updateShieldDecision(state: MatchState, unit: Unit, order: GroupOrder, target: Unit | null): void {
-  if (!canUseShield(unit)) return;
+  // Charging cavalry keeps both hands for the lance.
+  if (!canUseShield(unit) || isMounted(unit)) return;
   const threat = findMeleeThreat(state, unit);
   if (threat) {
     unit.ai.shieldTimer = AI.shieldMinHold;

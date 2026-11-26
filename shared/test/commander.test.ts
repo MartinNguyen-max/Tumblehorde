@@ -32,6 +32,14 @@ describe('commander kit', () => {
     expect(canUseShield(me)).toBe(false);
   });
 
+  it('can raise the shield on horseback', () => {
+    const state = newMatch({}, { commanderHorses: true });
+    const me = commanderOf(state, 0);
+    expect(me.mountId).not.toBeNull();
+    stepMatch(state, new Map([[0, { ...neutralInput(), shield: true }]]), DT);
+    expect(me.shieldUp).toBe(true);
+  });
+
   it('shoots an arrow where the player aims', () => {
     const state = newMatch();
     const me = place(commanderOf(state, 0), 0, 0, 0);
