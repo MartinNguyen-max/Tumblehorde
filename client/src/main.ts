@@ -204,6 +204,7 @@ async function boot(): Promise<void> {
         },
         fps: () => world.engine.getFps(),
         scene: world.scene,
+        session: () => controller?.session ?? null,
         shadows: world.shadows,
         createRoom: (name: string) => enterOnline(() => onlineLobby.create(name)),
         joinRoom: (name: string, code: string) => enterOnline(() => onlineLobby.join(name, code)),
