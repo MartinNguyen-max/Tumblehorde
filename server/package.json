@@ -1,0 +1,15 @@
+{
+  "name": "@tumblehorde/server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.ts",
+    "start": "node src/index.ts"
+  },
+  "dependencies": {
+    "@tumblehorde/shared": "*",
+    "@colyseus/core": "^0.18.30",
+    "@colyseus/schema": "^5.0.51",
+    "@colyseus/ws-transport": "^0.18.5"
+  }
+}
