@@ -2,7 +2,7 @@ import { SOUND } from '../visualConfig.ts';
 
 /**
  * Everything audible is made on the fly with Web Audio: no sound files. The engine owns the
- * context and the mix (music and effects), places effects in the world relative to the camera,
+ * context and the mix, places effects in the world relative to the camera,
  * and keeps a crowd of soldiers from turning into noise by limiting how many play at once.
  */
 
@@ -40,15 +40,12 @@ function storeEnabled(on: boolean): void {
 export class AudioEngine {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
-  private musicBus: GainNode | null = null;
   private effectsBus: GainNode | null = null;
   private noise: AudioBuffer | null = null;
   private listener = { x: 0, z: 0, yaw: 0 };
   private readonly lastPlayed = new Map<string, number>();
   private playing = 0;
   enabled = readStoredEnabled();
-  /** Called when sound turns on, so the music can start. */
-  onEnable: (() => void) | null = null;
 
   /** Sound is off by default; turning it on must happen in a click so the browser allows it. */
   setEnabled(on: boolean): void {
@@ -58,7 +55,6 @@ export class AudioEngine {
       const ctx = this.context();
       void ctx.resume();
       this.master?.gain.setTargetAtTime(SOUND.master, ctx.currentTime, 0.05);
-      this.onEnable?.();
     } else if (this.ctx && this.master) {
       this.master.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
     }
@@ -70,20 +66,11 @@ export class AudioEngine {
     this.master = ctx.createGain();
     this.master.gain.value = 0;
     this.master.connect(ctx.destination);
-    this.musicBus = ctx.createGain();
-    this.musicBus.gain.value = SOUND.music;
-    this.musicBus.connect(this.master);
     this.effectsBus = ctx.createGain();
     this.effectsBus.gain.value = SOUND.effects;
     this.effectsBus.connect(this.master);
     this.ctx = ctx;
     return ctx;
-  }
-
-  /** The music bus, or null while sound has never been turned on. */
-  musicOut(): { ctx: AudioContext; out: AudioNode } | null {
-    if (!this.enabled || !this.ctx || !this.musicBus) return null;
-    return { ctx: this.ctx, out: this.musicBus };
   }
 
   /** White noise, shared by every hiss, whoosh and splash. */

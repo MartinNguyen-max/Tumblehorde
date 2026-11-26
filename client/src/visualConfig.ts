@@ -289,7 +289,6 @@ export const FORMATION_WHEEL = {
 /** Mixing and behaviour of the synthesized sound. Volumes are linear gains. */
 export const SOUND = {
   master: 0.8,
-  music: 0.35,
   effects: 0.9,
   /** At most this many effects and voices play at once. */
   maxVoices: 28,
@@ -309,13 +308,12 @@ export const SOUND = {
   /** Effects are scheduled this far ahead on the audio clock. */
   scheduleAhead: 0.02,
   oofChance: 0.35,
+  /** Slide whistles are funny once in a while, not forty times a second. */
+  whistleGap: 0.35,
   /** Somebody mutters every few seconds. */
   chatterEvery: 3,
   cheerVoices: 8,
   glugs: 5,
-  musicTempo: 96,
-  musicTickMs: 50,
-  musicLookahead: 0.2,
 } as const;
 
 export const HUD = {

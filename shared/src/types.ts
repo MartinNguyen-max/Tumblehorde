@@ -117,8 +117,6 @@ export interface BotBrain {
   thinkTimer: number;
   /** Seconds spent facing the enemy without engaging. */
   standoffTimer: number;
-  /** A bot commander that agreed to an alliance crouches back at `to` for `timer` seconds. */
-  allyAnswer: { to: number; timer: number } | null;
 }
 
 export interface Army {
@@ -215,7 +213,6 @@ export type SimEvent =
   | { type: 'split'; armyId: number; groupCount: number }
   | { type: 'advance'; armyId: number; group: number | null }
   | { type: 'allyOffer'; from: number; to: number }
-  | { type: 'allyRefused'; from: number; to: number }
   | { type: 'alliance'; a: number; b: number }
   | { type: 'volley'; armyId: number }
   | { type: 'banquet'; armyId: number }

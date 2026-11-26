@@ -54,14 +54,13 @@ describe('army composition', () => {
     }
   });
 
-  it('gives every army, bots too, a commander on horseback, and only commanders ride', () => {
+  it('gives players a commander on horseback; bot armies run themselves', () => {
     const state = newMatch({}, { commanderHorses: true });
+    expect(state.armies[0]?.commanderId).not.toBeNull();
+    expect(state.armies[1]?.commanderId).toBeNull();
     const horses = state.units.filter((u) => u.kind === 'horse');
-    expect(horses).toHaveLength(state.armies.length);
-    for (const army of state.armies) {
-      expect(army.commanderId).not.toBeNull();
-      expect(horses.some((h) => h.riderId === army.commanderId)).toBe(true);
-    }
+    expect(horses).toHaveLength(1);
+    expect(horses[0]?.riderId).toBe(state.armies[0]?.commanderId);
   });
 });
 

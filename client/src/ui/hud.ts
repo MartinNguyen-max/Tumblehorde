@@ -78,6 +78,7 @@ export class Hud {
   private readonly splitLabel = byId('hud-split-label');
   private readonly advanceCmd = byId('hud-advance');
   private readonly volleyCmd = byId('hud-volley');
+  private readonly volleyLabel = byId('hud-volley-label');
   private readonly banquetCmd = byId('hud-banquet');
   private readonly banquetLabel = byId('hud-banquet-label');
   private readonly rallyCmd = byId('hud-rally');
@@ -85,6 +86,7 @@ export class Hud {
   private readonly wheel = byId('formation-wheel');
   private wheelDot: HTMLElement = this.wheel;
   private readonly kitShield = byId('kit-shield');
+  private readonly kitWeapon = byId('kit-weapon');
   private readonly kitHorse = byId('kit-horse');
   private readonly feed = byId('kill-feed');
   private readonly popupLayer = byId('popups');
@@ -227,11 +229,8 @@ export class Hud {
           this.showRally(view, event.armyId, event.commanderId);
           break;
         case 'allyOffer':
-          if (event.to === myArmyId) this.showBanner(`${this.plainName(view, event.from)} wants to be allies! Look at them and crouch (C) 4×`, ALLY_BANNER_SECONDS);
+          if (event.to === myArmyId) this.showBanner(`${this.plainName(view, event.from)} wants to be allies! Look at them and crouch (Ctrl) 4×`, ALLY_BANNER_SECONDS);
           else if (event.from === myArmyId) this.showBanner(`Alliance offered to ${this.plainName(view, event.to)}…`, ALLY_BANNER_SECONDS);
-          break;
-        case 'allyRefused':
-          if (event.from === myArmyId) this.showBanner(`${this.plainName(view, event.to)} refuses. No friends today.`, ALLY_BANNER_SECONDS);
           break;
         case 'alliance': {
           const other = event.a === myArmyId ? event.b : event.b === myArmyId ? event.a : null;
@@ -331,6 +330,8 @@ export class Hud {
     const holding = selected === null ? army.orders.includes('hold') : army.orders[selected] === 'hold';
     this.advanceCmd.classList.toggle('off', !canOrder || !holding);
     this.volleyCmd.classList.toggle('off', !canOrder || army.spearsThrown);
+    const volleyText = army.spearsThrown ? 'Spears thrown' : 'Throw spears';
+    if (this.volleyLabel.textContent !== volleyText) this.volleyLabel.textContent = volleyText;
     const label = `Hold · ${FORMATION_LABEL[army.formation]}`;
     if (this.holdLabel.textContent !== label) this.holdLabel.textContent = label;
   }
@@ -349,12 +350,11 @@ export class Hud {
 
   private updateKit(view: MatchView, me: UnitView | undefined): void {
     const mounted = me?.mountId !== null && me?.mountId !== undefined;
-    for (const slot of this.kit.querySelectorAll<HTMLElement>('.slot.weapon')) {
-      slot.classList.toggle('on', me?.weapon === slot.dataset.weapon);
-      slot.classList.toggle('off', me?.alive !== true);
+    for (const weapon of this.kit.querySelectorAll<HTMLElement>('.weapon')) {
+      weapon.classList.toggle('on', me?.weapon === weapon.dataset.weapon);
     }
-    this.kitShield.classList.toggle('off', me?.weapon === 'bow' || me?.alive !== true);
-    this.kitShield.textContent = me?.weapon === 'bow' ? 'Shield · not with the bow' : 'Shield · right click';
+    this.kitWeapon.classList.toggle('off', me?.alive !== true);
+    this.kitShield.classList.toggle('off', me?.alive !== true);
     this.crosshair.hidden = !(me?.alive && me.weapon === 'bow');
     let horseText = 'Horse · none nearby';
     let ready = false;

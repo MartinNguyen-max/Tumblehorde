@@ -325,8 +325,8 @@ export const ARMY = {
     },
   },
   defaultMix: 'legion' as const,
-  /** Bot armies are led by a commander on horseback, like the player's. */
-  botCommanders: true,
+  /** Bot armies have no commander: they run themselves. Players (online too) always lead their own. */
+  botCommanders: false,
   maxArmies: 4,
   minArmies: 2,
   maxGroups: 3,
@@ -517,11 +517,6 @@ export const ALLIANCE = {
   lookAngle: 30 * DEG,
   /** An offer waits this long for the crouch back. */
   offerTime: 10,
-  /** Bots rarely agree. */
-  botAcceptChance: 0.25,
-  /** A bot that agrees crouches back for this long, this fast. */
-  botAnswerTime: 2.2,
-  botCrouchRate: 4,
 } as const;
 
 /** Crouching walks slowly. */

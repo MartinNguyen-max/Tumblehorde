@@ -16,7 +16,8 @@ export class InputState {
 
   private readonly onKeyDown = (e: KeyboardEvent): void => {
     if (isTyping(e)) return;
-    if (PRESS_KEYS.has(e.code) || e.code === 'Space') e.preventDefault();
+    // Ctrl is crouch: keep Ctrl+key browser shortcuts from firing mid-battle (Ctrl+W cannot be stopped).
+    if (PRESS_KEYS.has(e.code) || e.code === 'Space' || (e.ctrlKey && this.isLocked())) e.preventDefault();
     if (!e.repeat && PRESS_KEYS.has(e.code)) this.pressed.push(e.code);
     this.held.add(e.code);
   };

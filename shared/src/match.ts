@@ -273,7 +273,7 @@ export function stepMatch(state: MatchState, inputs: ReadonlyMap<number, Command
   stepArrows(state, step);
   updateFollowAnchors(state, step);
   updateBanquets(state, step);
-  updateAlliances(state, step);
+  updateAlliances(state);
   updateRespawns(state, step);
   updateDisconnects(state, step);
   updateElimination(state);

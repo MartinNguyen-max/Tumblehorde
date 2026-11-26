@@ -1,15 +1,17 @@
 import type { MatchView, SimEvent, UnitView } from '@tumblehorde/shared';
 import { SOUND } from '../visualConfig.ts';
-import { babble, type Babble, SAY } from './babble.ts';
+import { babble, type Babble, personal, SAY } from './babble.ts';
 import type { AudioEngine, Place } from './engine.ts';
-import { clang, clink, glug, horn, splash, swing, thud, throwWhoosh, thunk, trample } from './sounds.ts';
+import { bonk, burp, clang, clink, glug, kazoo, pop, slideWhistle, splash, swing, throwWhoosh, thunk, trample } from './sounds.ts';
 
-/** D major-ish horn notes for orders and good news, a sad fall for bad news. */
-const ORDER_HORN = [293.66, 440];
-const VICTORY_HORN = [293.66, 369.99, 440, 587.33];
-const DEFEAT_HORN = [293.66, 261.63, 220];
+/** Kazoo tunes: a "ta-daa" for orders, a fanfare for good news, a sad trombone for bad news. */
+const ORDER_KAZOO = [392, 523.25];
+const FANFARE = [392, 523.25, 659.25, 783.99];
+const SAD_TROMBONE = [293.66, 277.18, 261.63, 246.94];
+/** A blow this hard (horizontal speed) sends someone flying, slide whistle and all. */
+const LAUNCH_SPEED = 9;
 
-/** Turns what happens in the battle into sound: blows, voices, splashes, horns. */
+/** Turns what happens in the battle into sound: bonks, gibberish, splashes, slide whistles, kazoos. */
 export class BattleAudio {
   private readonly engine: AudioEngine;
   private chatterTimer = 0;
@@ -18,10 +20,11 @@ export class BattleAudio {
     this.engine = engine;
   }
 
-  private say(at: Place | null, what: Babble, key: string, delay = 0, gap: number = SOUND.voiceGap): void {
+  /** Somebody says something, in their own voice when we know who (`speaker`). */
+  private say(at: Place | null, what: Babble, key: string, delay = 0, gap: number = SOUND.voiceGap, speaker?: number): void {
     const v = this.engine.voice(at, 1, key, gap, SOUND.voiceLength);
     if (!v) return;
-    babble(this.engine, { ...v, t: v.t + delay }, what);
+    babble(this.engine, { ...v, t: v.t + delay }, speaker === undefined ? what : personal(what, speaker));
   }
 
   handle(events: readonly SimEvent[], view: MatchView | null, myArmyId: number | null): void {
@@ -38,20 +41,27 @@ export class BattleAudio {
         case 'hit': {
           const u = at(event.targetId);
           if (!u) break;
-          const v = this.engine.voice(u, event.blocked ? 0.6 : 0.8, event.blocked ? 'clang' : 'thud', SOUND.crowdGap);
+          const v = this.engine.voice(u, event.blocked ? 0.6 : 0.8, event.blocked ? 'clang' : 'bonk', SOUND.crowdGap);
           if (v && event.blocked) clang(this.engine, v);
-          else if (v) thud(this.engine, v);
-          if (!event.blocked && u.kind !== 'horse' && Math.random() < SOUND.oofChance) this.say(u, SAY.oof, 'oof');
+          else if (v) bonk(this.engine, v);
+          if (!event.blocked && u.kind !== 'horse' && Math.random() < SOUND.oofChance) this.say(u, SAY.oof, 'oof', 0, SOUND.voiceGap, u.id);
+          if (!event.blocked && Math.hypot(event.knockback.x, event.knockback.z) > LAUNCH_SPEED) this.whistle(u);
           break;
         }
         case 'death': {
           const u = at(event.unitId);
-          if (u && u.kind !== 'horse') this.say(u, SAY.death, 'death', 0, SOUND.crowdGap);
+          if (!u || u.kind === 'horse') break;
+          this.say(u, SAY.death, 'death', 0, SOUND.crowdGap, u.id);
+          const v = this.engine.voice(u, 0.6, 'pop', SOUND.crowdGap);
+          if (v) pop({ ...v, t: v.t + 0.05 });
+          if (Math.hypot(event.knockback.x, event.knockback.z) > LAUNCH_SPEED) this.whistle(u);
           break;
         }
         case 'trample': {
-          const v = this.engine.voice(at(event.targetId) ?? null, 0.9, 'trample', SOUND.crowdGap);
+          const u = at(event.targetId) ?? null;
+          const v = this.engine.voice(u, 0.9, 'trample', SOUND.crowdGap);
           if (v) trample(this.engine, v);
+          if (u) this.whistle(u);
           break;
         }
         case 'splash': {
@@ -69,9 +79,11 @@ export class BattleAudio {
           if (v) thunk(v);
           break;
         }
-        case 'stumble':
-          this.say(at(event.unitId) ?? null, SAY.hic, 'hic', 0, SOUND.crowdGap);
+        case 'stumble': {
+          const u = at(event.unitId);
+          this.say(u ?? null, Math.random() < 0.5 ? SAY.hic : SAY.giggle, 'hic', 0, SOUND.crowdGap, u?.id);
           break;
+        }
         case 'rally':
           this.rally(view, event.armyId, event.commanderId);
           break;
@@ -79,7 +91,9 @@ export class BattleAudio {
           this.banquet(view, event.armyId);
           break;
         case 'drunk':
-          this.say(this.armyCenter(view, event.armyId), SAY.drunk, 'drunk', 0, 0);
+          this.soldiersOf(view, event.armyId)
+            .slice(0, SOUND.cheerVoices)
+            .forEach((u, i) => this.say(u, SAY.giggle, `giggle-${i}`, Math.random() * 1.2, 0, u.id));
           break;
         case 'order':
           if (event.armyId === myArmyId) this.orderCall(view, event.armyId, event.order === 'attack');
@@ -90,13 +104,14 @@ export class BattleAudio {
         case 'alliance':
           if (event.a === myArmyId || event.b === myArmyId) {
             const v = this.engine.voice(null, 0.8, 'fanfare', 1);
-            if (v) horn(v, VICTORY_HORN, 0.14);
+            if (v) kazoo(v, FANFARE, 0.13, 3);
           }
           break;
         case 'matchOver': {
           const won = view.armies.some((a) => a.id === myArmyId && !a.eliminated);
           const v = this.engine.voice(null, 0.9, 'fanfare', 1);
-          if (v) horn(v, won ? VICTORY_HORN : DEFEAT_HORN, won ? 0.18 : 0.3);
+          if (v && won) kazoo(v, FANFARE, 0.16, 4);
+          else if (v) kazoo(v, SAD_TROMBONE, 0.42, 3.5);
           break;
         }
         default:
@@ -113,7 +128,15 @@ export class BattleAudio {
     this.chatterTimer = SOUND.chatterEvery * (0.5 + Math.random());
     const people = view.units.filter((u) => u.alive && u.kind === 'swordsman');
     const speaker = people[Math.floor(Math.random() * people.length)];
-    if (speaker) this.say(speaker, speaker.drunk ? SAY.drunk : SAY.chatter, 'chatter', 0, 0);
+    if (!speaker) return;
+    const line = speaker.drunk ? (Math.random() < 0.5 ? SAY.giggle : SAY.drunk) : SAY.chatter;
+    this.say(speaker, line, 'chatter', 0, 0, speaker.id);
+  }
+
+  /** A slide whistle for anyone sent flying. */
+  private whistle(at: Place): void {
+    const v = this.engine.voice(at, 0.8, 'whistle', SOUND.whistleGap);
+    if (v) slideWhistle(v, true);
   }
 
   private armyCenter(view: MatchView, armyId: number): Place | null {
@@ -133,7 +156,7 @@ export class BattleAudio {
     const length = v ? babble(this.engine, v, SAY.speech) : 0;
     this.soldiersOf(view, armyId)
       .slice(0, SOUND.cheerVoices)
-      .forEach((u, i) => this.say(u, SAY.cheer, `cheer-${i}`, length * 0.6 + Math.random() * 0.8, 0));
+      .forEach((u, i) => this.say(u, SAY.cheer, `cheer-${i}`, length * 0.6 + Math.random() * 0.8, 0, u.id));
   }
 
   private banquet(view: MatchView, armyId: number): void {
@@ -144,15 +167,17 @@ export class BattleAudio {
     }
     const v = this.engine.voice(center, 0.6, 'clink', 0);
     if (v) clink(v);
+    const b = this.engine.voice(center, 0.9, 'burp', 0, SOUND.speechLength + 1);
+    if (b) burp(this.engine, { ...b, t: b.t + SOUND.glugs * 0.9 + 0.3 });
   }
 
-  /** Your orders: a short horn, and a war cry from your soldiers when they attack. */
+  /** Your orders: a kazoo "ta-daa", and a war cry from your soldiers when they attack. */
   private orderCall(view: MatchView, armyId: number, attack: boolean): void {
-    const v = this.engine.voice(null, 0.45, 'order-horn', 0.3);
-    if (v) horn(v, ORDER_HORN);
+    const v = this.engine.voice(null, 0.45, 'order-kazoo', 0.3);
+    if (v) kazoo(v, ORDER_KAZOO, 0.11, 1.6);
     if (!attack) return;
     this.soldiersOf(view, armyId)
       .slice(0, SOUND.cheerVoices)
-      .forEach((u, i) => this.say(u, SAY.warCry, `cry-${i}`, Math.random() * 0.5, 0));
+      .forEach((u, i) => this.say(u, SAY.warCry, `cry-${i}`, Math.random() * 0.5, 0, u.id));
   }
 }

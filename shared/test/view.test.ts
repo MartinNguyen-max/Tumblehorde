@@ -11,7 +11,7 @@ describe('match views', () => {
     expect(view.armies[0]?.soldiersAlive).toBe(15);
     expect(view.armies[1]?.orders).toEqual(['hold', 'hold', 'hold']);
     expect(view.armies[0]?.formation).toBe('double');
-    expect(view.armies[1]?.commanderId).not.toBeNull();
+    expect(view.armies[1]?.commanderId).toBeNull();
   });
 
   it('interpolate positions halfway between two steps', () => {

@@ -137,7 +137,7 @@ function createArmy(
     forfeited: false,
     disconnectTimer: null,
     stats: { kills: 0, deaths: 0, commanderDeaths: 0 },
-    bot: { orderTimer: 0, thinkTimer: 0, standoffTimer: 0, allyAnswer: null },
+    bot: { orderTimer: 0, thinkTimer: 0, standoffTimer: 0 },
     startingSoldiers: soldierIds.length,
   };
 }

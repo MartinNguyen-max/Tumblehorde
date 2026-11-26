@@ -1,5 +1,4 @@
 import type { AudioEngine } from '../audio/engine.ts';
-import type { Music } from '../audio/music.ts';
 import { byId } from './dom.ts';
 
 const HINT_KEY = 'tumblehorde.soundHint';
@@ -24,7 +23,7 @@ function markHintSeen(): void {
  * The speaker button in the top right corner (and `M`). Sound starts off; the first time the
  * game opens, a small bubble points at the button.
  */
-export function setupSoundToggle(audio: AudioEngine, music: Music): void {
+export function setupSoundToggle(audio: AudioEngine): void {
   const button = byId('sound-toggle', HTMLButtonElement);
   const hint = byId('sound-hint');
   const render = (): void => {
@@ -38,7 +37,6 @@ export function setupSoundToggle(audio: AudioEngine, music: Music): void {
   };
   const toggle = (): void => {
     audio.setEnabled(!audio.enabled);
-    if (!audio.enabled) music.stop();
     dismissHint();
     render();
   };

@@ -1,13 +1,13 @@
 import { ALLIANCE } from './config.ts';
 import { dirToYaw, distanceXZ, wrapAngle } from './math.ts';
-import { nextRandom } from './random.ts';
 import type { Army, MatchState, Unit } from './types.ts';
 import { armiesHostile, getUnit } from './units.ts';
 
 /**
  * Alliances, Minecraft style: crouch a few times while looking at another commander. If they
  * crouch back while you two stand close and face each other, your armies stop fighting each
- * other for the rest of the battle. You still only command your own soldiers.
+ * other for the rest of the battle. You still only command your own soldiers. Only players
+ * lead their armies in person (bots have no commander), so alliances are between players.
  */
 
 function commanderOf(state: MatchState, army: Army): Unit | null {
@@ -59,32 +59,15 @@ function formAlliance(state: MatchState, a: Army, b: Army): void {
 export function offerAlliance(state: MatchState, from: Army, to: Army): void {
   from.allyOffer = { to: to.id, time: state.time };
   state.events.push({ type: 'allyOffer', from: from.id, to: to.id });
-  if (offerStands(state, to, from)) {
-    if (faceToFace(state, from, to)) formAlliance(state, from, to);
-    return;
-  }
-  if (!to.isBot || to.bot.allyAnswer) return;
-  // Bots rarely trust anyone. One that agrees turns round and crouches back.
-  if (nextRandom(state.rng) < ALLIANCE.botAcceptChance) to.bot.allyAnswer = { to: from.id, timer: ALLIANCE.botAnswerTime };
-  else state.events.push({ type: 'allyRefused', from: from.id, to: to.id });
+  if (offerStands(state, to, from) && faceToFace(state, from, to)) formAlliance(state, from, to);
 }
 
-/** Counts crouch taps, turns enough of them at a commander into an offer, and runs bots' answers. */
-export function updateAlliances(state: MatchState, dt: number): void {
+/** Counts crouch taps and turns enough of them at another commander into an offer. */
+export function updateAlliances(state: MatchState): void {
   for (const army of state.armies) {
     if (army.eliminated) continue;
     const commander = commanderOf(state, army);
     if (army.allyOffer && state.time - army.allyOffer.time > ALLIANCE.offerTime) army.allyOffer = null;
-    const answer = army.bot.allyAnswer;
-    if (answer) {
-      answer.timer -= dt;
-      const to = state.armies[answer.to];
-      if (answer.timer <= 0) {
-        army.bot.allyAnswer = null;
-        if (to && commander) offerAlliance(state, army, to);
-      }
-      continue;
-    }
     if (!commander) continue;
     const gesture = army.gesture;
     const crouch = commander.intent.crouch;
@@ -96,20 +79,4 @@ export function updateAlliances(state: MatchState, dt: number): void {
     const target = lookedAtArmy(state, army, commander);
     if (target) offerAlliance(state, army, target);
   }
-}
-
-/** A bot commander answering yes: face the other commander, stand still, bob up and down. */
-export function answerIntent(state: MatchState, army: Army, commander: Unit): boolean {
-  const answer = army.bot.allyAnswer;
-  if (!answer) return false;
-  const other = state.armies[answer.to];
-  const theirs = other ? commanderOf(state, other) : null;
-  if (!theirs) return false;
-  commander.intent.moveX = 0;
-  commander.intent.moveZ = 0;
-  commander.intent.attack = false;
-  commander.intent.shield = false;
-  commander.intent.faceYaw = dirToYaw(theirs.pos.x - commander.pos.x, theirs.pos.z - commander.pos.z);
-  commander.intent.crouch = Math.sin(state.time * Math.PI * 2 * ALLIANCE.botCrouchRate) > 0;
-  return true;
 }

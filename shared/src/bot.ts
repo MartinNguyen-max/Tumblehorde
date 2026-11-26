@@ -6,7 +6,6 @@ import { fogOfWar } from './perception.ts';
 import { armySpawn, gatePost, isDefender } from './spawn.ts';
 import type { Army, MatchState, Order, Unit } from './types.ts';
 import { armiesHostile, canBeTargeted, getUnit, setWeapon } from './units.ts';
-import { answerIntent } from './alliances.ts';
 
 /**
  * - form: the first seconds of a battle; hold and let everyone plan.
@@ -145,8 +144,6 @@ function botCommanderIntent(state: MatchState, commander: Unit): void {
   intent.aim = null;
   intent.crouch = false;
   if (commander.stunTimer > 0) return;
-  const army = state.armies[commander.armyId];
-  if (army && answerIntent(state, army, commander)) return;
   const target = getUnit(state, commander.ai.targetId);
   const validTarget = target && canBeTargeted(target) ? target : null;
   if (commander.ai.shieldTimer > 0 && commander.mountId === null) {

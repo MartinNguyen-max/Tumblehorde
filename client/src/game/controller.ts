@@ -208,7 +208,7 @@ export class GameController {
       jump: this.input.isHeld('Space'),
       attack: this.input.mouseLeft && !this.wheel.isOpen && !this.swallowClick,
       shield: this.input.mouseRight,
-      crouch: this.input.isHeld('KeyC') || this.input.isHeld('ControlLeft'),
+      crouch: this.input.isHeld('ControlLeft') || this.input.isHeld('ControlRight'),
       aim: this.aimPoint(),
     };
   }

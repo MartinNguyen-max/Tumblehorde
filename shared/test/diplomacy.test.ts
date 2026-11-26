@@ -65,26 +65,6 @@ describe('alliances', () => {
     expect(state.alliances).toHaveLength(0);
   });
 
-  it('bots seldom agree; one that does crouches back and the deal is made', () => {
-    let accepted = 0;
-    let refused = 0;
-    for (let seed = 1; seed <= 24; seed++) {
-      const state = newMatch({ seed });
-      faceOff(state, 0, 1);
-      crouchTaps(state, [0], ALLIANCE.tapsNeeded);
-      if (state.armies[1]?.bot.allyAnswer) {
-        for (let t = 0; t < ALLIANCE.botAnswerTime + 0.5; t += DT) {
-          place(commanderOf(state, 0), 0, 0, Math.PI / 2);
-          stepMatch(state, new Map([[0, neutralInput(Math.PI / 2)]]), DT);
-        }
-        expect(state.alliances).toHaveLength(1);
-        accepted++;
-      } else refused++;
-    }
-    expect(accepted).toBeGreaterThan(0);
-    expect(refused).toBeGreaterThan(accepted);
-  });
-
   it('ends the battle when only allies are left standing', () => {
     const state = newMatch({ armies: [0, 1, 2].map((i) => ({ name: `P${i}`, team: i, isBot: false })) });
     state.alliances.push([0, 1]);

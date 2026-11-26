@@ -872,3 +872,32 @@ kbd {
     transform: translateY(4px);
   }
 }
+
+/* ---------- bottom bar: numbers on top, everything else below ---------- */
+.cmd .sub,
+.slot .sub {
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+}
+.once .sub {
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: rgba(255, 209, 102, 0.9);
+  color: #6b3a05;
+  opacity: 1;
+}
+.slot b {
+  opacity: 0.75;
+  margin-right: 5px;
+}
+.slot .weapon {
+  opacity: 0.55;
+}
+.slot .weapon.on {
+  opacity: 1;
+  color: var(--toast);
+}

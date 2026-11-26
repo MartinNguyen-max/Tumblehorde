@@ -29,7 +29,7 @@ Inspiration: Shieldwall (combat and shields), Bannerlord (army and commander), F
 | 5 | Banquet (once per battle) |
 | 6 | Rally speech |
 | R | Throw spears at the enemies where you look (once per battle) |
-| C (held) | Crouch; crouch 4× at another commander up close to offer an alliance |
+| Ctrl (held) | Crouch; crouch 4× at another player's commander up close to offer an alliance |
 | Q / E | Sword or spear / mount or dismount |
 | V | Overview camera |
 | M | Sound on/off (also the speaker button in the top right corner) |
@@ -92,7 +92,7 @@ Locally there are at most 4 armies in total. Bots follow the same rules as the p
 ## 11. Map
 
 - Three battlefields, 220 × 220 m: **Green Meadow** (open field with a farmstead), **Castle Siege** (one army holds the only gate, everyone else attacks) and **The City** (Roman street grid with avenues, alleys and a forum; houses block sight, so soldiers only fight what they see and search the streets when attacking blind).
-- Bot armies have no commander; they form up, advance in formation, hold a spear wall and then charge.
+- Bot armies have no commander; they form up, advance in formation, hold a spear wall and then charge. Players always lead their own army.
 
 ## 12. HUD
 
@@ -114,7 +114,7 @@ Locally there are at most 4 armies in total. Bots follow the same rules as the p
 - **Visual reference:** `docs/style-reference/preview.html`. Open it in a browser. It shows colors, proportions, camera angle, terrain style and HUD placement. It is built in Three.js as a reference, but the game is built in Babylon.js.
 - **Colors (from the reference):** Sky `#8EC9EE`, blue team `#3C7BD0`, red team `#D1483F`, accent `#F08A24`, terrain green `hsl(0.26, 45%, 40-49%)`, path sand `hsl(0.11, 42%, 70-76%)`.
 - **Animations:** Walk, run, strike, shield, shoot, jump and death. Ready-made animations in v1, e.g. from Mixamo.
-- **Sound:** Made in the browser, no sound files: a marching tune (war drums, drone, lyre, horn), blows, clangs, splashes, thrown spears, glugs and hiccups, and voices that speak only gibberish (cartoon babble): battle cries, the rally speech and cheers, grunts and death yells. Off by default; a speaker button in the top right corner (and `M`) turns it on, and a small hint points at it the first time.
+- **Sound:** Made in the browser, no sound files and no music: cartoon blows, bonks, slide whistles, kazoos, clangs, splashes, thrown spears, glugs and hiccups, and voices that speak only gibberish (cartoon babble): battle cries, the rally speech and cheers, grunts and death yells. Off by default; a speaker button in the top right corner (and `M`) turns it on, and a small hint points at it the first time.
 
 ## 15. Out of scope for v1
 

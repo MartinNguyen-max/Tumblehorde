@@ -15,7 +15,6 @@ import { Results } from './ui/results.ts';
 import { CAMERA, MAP_NAMES } from './visualConfig.ts';
 import { AudioEngine } from './audio/engine.ts';
 import { BattleAudio } from './audio/battleAudio.ts';
-import { Music } from './audio/music.ts';
 import { setupSoundToggle } from './ui/soundToggle.ts';
 
 const DEMO_CAMERA = { distance: 62, pitch: 0.55, height: 1 } as const;
@@ -31,15 +30,17 @@ async function boot(): Promise<void> {
   input.attach(canvas);
   const hud = new Hud();
   const audio = new AudioEngine();
-  const music = new Music(audio);
-  audio.onEnable = () => music.start();
   const battleAudio = new BattleAudio(audio);
-  setupSoundToggle(audio, music);
+  setupSoundToggle(audio);
   const clickToPlay = byId('click-to-play');
   const ctpTitle = byId('ctp-title');
   const ctpText = byId('ctp-text');
 
   let controller: GameController | null = null;
+  // Ctrl is crouch, and Ctrl+W closes the tab: ask before a running battle is lost.
+  window.addEventListener('beforeunload', (e) => {
+    if (controller) e.preventDefault();
+  });
   let demo: Session | null = null;
   let rematch: (() => void) | null = null;
 

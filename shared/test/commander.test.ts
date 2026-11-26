@@ -107,9 +107,7 @@ describe('bot strategy', () => {
   it('marches on without its commander, in formation and with spears', () => {
     const state = newMatch();
     const army = state.armies[1]!;
-    const botCommander = commanderOf(state, 1);
-    botCommander.alive = false;
-    botCommander.respawnTimer = Infinity;
+    expect(army.commanderId).toBeNull();
     const enemyStart = soldiersOf(state, 1).map((u) => u.pos.x);
     const before = centroid(soldiersOf(state, 1))!;
     for (let t = 0; t < MATCH.prepareTime + 6; t += DT) stepMatch(state, new Map([[0, neutralInput()]]), DT);
