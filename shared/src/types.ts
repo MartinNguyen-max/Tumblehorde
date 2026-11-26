@@ -104,6 +104,8 @@ export interface GroupOrder {
   aroundCommander: boolean;
   /** Shape of a hold. */
   formation: Formation;
+  /** A pincer's wings, chosen once when it forms, so soldiers never swap sides mid-fight. */
+  pincer?: { left: EntityId[]; right: EntityId[] };
 }
 
 export interface ArmyStats {
@@ -127,6 +129,8 @@ export interface BotBrain {
   contactTimer: number;
   /** Seconds spent falling back to regroup; after a while the army makes a last stand instead. */
   regroupTimer: number;
+  /** Falling back right now (a new style is picked when a fall-back starts). */
+  regrouping: boolean;
   orderTimer: number;
   thinkTimer: number;
   /** Seconds spent facing the enemy without engaging. */

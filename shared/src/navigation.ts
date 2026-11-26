@@ -1,7 +1,7 @@
 import { BODY, MAP, NAV } from './config.ts';
 import type { MapId } from './maps.ts';
 import type { Vec2 } from './math.ts';
-import { insideStructure, mapStructures } from './structures.ts';
+import { insideStructure, mapStructures, structuresNear } from './structures.ts';
 import { inWater } from './terrain.ts';
 
 /**
@@ -16,7 +16,10 @@ const STRAIGHT = 2;
 const DIAGONAL = 3;
 
 interface NavGrid {
+  /** Cells the AI does not route through: buildings plus a margin, narrow alleys, water. */
   blocked: Uint8Array;
+  /** Cells deep inside a wall: nobody gets through. Water and narrow alleys are not solid. */
+  solid: Uint8Array;
   /** False when the map has nothing to walk around: everyone walks straight. */
   hasObstacles: boolean;
 }
@@ -42,6 +45,7 @@ export function navGrid(map: MapId): NavGrid {
   const cached = grids.get(map);
   if (cached) return cached;
   const blocked = new Uint8Array(SIDE * SIDE);
+  const solid = new Uint8Array(SIDE * SIDE);
   const structures = mapStructures(map);
   const margin = BODY.personRadius + NAV.clearance;
   for (let index = 0; index < blocked.length; index++) {
@@ -49,10 +53,11 @@ export function navGrid(map: MapId): NavGrid {
     const i = index % SIDE;
     const j = Math.floor(index / SIDE);
     const rim = i === 0 || j === 0 || i === SIDE - 1 || j === SIDE - 1;
+    if (rim || structures.some((s) => insideStructure(s, c.x, c.z, -NAV.solidInset))) solid[index] = 1;
     // Soldiers do not wade through the moat on purpose: they take the bridge.
     if (rim || inWater(map, c.x, c.z) || structures.some((s) => insideStructure(s, c.x, c.z, margin))) blocked[index] = 1;
   }
-  const grid = { blocked, hasObstacles: structures.length > 0 };
+  const grid = { blocked, solid, hasObstacles: structures.length > 0 };
   grids.set(map, grid);
   return grid;
 }
@@ -72,6 +77,23 @@ export function clearPath(map: MapId, a: Vec2, b: Vec2): boolean {
     const t = k / steps;
     const index = cellIndex(a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t);
     if (index >= 0 && grid.blocked[index] === 1) return false;
+  }
+  return true;
+}
+
+/**
+ * True if nothing solid stands between `a` and `b`: for seeing, not walking. Water and narrow
+ * alleys do not block sight, and the cells the two stand in do not count.
+ */
+export function lineOfSight(map: MapId, a: Vec2, b: Vec2): boolean {
+  if (!navGrid(map).hasObstacles) return true;
+  // Checked against the real walls, not the grid: an alley is narrower than two cells.
+  const steps = Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / NAV.sightStep);
+  for (let k = 1; k < steps; k++) {
+    const t = k / steps;
+    const x = a.x + (b.x - a.x) * t;
+    const z = a.z + (b.z - a.z) * t;
+    if (structuresNear(map, x, z).some((s) => insideStructure(s, x, z))) return false;
   }
   return true;
 }
@@ -209,12 +231,21 @@ function goalCellFor(map: MapId, from: Vec2, to: Vec2): number {
  */
 export function navigate(map: MapId, from: Vec2, to: Vec2): Vec2 | null {
   if (clearPath(map, from, to)) return to;
-  const goalCell = goalCellFor(map, from, to);
   const startCell = cellIndex(from.x, from.z);
-  if (goalCell < 0 || startCell < 0) return null;
-  const field = fieldTo(map, goalCell);
-  if (!field) return null;
+  if (startCell < 0) return null;
   const blocked = navGrid(map).blocked;
+  const goalCell = goalCellFor(map, from, to);
+  if (goalCell < 0) return null;
+  let field = fieldTo(map, goalCell);
+  if (!field) return null;
+  // A shared far goal can land in a spot no route reaches (behind the castle wall): use the real goal.
+  if (field[startCell] === UNREACHABLE && blocked[startCell] === 0) {
+    const exact = nearestWalkable(map, to);
+    const exactCell = cellIndex(exact.x, exact.z);
+    if (exactCell >= 0 && exactCell !== goalCell) field = fieldTo(map, exactCell) ?? field;
+  }
+  // Knocked into the moat, squeezed into an alley or stuck in a pocket no route leaves: get out first.
+  if (blocked[startCell] === 1 || field[startCell] === UNREACHABLE) return escapeStep(map, from, field);
   let cell = startCell;
   let target: Vec2 | null = null;
   for (let step = 0; step < NAV.lookahead; step++) {
@@ -247,10 +278,64 @@ export function localStep(map: MapId, from: Vec2, to: Vec2): Vec2 | null {
     if (alignment <= bestAlignment) continue;
     const ahead = { x: from.x + dx * NAV.cellSize * 2, z: from.z + dz * NAV.cellSize * 2 };
     if (!isWalkable(map, from.x + dx * NAV.cellSize, from.z + dz * NAV.cellSize) || !isWalkable(map, ahead.x, ahead.z)) continue;
+    if (!lineOfSight(map, from, ahead)) continue;
     best = ahead;
     bestAlignment = alignment;
   }
   return best;
+}
+
+/**
+ * The way out of a spot the AI never routes through (the moat, an alley, hard against a wall, a
+ * pocket no route leaves): a short search through anything not solid to the nearest cell the
+ * route to the goal starts from, and the first step along it. Wading or squeezing is allowed
+ * here; it is the only way out.
+ */
+function escapeStep(map: MapId, from: Vec2, field: Uint16Array): Vec2 | null {
+  const { blocked, solid } = navGrid(map);
+  const start = cellIndex(from.x, from.z);
+  if (start < 0) return null;
+  const parent = new Map<number, number>([[start, start]]);
+  const queue = [start];
+  for (let head = 0; head < queue.length && head < NAV.escapeSearch; head++) {
+    const cell = queue[head] ?? start;
+    // Out means somewhere the route to the goal starts: wading across the moat if need be.
+    if (blocked[cell] === 0 && field[cell] !== UNREACHABLE) return firstStepTowards(map, from, parent, cell);
+    const i = cell % SIDE;
+    const j = (cell - i) / SIDE;
+    for (const [di, dj] of NEIGHBORS) {
+      const ni = i + di;
+      const nj = j + dj;
+      if (ni < 0 || nj < 0 || ni >= SIDE || nj >= SIDE) continue;
+      const next = nj * SIDE + ni;
+      if (parent.has(next) || solid[next] === 1) continue;
+      if (di !== 0 && dj !== 0 && (solid[j * SIDE + ni] === 1 || solid[nj * SIDE + i] === 1)) continue;
+      parent.set(next, cell);
+      queue.push(next);
+    }
+  }
+  return null;
+}
+
+/** Walks back from `goal` to the start and returns the furthest cell on the way still in plain view. */
+function firstStepTowards(map: MapId, from: Vec2, parent: ReadonlyMap<number, number>, goal: number): Vec2 {
+  const path: number[] = [];
+  for (let cell = goal; ; ) {
+    path.push(cell);
+    const up = parent.get(cell);
+    if (up === undefined || up === cell) break;
+    cell = up;
+  }
+  path.reverse();
+  let target = cellCenter(goal);
+  for (let k = path.length - 1; k > 0; k--) {
+    const center = cellCenter(path[k] ?? goal);
+    if (lineOfSight(map, from, center)) {
+      target = center;
+      break;
+    }
+  }
+  return target;
 }
 
 function downhill(field: Uint16Array, blocked: Uint8Array, cell: number): number {

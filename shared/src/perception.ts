@@ -1,7 +1,7 @@
 import { PERCEPTION } from './config.ts';
 import { CITY, MAPS } from './maps.ts';
 import { distanceXZ, type Vec2 } from './math.ts';
-import { clearPath, isWalkable } from './navigation.ts';
+import { isWalkable, lineOfSight } from './navigation.ts';
 import { nextRandom } from './random.ts';
 import type { Army, MatchState, Unit } from './types.ts';
 import { areEnemies, canBeTargeted, getUnit } from './units.ts';
@@ -16,7 +16,7 @@ export function fogOfWar(state: MatchState): boolean {
 
 export function canSee(state: MatchState, viewer: Unit, target: Unit): boolean {
   if (!fogOfWar(state)) return true;
-  return distanceXZ(viewer.pos, target.pos) <= PERCEPTION.sightRange && clearPath(state.settings.map, viewer.pos, target.pos);
+  return distanceXZ(viewer.pos, target.pos) <= PERCEPTION.sightRange && lineOfSight(state.settings.map, viewer.pos, target.pos);
 }
 
 /** The nearest enemy within `maxDistance` of `from` that `unit` can actually see. */

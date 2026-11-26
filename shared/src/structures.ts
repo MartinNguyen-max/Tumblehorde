@@ -109,8 +109,13 @@ export function steerAroundStructures(unit: Unit, map: MapId): void {
   const len = Math.hypot(unit.intent.moveX, unit.intent.moveZ);
   if (len < 0.05) return;
   const dir = { x: unit.intent.moveX / len, z: unit.intent.moveZ / len };
-  const probeX = unit.pos.x + dir.x * PROBE_DISTANCE;
-  const probeZ = unit.pos.z + dir.z * PROBE_DISTANCE;
+  // A planned route already goes round the walls: never look past its next waypoint, or a narrow
+  // alley's far wall turns a step across it into endless sliding to and fro.
+  const waypoint = unit.ai.navPoint;
+  const toWaypoint = waypoint ? Math.hypot(waypoint.x - unit.pos.x, waypoint.z - unit.pos.z) : Infinity;
+  const probe = Math.min(PROBE_DISTANCE, toWaypoint);
+  const probeX = unit.pos.x + dir.x * probe;
+  const probeZ = unit.pos.z + dir.z * probe;
   const margin = bodyRadius(unit) + PROBE_MARGIN;
   for (const s of structuresNear(map, unit.pos.x, unit.pos.z)) {
     if (!insideStructure(s, probeX, probeZ, margin)) continue;

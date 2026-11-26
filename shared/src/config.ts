@@ -391,6 +391,12 @@ export const NAV = {
   coarseCells: 4,
   /** Cells to look ahead along the flow, so paths cut corners smoothly. */
   lookahead: 8,
+  /** Cells searched for a way out of water or an alley. */
+  escapeSearch: 800,
+  /** Only cells this deep inside a wall count as solid, so even the narrowest alley stays open. */
+  solidInset: 0.6,
+  /** Sight lines are checked against the walls every this many meters. */
+  sightStep: 0.4,
   /** A soldier re-plans its next step this often, or when its goal moves this far. */
   replanInterval: 0.25,
   replanGoalShift: 1.5,
@@ -486,6 +492,8 @@ export const BOT = {
   standoffPatience: 12,
   /** After falling back this long, a beaten bot army makes its last stand and attacks again. */
   maxRegroup: 25,
+  /** A bot army that knows where the enemy is but has not been hurt for this long goes and gets them. */
+  stalemateTime: 40,
   /** A castle's bot defenders sally out once they outnumber every attacker together this much. */
   sallyRatio: 2,
   /** Phalanx bots step their formation forward this far at a time... */

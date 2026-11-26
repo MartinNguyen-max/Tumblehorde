@@ -198,6 +198,12 @@ function botCommanderIntent(state: MatchState, commander: Unit): void {
   if (commander.ai.chargePoint) moveTowards(commander, commander.ai.chargePoint);
 }
 
+/** The enemy is known, the battle is on, and nobody in this army has been hurt for a long while. */
+function stalemate(state: MatchState, army: Army): boolean {
+  if (state.time < MATCH.prepareTime + BOT.stalemateTime) return false;
+  return livingSoldiers(state, army).every((s) => s.sinceHurt > BOT.stalemateTime);
+}
+
 /** Defenders far stronger than everyone outside come out to finish them. */
 function strongEnoughToSally(state: MatchState, army: Army): boolean {
   const ours = livingSoldiers(state, army).length;
@@ -248,9 +254,13 @@ function planArmy(state: MatchState, army: Army, dt: number, leaderless: boolean
   army.bot.regroupTimer = beaten === 'regroup' ? army.bot.regroupTimer + dt : army.bot.regroupTimer;
   // Nobody falls back forever: after a while it is a last stand.
   const plain = beaten === 'regroup' && army.bot.regroupTimer > BOT.maxRegroup ? 'engage' : beaten;
+  // Nobody waits forever either: a stand-off that drags on ends in a charge.
+  if (army.isBot && army.bot.style !== 'charge' && stalemate(state, army)) army.bot.style = 'charge';
   army.bot.standoffTimer = plain === 'standoff' ? army.bot.standoffTimer + dt : plain === 'march' ? 0 : army.bot.standoffTimer;
   // A beaten army that falls back may come back with a different idea.
-  if (plain === 'regroup' && army.isBot && army.bot.orderTimer <= 0) army.bot.style = randomBotStyle(state);
+  const regrouping = plain === 'regroup';
+  if (regrouping && !army.bot.regrouping && army.isBot) army.bot.style = randomBotStyle(state);
+  army.bot.regrouping = regrouping;
   const atTheLine = army.bot.style === 'phalanx' && distance <= BOT.phalanxContact + 1;
   army.bot.contactTimer = atTheLine ? army.bot.contactTimer + dt : 0;
   const stance = styledStance(state, army, plain, distance);

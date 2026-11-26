@@ -126,3 +126,11 @@ Decisions made while building v1. None of them replace an earlier line.
 - **No bot battle stalls any more:** a bot army that has fallen back to regroup for 25 s makes a last stand and attacks again, and castle defenders who outnumber all attackers together two to one sally out. Before, castle battles between bots could last forever. Found in a 4 × 40 bot health run on every map.
 - **Refused orders are explained**: throwing spears with nobody in range, a second volley or banquet, or Advance without a holding formation now shows a short banner saying why, instead of silently doing nothing.
 - **Minimap** in the top left corner: buildings and the moat, every army as colored dots (commanders bigger), and a white arrow for you pointing where you look. In the city only enemies that you or one of your soldiers can see are shown, checked a few times a second with the same sight lines as the simulation. Added to make formations, splits and pincers easier to direct.
+- **Fixes from an independent review of the simulation** (all with regression tests in `shared/test/review-fixes.test.ts`):
+  - Soldiers in the moat, a narrow alley or a pocket no route leaves now find their way out (a short search through anything not solid to the nearest cell the route starts from, wading if need be), and wall-sliding never looks past a planned route's next waypoint (it used to bounce soldiers to and fro across alleys). Sight lines are checked against the real walls, so alleys and water no longer hide anyone. Bot battles in the city could run forever because of this.
+  - Pincer wings are chosen once, when the pincer forms; before, soldiers swapped between the wings and the middle every step once the wings were round the enemy.
+  - Splitting a holding army keeps each half holding where it stands (both halves used to crowd onto the same spots).
+  - The spear volley is only thrown at an enemy; it could be wasted on empty ground.
+  - A bot army picks a new style once when it starts falling back, not every step.
+  - A formation order for a half that does not exist no longer changes the formation.
+  - A bot army that knows where the enemy is but has not been hurt for 40 s charges, so no stand-off lasts forever. With this, every 2–4 army bot battle tried on every map ends.

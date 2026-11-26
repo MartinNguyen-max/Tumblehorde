@@ -138,7 +138,7 @@ function createArmy(
     forfeited: false,
     disconnectTimer: null,
     stats: { kills: 0, deaths: 0, commanderDeaths: 0 },
-    bot: { style: isBot ? randomBotStyle(state) : 'steady', contactTimer: 0, regroupTimer: 0, orderTimer: 0, thinkTimer: 0, standoffTimer: 0 },
+    bot: { style: isBot ? randomBotStyle(state) : 'steady', contactTimer: 0, regroupTimer: 0, regrouping: false, orderTimer: 0, thinkTimer: 0, standoffTimer: 0 },
     startingSoldiers: soldierIds.length,
   };
 }

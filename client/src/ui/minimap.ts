@@ -1,8 +1,8 @@
 import {
   CASTLE,
-  clearPath,
   distanceXZ,
   inWater,
+  lineOfSight,
   MAP,
   MAPS,
   type MapId,
@@ -88,7 +88,7 @@ export class Minimap {
     const mine = view.units.filter((u) => u.alive && u.armyId === myArmyId && u.kind !== 'horse');
     for (const u of view.units) {
       if (!u.alive || u.kind === 'horse' || u.armyId === myArmyId) continue;
-      const watcher = mine.find((m) => distanceXZ(m, u) <= PERCEPTION.sightRange && clearPath(map, m, u));
+      const watcher = mine.find((m) => distanceXZ(m, u) <= PERCEPTION.sightRange && lineOfSight(map, m, u));
       if (watcher) this.seen.add(u.id);
     }
   }

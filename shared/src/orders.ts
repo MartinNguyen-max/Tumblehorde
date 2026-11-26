@@ -1,6 +1,6 @@
 import { finishFeast } from './banquet.ts';
 import { ARMY, BANQUET, FORMATION, MOVEMENT, PINCER, RALLY, VOLLEY } from './config.ts';
-import { assignHoldSlots, blockSlots, followCenter, formationSlots, holdSlots, pincerGroups, supportSlots, type FormationSlot } from './formation.ts';
+import { assignHoldSlots, blockSlots, followCenter, formationSlots, holdSlots, pincerGroups, pincerHorn, supportSlots, type FormationSlot } from './formation.ts';
 import { localStep, navGrid, navigate, nearestWalkable } from './navigation.ts';
 import { attackGoal, fogOfWar } from './perception.ts';
 import { clamp, dirToYaw, distanceXZ, normalizeXZ, turnTowards, type Vec2, type Vec3 } from './math.ts';
@@ -146,8 +146,9 @@ export function throwSpears(state: MatchState, army: Army, at: Vec3, group: numb
   for (const soldier of livingSoldiers(state, army)) {
     if ((group !== null && soldier.group !== group) || soldier.kind !== 'swordsman' || soldier.spearThrown) continue;
     if (soldier.stunTimer > 0 || soldier.action !== 'none') continue;
+    // Spears are only thrown at someone: the one volley is not wasted on empty ground.
     const inRange = targets.filter((t) => distanceXZ(t.pos, soldier.pos) <= VOLLEY.range);
-    if (inRange.length === 0 && distanceXZ(soldier.pos, at) > VOLLEY.range) continue;
+    if (inRange.length === 0) continue;
     const target = inRange[Math.floor(nextRandom(state.rng) * inRange.length)] ?? null;
     soldier.weapon = 'spear';
     soldier.action = 'throw';
@@ -205,7 +206,7 @@ export function rally(state: MatchState, army: Army): boolean {
 
 /** Picks the formation for Hold and forms it up at once, for one group or the whole army. */
 export function setFormation(state: MatchState, army: Army, formation: Formation, group: number | null = null): boolean {
-  if (!canGiveOrders(state, army)) return false;
+  if (!canGiveOrders(state, army) || (group !== null && (group < 0 || group >= army.groupCount))) return false;
   army.formation = formation;
   return issueOrder(state, army, 'hold', group);
 }
@@ -240,9 +241,19 @@ export function splitInHalves(state: MatchState, army: Army): boolean {
   }
   const current = army.groupOrders[0] ?? orderFor(state, army, 'hold', 0, false);
   army.groupCount = HALVES;
-  army.groupOrders = [{ ...current, anchor: { ...current.anchor } }, { ...current, anchor: { ...current.anchor } }];
+  army.groupOrders = [0, 1].map((g) => halfOrder(current, soldiers.filter((s) => s.group === g)));
   state.events.push({ type: 'split', armyId: army.id, groupCount: HALVES });
   return true;
+}
+
+/**
+ * A half keeps the army's order. A holding half holds where it stands now, in the same shape,
+ * so the two halves do not pile onto the same spot.
+ */
+function halfOrder(current: GroupOrder, half: readonly Unit[]): GroupOrder {
+  const here = centroid(half);
+  if (current.order !== 'hold' || !here) return { ...current, anchor: { ...current.anchor }, pincer: undefined };
+  return { ...current, anchor: here, aroundCommander: false, pincer: undefined };
 }
 
 function mergeHalves(state: MatchState, army: Army): void {
@@ -351,9 +362,9 @@ function groupSlots(state: MatchState, army: Army, groupOrder: GroupOrder, group
   const result = new Map<EntityId, FormationSlot>();
   // Swordsmen hold in the chosen formation, everyone in their own place.
   if (groupOrder.order === 'hold' && members.every((m) => m.kind === 'swordsman')) {
+    if (groupOrder.formation === 'pincer') return pincerGroupSlots(state, army, groupOrder, members);
     const slots = holdSlots(groupOrder.formation, members.length, anchor, yaw, groupOrder.aroundCommander);
     const places = assignHoldSlots(groupOrder.formation, members.map((m) => m.pos), anchor, yaw);
-    if (groupOrder.formation === 'pincer') pincerFlanks(state, army, anchor, members, places, slots);
     members.forEach((m, i) => {
       const slot = slots[places[i] ?? i];
       if (slot) result.set(m.id, slot);
@@ -403,44 +414,70 @@ function enemyLineNear(state: MatchState, army: Army, anchor: Vec2): EnemyLine |
   return { center, front, side, halfWidth };
 }
 
+/** Puts `units` on `slots` (a block facing `yaw` around `center`), each keeping their order in it. */
+function placeInBlock(result: Map<EntityId, FormationSlot>, units: readonly Unit[], slots: readonly FormationSlot[], center: Vec2, yaw: number): void {
+  const places = assignHoldSlots('double', units.map((u) => u.pos), center, yaw);
+  units.forEach((u, i) => {
+    const slot = slots[places[i] ?? i];
+    if (slot) result.set(u.id, slot);
+  });
+}
+
+/** The wings are picked once, left and right thirds as the order is given. */
+function pincerWings(order: GroupOrder, members: readonly Unit[]): { left: EntityId[]; right: EntityId[] } {
+  if (order.pincer) return order.pincer;
+  const forward = { x: Math.sin(order.anchorYaw), z: Math.cos(order.anchorYaw) };
+  const side = (u: Unit): number => (u.pos.x - order.anchor.x) * forward.z - (u.pos.z - order.anchor.z) * forward.x;
+  const sorted = [...members].sort((a, b) => side(a) - side(b) || a.id - b.id);
+  const [left, , right] = pincerGroups(members.length);
+  order.pincer = { left: sorted.slice(0, left).map((u) => u.id), right: sorted.slice(sorted.length - right).map((u) => u.id) };
+  return order.pincer;
+}
+
 /**
- * The pincer's wings go after the enemy: each swings wide past the enemy's flank, then closes
- * in on its back, facing the enemy, while the middle holds the line. Rewrites the wing slots.
+ * The pincer: the middle holds a shield line; each wing waits ahead of its end, or with an enemy
+ * near swings wide past the enemy's flank, then closes in on its back, facing it.
  */
-function pincerFlanks(state: MatchState, army: Army, anchor: Vec2, members: readonly Unit[], places: readonly number[], slots: FormationSlot[]): void {
+function pincerGroupSlots(state: MatchState, army: Army, order: GroupOrder, members: readonly Unit[]): Map<EntityId, FormationSlot> {
+  const { anchor, anchorYaw: yaw, aroundCommander } = order;
+  const wings = pincerWings(order, members);
+  const left = members.filter((m) => wings.left.includes(m.id));
+  const right = members.filter((m) => wings.right.includes(m.id));
+  const middle = members.filter((m) => !wings.left.includes(m.id) && !wings.right.includes(m.id));
+  const result = new Map<EntityId, FormationSlot>();
+  placeInBlock(result, middle, holdSlots('double', middle.length, anchor, yaw, aroundCommander), anchor, yaw);
   const enemy = enemyLineNear(state, army, anchor);
-  if (!enemy) return;
-  const [left, middle] = pincerGroups(members.length);
-  const wings: { sign: number; first: number; count: number }[] = [
-    { sign: -1, first: 0, count: left },
-    { sign: 1, first: left + middle, count: left },
-  ];
-  // Which side of the enemy is which, as seen from our side.
-  const ourRight = { x: -enemy.side.x, z: -enemy.side.z };
-  for (const wing of wings) {
-    const inWing = members.filter((_, i) => (places[i] ?? 0) >= wing.first && (places[i] ?? 0) < wing.first + wing.count);
-    const here = centroid(inWing);
-    if (!here || wing.count === 0) continue;
-    const out = enemy.halfWidth + PINCER.sideGap;
-    const sideways = { x: ourRight.x * wing.sign, z: ourRight.z * wing.sign };
-    const ahead = (here.x - enemy.center.x) * enemy.front.x + (here.z - enemy.center.z) * enemy.front.z;
-    // Still in front of the enemy: go round the flank first. Past it: close in behind.
-    const target =
-      ahead > -PINCER.behindDepth * 0.5
-        ? {
-            // Just past the enemy's line, so arriving there means the wing is round the flank.
-            x: enemy.center.x + sideways.x * out - enemy.front.x * PINCER.behindDepth * PINCER.flankPast,
-            z: enemy.center.z + sideways.z * out - enemy.front.z * PINCER.behindDepth * PINCER.flankPast,
-          }
-        : {
-            x: enemy.center.x - enemy.front.x * PINCER.behindDepth + sideways.x * enemy.halfWidth * 0.4,
-            z: enemy.center.z - enemy.front.z * PINCER.behindDepth + sideways.z * enemy.halfWidth * 0.4,
-          };
-    const facing = dirToYaw(enemy.center.x - target.x, enemy.center.z - target.z);
-    blockSlots(wing.count, target, facing).forEach((slot, k) => {
-      slots[wing.first + k] = slot;
-    });
+  for (const [units, sign] of [[left, -1], [right, 1]] as const) {
+    if (units.length === 0) continue;
+    if (!enemy) {
+      const horn = pincerHorn(sign, units.length, middle.length, anchor, yaw, aroundCommander);
+      placeInBlock(result, units, horn, centroid(units) ?? anchor, yaw);
+      continue;
+    }
+    const { target, facing } = wingTarget(enemy, centroid(units) ?? anchor, sign);
+    placeInBlock(result, units, blockSlots(units.length, target, facing), target, facing);
   }
+  return result;
+}
+
+/** Still in front of the enemy: go round its flank first. Past it: close in behind, facing it. */
+function wingTarget(enemy: EnemyLine, wingCenter: Vec2, sign: number): { target: Vec2; facing: number } {
+  // Which side of the enemy is which, as seen from our side.
+  const sideways = { x: -enemy.side.x * sign, z: -enemy.side.z * sign };
+  const out = enemy.halfWidth + PINCER.sideGap;
+  const ahead = (wingCenter.x - enemy.center.x) * enemy.front.x + (wingCenter.z - enemy.center.z) * enemy.front.z;
+  const target =
+    ahead > -PINCER.behindDepth * 0.5
+      ? {
+          // Just past the enemy's line, so arriving there means the wing is round the flank.
+          x: enemy.center.x + sideways.x * out - enemy.front.x * PINCER.behindDepth * PINCER.flankPast,
+          z: enemy.center.z + sideways.z * out - enemy.front.z * PINCER.behindDepth * PINCER.flankPast,
+        }
+      : {
+          x: enemy.center.x - enemy.front.x * PINCER.behindDepth + sideways.x * enemy.halfWidth * 0.4,
+          z: enemy.center.z - enemy.front.z * PINCER.behindDepth + sideways.z * enemy.halfWidth * 0.4,
+        };
+  return { target, facing: dirToYaw(enemy.center.x - target.x, enemy.center.z - target.z) };
 }
 
 export function orderOf(army: Army, unit: Unit): GroupOrder | null {

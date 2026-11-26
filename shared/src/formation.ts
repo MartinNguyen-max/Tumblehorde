@@ -136,17 +136,19 @@ export function blockSlots(count: number, front: Vec2, yaw: number): FormationSl
  */
 function pincerSlots(count: number, anchor: Vec2, yaw: number, aroundCommander: boolean): FormationSlot[] {
   const [left, middle, right] = pincerGroups(count);
+  const center = holdSlots('double', middle, anchor, yaw, aroundCommander);
+  return [...pincerHorn(-1, left, middle, anchor, yaw, aroundCommander), ...center, ...pincerHorn(1, right, middle, anchor, yaw, aroundCommander)];
+}
+
+/** Where a pincer wing (`side` -1 left, 1 right) of `count` waits beside a middle line of `middle`. */
+export function pincerHorn(side: number, count: number, middle: number, anchor: Vec2, yaw: number, aroundCommander: boolean): FormationSlot[] {
   const forward = yawToDir(yaw);
   const rightDir = { x: forward.z, z: -forward.x };
-  const center = holdSlots('double', middle, anchor, yaw, aroundCommander);
   const lineAhead = aroundCommander ? FORMATION.holdLineAhead : FORMATION.rankGap / 2;
   const halfWidth = (Math.ceil(middle / 2) * FORMATION.tightSpacing) / 2;
-  const wing = (side: number, n: number): FormationSlot[] => {
-    const out = halfWidth + PINCER.wingGap + (Math.ceil(n / 2) * FORMATION.tightSpacing) / 2;
-    const ahead = lineAhead + PINCER.wingAhead;
-    return blockSlots(n, { x: anchor.x + forward.x * ahead + rightDir.x * side * out, z: anchor.z + forward.z * ahead + rightDir.z * side * out }, yaw);
-  };
-  return [...wing(-1, left), ...center, ...wing(1, right)];
+  const out = halfWidth + PINCER.wingGap + (Math.ceil(count / 2) * FORMATION.tightSpacing) / 2;
+  const ahead = lineAhead + PINCER.wingAhead;
+  return blockSlots(count, { x: anchor.x + forward.x * ahead + rightDir.x * side * out, z: anchor.z + forward.z * ahead + rightDir.z * side * out }, yaw);
 }
 
 export function holdSlots(formation: Formation, count: number, anchor: Vec2, yaw: number, aroundCommander: boolean): FormationSlot[] {
@@ -164,7 +166,7 @@ export function holdSlots(formation: Formation, count: number, anchor: Vec2, yaw
  * Who stands where: soldiers keep their order along the line (or around the ring), so nobody
  * has to walk through the formation to reach their place. Returns slot indices per position.
  */
-export function assignHoldSlots(formation: Formation, positions: readonly Vec2[], anchor: Vec2, yaw: number): number[] {
+export function assignHoldSlots(formation: Exclude<Formation, 'pincer'>, positions: readonly Vec2[], anchor: Vec2, yaw: number): number[] {
   const forward = yawToDir(yaw);
   const right = { x: forward.z, z: -forward.x };
   const indices = positions.map((_, i) => i);
@@ -180,18 +182,6 @@ export function assignHoldSlots(formation: Formation, positions: readonly Vec2[]
   }
   const ahead = (p: Vec2): number => (p.x - anchor.x) * forward.x + (p.z - anchor.z) * forward.z;
   const side = (p: Vec2): number => (p.x - anchor.x) * right.x + (p.z - anchor.z) * right.z;
-  if (formation === 'pincer') {
-    // Left to right: the leftmost third forms the left wing, and so on; each part then by ranks.
-    indices.sort((a, b) => side(positionAt(positions, a)) - side(positionAt(positions, b)) || a - b);
-    let first = 0;
-    for (const size of pincerGroups(positions.length)) {
-      const part = indices.slice(first, first + size);
-      const local = assignHoldSlots('double', part.map((i) => positionAt(positions, i)), anchor, yaw);
-      part.forEach((unitIndex, k) => (result[unitIndex] = first + (local[k] ?? k)));
-      first += size;
-    }
-    return result;
-  }
   indices.sort((a, b) => ahead(positionAt(positions, b)) - ahead(positionAt(positions, a)) || a - b);
   let start = 0;
   for (const size of rankSizes(formation, positions.length)) {
