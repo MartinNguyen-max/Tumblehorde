@@ -76,3 +76,27 @@ The player picks 10, 20 or 30 units. The distribution is fixed:
 - The bot commander sends its army towards the nearest enemy army.
 
 Easier and harder bots adjust reaction time and precision, not HP or damage.
+
+## Added during implementation
+
+Values the design did not specify. All live in `shared/src/config.ts`.
+
+| Value | Number |
+|---|---|
+| Strike windup (commander / swordsman / spear on foot) | 0.2 / 0.3 / 0.3 s |
+| Mounted spear windup | 0.15 s |
+| Bow draw time | 0.55 s |
+| Spear on foot range / cooldown | 2.4 m / 1.0 s |
+| Archer melee cooldown | 2.0 s |
+| Commander on horseback | 35 damage, 3.0 m, knockback 7 m/s, stun 0.9 s |
+| Commander max targets per swing | 2 (units hit 1) |
+| Arrow knockback | 2 m/s, stun 0.2 s |
+| Arrow speed / gravity | 32 m/s / 14 m/s² |
+| Bot aim spread (medium) | ±0.03 rad yaw, ±0.025 rad pitch |
+| Horse trample | 10 damage when moving faster than 6 m/s |
+| Hit on a mounted rider lands on the horse | 50 % |
+| Knockback on a blocked hit | 50 % |
+| Upward pop on knockback | 35 % of horizontal strength |
+| Movement while striking or drawing | 50 % speed |
+| Respawn invulnerability | 2 s |
+| Gravity | 25 m/s² |

@@ -26,3 +26,22 @@ Format: date, decision, rationale. If a decision is changed, a new line is writt
 - **Orders on keys 1–4.** Proposal, not approved yet.
 - **Graphics: low-poly like the screenshot.** Bright team colors, and clear silhouettes.
 - **Hosting: own PC locally. Oracle Always Free or Render Starter for testing. Colyseus Cloud later.** Free to begin with.
+
+## 2026-11-26 (implementation)
+
+Decisions made while building v1. None of them replace an earlier line.
+
+- **Toolchain: Node 24 LTS, TypeScript 7, Vite 8, Vitest 5, Babylon.js 9 + Havok 1.3, Colyseus 0.18.** Verified on npm at setup. npm workspaces for `shared`, `client` and `server`.
+- **Server runs TypeScript directly with Node's built-in type stripping.** No extra build step or runner dependency. Hence `erasableSyntaxOnly` and `.ts` import extensions everywhere.
+- **Fixed simulation rates: 60 Hz locally, 30 Hz on the server, 20 Hz snapshots.** Movement integrates gravity exactly, so jumps are the same at any rate.
+- **Animations are procedural, not Mixamo.** The characters are box rigs like the style reference; procedural walk/strike/shield/draw/stun poses fit that look, need no external assets or accounts, and can be changed in code. Death and falls use Havok ragdolls.
+- **Split into groups is by unit type.** 2 groups = melee | archers, 3 groups = swordsmen | archers | riders. `Tab` picks which group the next order goes to (or all). Key `4` cycles 1 → 2 → 3 → 1 groups.
+- **Hold means "stay where you are".** A group on Hold keeps its current center and faces the commander's direction; melee units only engage within 6 m, archers shoot within range.
+- **The commander respawns next to their army** (at the center of the living soldiers) with 2 s of invulnerability. With no soldiers left there is no respawn: an army is out when all soldiers and the commander are down.
+- **Orders need a living commander.** While the commander is down, the army keeps its last orders (the order buttons are greyed out).
+- **No friendly fire** for swords, spears, arrows or trampling.
+- **Mounted targets:** a hit on a rider lands on the horse half of the time; riders are never knocked out of the saddle, only thrown when the horse dies. Any free horse can be mounted (`E`), also by the commander.
+- **Medium bots march, then engage.** Beyond 45 m the bot army follows its commander as one block; closer than that it splits: melee attacks, archers hold and shoot.
+- **Team colors:** free-for-all uses blue/red/gold/purple; in 2 teams allies share a color family (blue/teal vs red/orange).
+- **Enemy count label:** shown above an enemy army when the camera looks within ~12° of its center.
+- **Landing page shows a live bot battle** behind the menu, so the game sells itself before you click.

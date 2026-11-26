@@ -2,6 +2,24 @@
 
 Build in this order. Each milestone must be playable before we move on.
 
+## Status
+
+Updated as work progresses. ✅ done · 🚧 in progress · ⬜ not started.
+
+| Milestone | Status | Notes |
+|---|---|---|
+| M1 Run around the map | ✅ | Edge push-back + toast, jump, third-person mouse-look camera |
+| M2 Combat and physics | ✅ | Sword/shield, knockback + stun, Havok ragdolls on death, own health bar |
+| M3 Army and orders | ✅ | 10/20/30 armies, Follow/Hold/Attack, split by unit type + Tab group select, respawn |
+| M4 Bot AI and local battle | ✅ | Medium bots, 1–3 bot armies, free-for-all and 2 teams |
+| M5 Archer | ✅ | Ballistic arrows with lead and spread, kiting, shield walls vs archers |
+| M6 Rider and horse | ✅ | Mount/dismount (E), trample, thrown off when the horse dies, spear |
+| M7 After the battle | ✅ | Results table, duration, kills/deaths, rematch |
+| M8 Online | 🚧 | |
+
+The simulation for all unit types lives in `/shared` and is covered by Vitest
+(`npm test`). Run the game with `npm run dev` (see `README.md`).
+
 ## M1: Run around the map
 - 150 × 150 m map with invisible edges
 - The edge pushes you back and shows the message "The map ends here, go back and fight!"

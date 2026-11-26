@@ -148,6 +148,10 @@ async function boot(): Promise<void> {
         command: (command: Parameters<Session['command']>[0]) => controller?.session.command(command),
         look: (dx: number, dy: number) => camera.look(dx, dy),
         view: () => controller?.session.view() ?? null,
+        fastForward: (seconds: number) => {
+          for (let t = 0; t < seconds; t += 1 / 60) controller?.session.update(1 / 60);
+        },
+        fps: () => world.engine.getFps(),
       },
     });
   }
