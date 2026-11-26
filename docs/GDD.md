@@ -21,9 +21,11 @@ Inspiration: Shieldwall (combat and shields), Bannerlord (army and commander), F
 | Space | Jump |
 | Left click | Strike |
 | Right click (held) | Shield up |
-| Keys 1–4 | Orders (Follow, Hold, Attack, Split into groups) |
+| Keys 1–3 | Orders (Follow, Hold, Attack) |
+| Keys 6–9 | Who hears orders: whole army, swordsmen, archers, cavalry |
+| Q / E | Switch weapon (sword, spear, bow) / mount or dismount |
 
-The orders are `Follow`, `Hold`, `Attack` and `Split into groups` (1–3 groups). The key bindings are a proposal and have not been approved yet.
+The orders are `Follow`, `Hold` (form up around the commander) and `Attack`. Armies are always split into swordsmen, archers and cavalry. See `DECISIONS.md` for how the controls evolved after playtesting.
 
 ## 4. Character and commander
 
@@ -84,7 +86,7 @@ Locally there are at most 4 armies in total. Bots follow the same rules as the p
 
 ## 11. Map
 
-- One map in v1, about 150 × 150 meters.
+- Three battlefields in v1 (Meadow, Desert, Rocky Highlands with a walled village), 220 × 220 meters, picked or random. (Originally one map of about 150 × 150 m; see `DECISIONS.md`.)
 - Open terrain, no castles and no villages.
 - More maps come later.
 
