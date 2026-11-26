@@ -27,6 +27,9 @@ import {
   mapObstacles,
   mapStructures,
   nearStructure,
+  CASTLE,
+  MAPS,
+  WATER,
   type Obstacle,
   type Structure,
   randomRange,
@@ -37,7 +40,7 @@ import {
   terrainHeightAt,
   terrainHeightGrid,
 } from '@tumblehorde/shared';
-import { COLORS, type HslRange, LIGHTING, MAP_THEMES, type MapTheme } from '../visualConfig.ts';
+import { COLORS, HOUSE, type HslRange, LIGHTING, MAP_THEMES, type MapTheme } from '../visualConfig.ts';
 import { PartFactory } from './parts.ts';
 
 export interface World {
@@ -132,6 +135,7 @@ export function loadMap(world: World, map: MapId): void {
   createScenery(world.parts, root, map, theme);
   for (const s of mapStructures(map)) createStructure(world.parts, root, map, s, theme);
   createEdge(scene, world.parts, root, map, world.edgeMaterial);
+  if (MAPS[map].layout === 'siege') createMoat(scene, world.parts, root);
   // Scenery never moves: compute its transforms once instead of every frame.
   root.computeWorldMatrix(true);
   for (const node of root.getChildTransformNodes(false)) node.freezeWorldMatrix();
@@ -284,23 +288,52 @@ function createStructure(parts: PartFactory, root: TransformNode, map: MapId, s:
   const roofColor = variant(theme.roofs, s.z, s.x) ?? theme.roof;
   switch (s.kind) {
     case 'house': {
-      parts.part('box', plaster, node, [w, h * 0.62, d], [0, h * 0.31 - 0.2, 0]);
+      // Tall town houses keep a modest roof and get a row of windows on every floor.
+      const roof = Math.min(h * HOUSE.roofShare, d * HOUSE.roofPitch);
+      const wallTop = h - roof;
+      parts.part('box', plaster, node, [w, wallTop + 0.2, d], [0, wallTop / 2 - 0.2, 0]);
       parts.part('box', theme.stone, node, [w + 0.1, 0.5, d + 0.1], [0, 0.05, 0]);
-      const roof = h * 0.45;
       const slope = Math.hypot(d / 2, roof);
       const angle = Math.atan2(roof, d / 2);
-      parts.part('box', roofColor, node, [w + 0.6, 0.22, slope + 0.3], [0, h * 0.62 + roof / 2 - 0.2, d / 4]).rotation.x = angle;
-      parts.part('box', roofColor, node, [w + 0.6, 0.22, slope + 0.3], [0, h * 0.62 + roof / 2 - 0.2, -d / 4]).rotation.x = -angle;
+      parts.part('box', roofColor, node, [w + 0.6, 0.22, slope + 0.3], [0, wallTop + roof / 2, d / 4]).rotation.x = angle;
+      parts.part('box', roofColor, node, [w + 0.6, 0.22, slope + 0.3], [0, wallTop + roof / 2, -d / 4]).rotation.x = -angle;
       // Gable ends: a box turned 45° shows a triangle above the eaves; squash it to the roof's height.
       const gable = new TransformNode('gable', node.getScene());
       gable.parent = node;
-      gable.position.y = h * 0.62 - 0.2;
+      gable.position.y = wallTop;
       gable.scaling.y = roof / (d / 2);
       parts.part('box', plaster, gable, [w - 0.1, d / Math.SQRT2, d / Math.SQRT2], [0, 0, 0]).rotation.x = Math.PI / 4;
       parts.part('box', COLORS.darkWood, node, [1.1, 2, 0.12], [0, 1, d / 2 + 0.02]);
-      for (const side of [-1, 1]) parts.part('box', COLORS.pupil, node, [0.7, 0.7, 0.1], [side * w * 0.3, 1.8, d / 2 + 0.02]);
+      const columns = w > HOUSE.twoWindowWidth ? [-w * 0.27, w * 0.27] : [0];
+      const floors = Math.max(1, Math.floor((wallTop - HOUSE.firstWindow) / HOUSE.floorHeight) + 1);
+      for (let f = 0; f < floors; f++) {
+        const y = HOUSE.firstWindow + f * HOUSE.floorHeight;
+        for (const face of [1, -1]) {
+          for (const x of columns) {
+            if (f === 0 && face === 1 && x === 0) continue;
+            parts.part('box', COLORS.pupil, node, [0.7, 0.85, 0.1], [x, y, face * (d / 2 + 0.02)], { castShadow: false });
+          }
+        }
+      }
       break;
     }
+    case 'stall': {
+      // A market stall: a counter under a striped awning on four posts.
+      parts.part('box', COLORS.wood, node, [w, 0.9, d * 0.5], [0, 0.45, d * 0.2]);
+      for (const x of [-w / 2 + 0.1, w / 2 - 0.1]) for (const z of [-d / 2 + 0.1, d / 2 - 0.1]) parts.part('box', COLORS.darkWood, node, [0.12, h, 0.12], [x, h / 2, z]);
+      const stripes = 4;
+      for (let i = 0; i < stripes; i++) {
+        const color = i % 2 === 0 ? roofColor : COLORS.edgePost;
+        parts.part('box', color, node, [w / stripes + 0.02, 0.1, d + 0.5], [-w / 2 + (i + 0.5) * (w / stripes), h, 0]).rotation.x = 0.15;
+      }
+      parts.part('roundSphere', COLORS.accent, node, [0.3, 0.3, 0.3], [-w * 0.25, 1.05, d * 0.2]);
+      parts.part('roundSphere', '#7CB342', node, [0.28, 0.28, 0.28], [w * 0.1, 1.05, d * 0.2]);
+      break;
+    }
+    case 'barrel':
+      parts.part('roundCylinder', COLORS.wood, node, [w, h, d], [0, h / 2, 0]);
+      for (const y of [0.2, 0.8]) parts.part('roundCylinder', COLORS.darkWood, node, [w + 0.04, 0.08, d + 0.04], [0, h * y, 0]);
+      break;
     case 'hut':
       parts.part('box', theme.plaster, node, [w, h * 0.7, d], [0, h * 0.35, 0]);
       parts.part('dome', theme.roof, node, [w * 1.05, h * 0.7, d * 1.05], [0, h * 0.7, 0]);
@@ -388,6 +421,49 @@ function createScenery(parts: PartFactory, root: TransformNode, map: MapId, them
 }
 
 /** Faint walls and posts at the map edge. The walls fade in when the player gets close. */
+/** The castle's moat: shallow water all round, a wooden bridge to the gate, and an arch over the gate. */
+function createMoat(scene: Scene, parts: PartFactory, root: TransformNode): void {
+  const { centerX: cx, moatInner: inner, moatOuter: outer, bridgeHalf, west } = CASTLE;
+  const water = new StandardMaterial('water', scene);
+  water.diffuseColor = Color3.FromHexString(COLORS.water);
+  water.specularColor = new Color3(0.5, 0.5, 0.5);
+  water.specularPower = 64;
+  water.alpha = 0.82;
+  const width = outer - inner;
+  const strips: [number, number, number, number][] = [
+    [cx, outer - width / 2, outer * 2, width],
+    [cx, -(outer - width / 2), outer * 2, width],
+    [cx + outer - width / 2, 0, width, inner * 2],
+    [cx - outer + width / 2, (inner + bridgeHalf) / 2, width, inner - bridgeHalf],
+    [cx - outer + width / 2, -(inner + bridgeHalf) / 2, width, inner - bridgeHalf],
+  ];
+  for (const [x, z, w, d] of strips) {
+    const plane = MeshBuilder.CreateBox('moat', { width: w, height: 0.05, depth: d }, scene);
+    plane.position.set(x, WATER.level, z);
+    plane.material = water;
+    plane.parent = root;
+    plane.isPickable = false;
+  }
+  const bridge = new TransformNode('bridge', scene);
+  bridge.parent = root;
+  const from = cx - outer - 1;
+  const to = cx - inner + 1;
+  bridge.position.set((from + to) / 2, 0.05, 0);
+  const length = to - from;
+  parts.part('box', COLORS.wood, bridge, [length, 0.25, bridgeHalf * 2], [0, 0, 0]);
+  for (let x = -length / 2 + 0.6; x < length / 2; x += 1.2) parts.part('box', COLORS.darkWood, bridge, [0.08, 0.27, bridgeHalf * 2], [x, 0.01, 0], { castShadow: false });
+  for (const z of [-bridgeHalf, bridgeHalf]) {
+    parts.part('box', COLORS.darkWood, bridge, [length, 0.14, 0.14], [0, 0.9, z]);
+    for (let x = -length / 2; x <= length / 2 + 0.01; x += length / 4) parts.part('box', COLORS.darkWood, bridge, [0.18, 1, 0.18], [x, 0.45, z]);
+  }
+  // The arch over the gate, between the gate towers (only to look at: it is far overhead).
+  const arch = new TransformNode('gate-arch', scene);
+  arch.parent = root;
+  arch.position.set(west, terrainHeightAt('castle', west, 0), 0);
+  parts.part('box', MAP_THEMES.castle.stone, arch, [CASTLE.wallThickness + 0.4, 2.2, CASTLE.gateHalf * 2 + 1], [0, CASTLE.wallHeight - 0.9, 0]);
+  parts.part('box', COLORS.darkWood, arch, [0.2, 1.4, CASTLE.gateHalf * 2], [-CASTLE.wallThickness / 2 - 0.1, CASTLE.wallHeight - 2.5, 0]);
+}
+
 function createEdge(scene: Scene, parts: PartFactory, root: TransformNode, map: MapId, material: StandardMaterial): void {
   const half = MAP.halfSize;
   const sides: [number, number, number][] = [

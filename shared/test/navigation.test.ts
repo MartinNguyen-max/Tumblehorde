@@ -3,13 +3,15 @@ import { neutralInput } from '../src/input.ts';
 import { stepMatch } from '../src/match.ts';
 import { distanceXZ } from '../src/math.ts';
 import { CASTLE } from '../src/maps.ts';
+import { inWater } from '../src/terrain.ts';
 import { beginNavigationStep, clearPath, isWalkable, localStep, navigate, nearestWalkable } from '../src/navigation.ts';
 import { applyCommand, formationTargets, holdAt } from '../src/orders.ts';
 import { commanderOf, newMatch, place, soldiersOf } from './helpers.ts';
 
 const DT = 1 / 30;
-const OUTSIDE = { x: CASTLE.west - 10, z: 20 };
-const INSIDE = { x: CASTLE.west + 10, z: 20 };
+/** On dry land beyond the moat, and in the courtyard. */
+const OUTSIDE = { x: CASTLE.centerX - CASTLE.moatOuter - 6, z: 20 };
+const INSIDE = { x: CASTLE.west + 8, z: 12 };
 
 describe('navigation', () => {
   it('sees walls between two points and open ground elsewhere', () => {
@@ -32,11 +34,20 @@ describe('navigation', () => {
     const towardsWall = localStep('castle', OUTSIDE, INSIDE);
     if (!towardsWall) throw new Error('expected an open step');
     expect(isWalkable('castle', towardsWall.x, towardsWall.z)).toBe(true);
-    expect(towardsWall.x).toBeLessThan(CASTLE.west - 1);
+    expect(inWater('castle', towardsWall.x, towardsWall.z)).toBe(false);
+  });
+
+  it('takes the bridge instead of wading through the moat', () => {
+    beginNavigationStep();
+    const from = { x: CASTLE.centerX - CASTLE.moatOuter - 3, z: 14 };
+    const step = navigate('castle', from, INSIDE);
+    if (!step) throw new Error('expected a route');
+    expect(inWater('castle', step.x, step.z)).toBe(false);
+    expect(Math.abs(step.z)).toBeLessThan(from.z);
   });
 
   it('moves places inside buildings out into the street', () => {
-    const inWall = { x: CASTLE.west, z: 16 };
+    const inWall = { x: CASTLE.west, z: 12 };
     expect(isWalkable('castle', inWall.x, inWall.z)).toBe(false);
     const free = nearestWalkable('castle', inWall);
     expect(isWalkable('castle', free.x, free.z)).toBe(true);

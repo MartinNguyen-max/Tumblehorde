@@ -51,12 +51,25 @@ export const TERRAIN = {
   rimSlope: 0.22,
 } as const;
 
+/** The castle moat: shallow water. Wading is slow, and soldiers who blunder in fall over. */
+export const WATER = {
+  depth: 1.1,
+  /** Surface height, relative to the dry ground around it. */
+  level: -0.4,
+  wadeSpeedFactor: 0.55,
+  /** Soldiers who end up in the water go down for this long... */
+  fallStun: 1.8,
+  /** ...with a little forward stumble. */
+  fallPop: 1.5,
+} as const;
+
 export const OBSTACLES = {
   treeTrunkRadius: 0.4,
   cactusRadius: 0.45,
   rockRadius: 0.9,
   keepClearOfSpawn: 14,
   keepClearOfCenter: 14,
+  keepClearOfMoat: 3,
 } as const;
 
 export const BODY = {

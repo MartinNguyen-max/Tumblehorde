@@ -111,6 +111,11 @@ export class BattleRenderer {
           }
           break;
         }
+        case 'splash': {
+          const unit = units?.[event.unitId];
+          if (unit) this.effects.burst('splash', unit.x, unit.y + 0.6, unit.z, 12);
+          break;
+        }
         case 'stumble': {
           const unit = units?.[event.unitId];
           if (unit) this.effects.burst('dust', unit.x, unit.y + 0.2, unit.z, 6);

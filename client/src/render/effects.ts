@@ -38,13 +38,14 @@ interface StuckArrow {
   bornAt: number;
 }
 
-export type BurstKind = 'hit' | 'block' | 'death' | 'dust';
+export type BurstKind = 'hit' | 'block' | 'death' | 'dust' | 'splash';
 
 const BURST_COLORS: Record<BurstKind, string> = {
   hit: '#E0533F',
   block: '#FFE27A',
   death: '#F4F1E8',
   dust: '#D9C9A3',
+  splash: COLORS.splash,
 };
 
 function arrowYaw(dx: number, dz: number): number {

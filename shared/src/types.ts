@@ -81,6 +81,8 @@ export interface Unit {
   respawnTimer: number;
   /** After the banquet: sways and stumbles, but hits hard and shrugs blows off. */
   drunk: boolean;
+  /** Standing in water right now. */
+  wet: boolean;
   intent: Intent;
   ai: AiMemory;
 }
@@ -195,6 +197,7 @@ export type SimEvent =
   | { type: 'drunk'; armyId: number }
   | { type: 'rally'; armyId: number; commanderId: EntityId }
   | { type: 'stumble'; unitId: EntityId }
+  | { type: 'splash'; unitId: EntityId }
   | { type: 'armyEliminated'; armyId: number }
   | { type: 'matchOver'; winnerTeam: number | null };
 

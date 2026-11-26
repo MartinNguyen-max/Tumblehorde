@@ -1,5 +1,5 @@
-import { MAP, OBSTACLES, TERRAIN } from './config.ts';
-import { CASTLE, CITY, MAPS, type MapDefinition, type MapId, type ObstacleKind } from './maps.ts';
+import { MAP, OBSTACLES, TERRAIN, WATER } from './config.ts';
+import { CASTLE, CITY, inMoat, MAPS, type MapDefinition, type MapId, type ObstacleKind } from './maps.ts';
 import { clamp, distanceXZ, type Vec2 } from './math.ts';
 import { createRandom, randomRange, type RandomSource } from './random.ts';
 import { allPossibleSpawnPoints } from './spawn.ts';
@@ -20,7 +20,13 @@ function hillHeight(def: MapDefinition, x: number, z: number): number {
     Math.sin(x * ripples.frequencyX + z * ripples.frequencyZ) * ripples.amplitude;
   const rimDistance = Math.max(Math.abs(x), Math.abs(z)) - TERRAIN.rimStart;
   const rim = rimDistance > 0 ? rimDistance * TERRAIN.rimSlope : 0;
-  return h * blend + rim;
+  const moat = def.layout === 'siege' && inMoat(x, z) ? WATER.depth : 0;
+  return h * blend + rim - moat;
+}
+
+/** Shallow water: only the castle moat. */
+export function inWater(map: MapId, x: number, z: number): boolean {
+  return MAPS[map].layout === 'siege' && inMoat(x, z);
 }
 
 const heightGrids = new Map<MapId, Float32Array>();
@@ -122,6 +128,8 @@ function isClearSpot(map: MapId, p: Vec2, spawns: Vec2[], placed: Obstacle[]): b
   if (Math.hypot(p.x, p.z) < OBSTACLES.keepClearOfCenter) return false;
   if (nearStructure(map, p.x, p.z, STRUCTURE_CLEARANCE)) return false;
   if (isOnPath(map, p.x, p.z)) return false;
+  // Nothing grows in the moat or inside the castle.
+  if (MAPS[map].layout === 'siege' && Math.max(Math.abs(p.x - CASTLE.centerX), Math.abs(p.z)) < CASTLE.moatOuter + OBSTACLES.keepClearOfMoat) return false;
   if (spawns.some((s) => distanceXZ(s, p) < OBSTACLES.keepClearOfSpawn)) return false;
   return !placed.some((o) => distanceXZ(o, p) < 4);
 }

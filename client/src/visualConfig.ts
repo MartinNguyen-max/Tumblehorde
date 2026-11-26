@@ -26,6 +26,8 @@ export const COLORS = {
   mane: '#2E2117',
   edgeWall: '#FFD166',
   bubble: '#E9D8FF',
+  water: '#3E8FC4',
+  splash: '#CFEFFF',
   shout: '#FFF1B8',
   edgePost: '#E8E2CF',
 } as const;
@@ -200,6 +202,15 @@ export const MAP_NAMES: Record<MapId, string> = {
   castle: 'Castle Siege',
   city: 'The City',
 };
+
+/** Town houses: roof proportions and window rows. */
+export const HOUSE = {
+  roofShare: 0.3,
+  roofPitch: 0.45,
+  floorHeight: 3,
+  firstWindow: 1.9,
+  twoWindowWidth: 4.5,
+} as const;
 
 export const LIGHTING = {
   hemiIntensity: 0.85,

@@ -2,6 +2,7 @@ import { BODY, MAP, NAV } from './config.ts';
 import type { MapId } from './maps.ts';
 import type { Vec2 } from './math.ts';
 import { insideStructure, mapStructures } from './structures.ts';
+import { inWater } from './terrain.ts';
 
 /**
  * Navigation for AI soldiers on maps with buildings. The map is a grid of walkable cells;
@@ -48,7 +49,8 @@ export function navGrid(map: MapId): NavGrid {
     const i = index % SIDE;
     const j = Math.floor(index / SIDE);
     const rim = i === 0 || j === 0 || i === SIDE - 1 || j === SIDE - 1;
-    if (rim || structures.some((s) => insideStructure(s, c.x, c.z, margin))) blocked[index] = 1;
+    // Soldiers do not wade through the moat on purpose: they take the bridge.
+    if (rim || inWater(map, c.x, c.z) || structures.some((s) => insideStructure(s, c.x, c.z, margin))) blocked[index] = 1;
   }
   const grid = { blocked, hasObstacles: structures.length > 0 };
   grids.set(map, grid);

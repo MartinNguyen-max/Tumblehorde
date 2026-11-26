@@ -1,12 +1,12 @@
-import { BODY, COMMANDER, HORSE, MAP, MOVEMENT, SHIELD, SIM } from './config.ts';
-import { applyHit } from './combat.ts';
+import { BODY, COMMANDER, HORSE, MAP, MOVEMENT, SHIELD, SIM, WATER } from './config.ts';
+import { applyHit, applyKnockback, knockbackVector } from './combat.ts';
 import { dirToYaw, normalizeXZ, turnTowards, wrapAngle, yawToDir } from './math.ts';
 import { syncRiderToHorse } from './mounts.ts';
 import { resolveStructures } from './structures.ts';
-import { mapObstacles, terrainHeightAt } from './terrain.ts';
+import { inWater, mapObstacles, terrainHeightAt } from './terrain.ts';
 import type { MapId } from './maps.ts';
 import type { MatchState, Unit } from './types.ts';
-import { areEnemies, bodyMass, bodyRadius, footSpeed, getUnit, isHorse, isMounted } from './units.ts';
+import { areEnemies, bodyMass, bodyRadius, footSpeed, getUnit, isHorse, isMounted, isSoldier } from './units.ts';
 
 export function jumpVelocity(): number {
   return Math.sqrt(2 * SIM.gravity * COMMANDER.jumpHeight);
@@ -41,6 +41,7 @@ export function personSpeed(unit: Unit): number {
   let speed = footSpeed(unit);
   if (unit.shieldUp) speed *= SHIELD.speedFactor;
   if (unit.action !== 'none') speed *= MOVEMENT.attackingSpeedFactor;
+  if (unit.wet) speed *= WATER.wadeSpeedFactor;
   return speed;
 }
 
@@ -78,7 +79,7 @@ export function steerHorse(state: MatchState, horse: Unit, dt: number): void {
   horse.yaw = turnTowards(horse.yaw, wanted, BODY.horseTurnRate * dt);
   const alignment = Math.max(MOVEMENT.horseMinTurnSpeedFactor, Math.cos(wrapAngle(wanted - horse.yaw)));
   const forward = yawToDir(horse.yaw);
-  const speed = HORSE.speed * move.amount * alignment;
+  const speed = HORSE.speed * move.amount * alignment * (horse.wet ? WATER.wadeSpeedFactor : 1);
   accelerateTowards(horse, forward.x * speed, forward.z * speed, BODY.horseAccel * dt);
   jumpHorse(horse, rider);
 }
@@ -276,6 +277,22 @@ function slideDownedCommander(state: MatchState, unit: Unit, dt: number): void {
   resolveStructures(unit, state.settings.map);
 }
 
+/**
+ * Stepping into the moat makes a splash. Soldiers blunder in and fall flat for a moment;
+ * commanders and horses just wade. Getting wet does no harm.
+ */
+function updateWading(state: MatchState, unit: Unit): void {
+  const wet = unit.onGround && inWater(state.settings.map, unit.pos.x, unit.pos.z);
+  if (wet && !unit.wet) {
+    state.events.push({ type: 'splash', unitId: unit.id });
+    if (isSoldier(unit) && unit.stunTimer <= 0) {
+      const dir = normalizeXZ(unit.vel.x, unit.vel.z);
+      applyKnockback(unit, knockbackVector(dir.x || dir.z ? dir : { x: 1, z: 0 }, WATER.fallPop), WATER.fallStun);
+    }
+  }
+  unit.wet = wet;
+}
+
 export function stepMovement(state: MatchState, dt: number): void {
   for (const unit of state.units) {
     if (!unit.alive && unit.kind === 'commander' && unit.respawnTimer > 0) slideDownedCommander(state, unit, dt);
@@ -294,6 +311,7 @@ export function stepMovement(state: MatchState, dt: number): void {
     }
     resolveObstacles(unit, state.settings.map);
     resolveStructures(unit, state.settings.map);
+    updateWading(state, unit);
   }
   separateBodies(state);
   for (const unit of state.units) {
