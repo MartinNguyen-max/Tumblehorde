@@ -1,3 +1,4 @@
+import { resolveStructures } from './structures.ts';
 import { applyMapEdge, integrateBody, resolveObstacles, steerPerson } from './physics.ts';
 import type { MapId } from './maps.ts';
 import type { CommanderInput, Unit } from './types.ts';
@@ -20,4 +21,5 @@ export function predictCommanderStep(unit: Unit, input: CommanderInput, dt: numb
   integrateBody(unit, dt, map);
   applyMapEdge(unit);
   resolveObstacles(unit, map);
+  resolveStructures(unit, map);
 }

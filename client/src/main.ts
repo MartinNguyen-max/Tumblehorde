@@ -14,8 +14,7 @@ import { Landing, readStoredName } from './ui/landing.ts';
 import { Results } from './ui/results.ts';
 import { MAP_NAMES } from './visualConfig.ts';
 
-const DEMO_ARMY_SIZE = 20;
-const DEMO_CAMERA = { distance: 34, pitch: 0.42, height: 1 } as const;
+const DEMO_CAMERA = { distance: 62, pitch: 0.55, height: 1 } as const;
 const PLAY_CAMERA = { distance: 9, pitch: 0.32 } as const;
 const MAX_FRAME_TIME = 0.1;
 
@@ -43,21 +42,10 @@ async function boot(): Promise<void> {
     hud.setMapName(MAP_NAMES[map]);
   };
 
-  const startDemo = (preview?: MapId | null): void => {
-    const map = preview ?? landing?.chosenMap() ?? mapFromRandom(Math.random());
-    useMap(map);
-    demo = new LocalSession(
-      defaultSettings({
-        armySize: DEMO_ARMY_SIZE,
-        seed: Date.now() | 0,
-        map,
-        armies: [
-          { name: 'Blue', team: 0, isBot: true },
-          { name: 'Red', team: 1, isBot: true },
-        ],
-      }),
-      null,
-    );
+  const startDemo = (settings?: MatchSettings): void => {
+    const preview = settings ?? landing.previewSettings();
+    useMap(preview.map);
+    demo = new LocalSession(preview, null);
     camera.distance = DEMO_CAMERA.distance;
     camera.pitch = DEMO_CAMERA.pitch;
   };
@@ -143,8 +131,8 @@ async function boot(): Promise<void> {
     },
     onCreateRoom: (name) => void enterOnline(() => onlineLobby.create(name)),
     onJoinRoom: (name, code) => void enterOnline(() => onlineLobby.join(name, code)),
-    onMapPreview: (map) => {
-      if (!controller) startDemo(map);
+    onPreview: (settings) => {
+      if (!controller) startDemo(settings);
     },
   });
 

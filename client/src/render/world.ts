@@ -25,7 +25,9 @@ import {
   MAP,
   type MapId,
   mapObstacles,
+  mapStructures,
   type Obstacle,
+  type Structure,
   randomRange,
   SIM,
   TERRAIN,
@@ -127,6 +129,7 @@ export function loadMap(world: World, map: MapId): void {
   const body = new PhysicsBody(terrain, PhysicsMotionType.STATIC, false, scene);
   body.shape = new PhysicsShapeMesh(terrain, scene);
   createScenery(world.parts, root, map, theme);
+  for (const s of mapStructures(map)) createStructure(world.parts, root, map, s, theme);
   createEdge(scene, world.parts, root, map, world.edgeMaterial);
   world.map = map;
   world.mapRoot = root;
@@ -253,6 +256,70 @@ function placeObstacle(parts: PartFactory, root: TransformNode, map: MapId, o: O
       parts.part('sphere', '#F28AB8', node, [0.18, 0.14, 0.18], [0, 2.5, 0]);
       break;
     }
+  }
+}
+
+const CRENEL_SPACING = 1.3;
+const FENCE_POST_SPACING = 1.6;
+
+/** Houses, walls, towers and ruins. Their collision boxes live in the shared simulation. */
+function createStructure(parts: PartFactory, root: TransformNode, map: MapId, s: Structure, theme: MapTheme): void {
+  const node = new TransformNode(s.kind, root.getScene());
+  node.parent = root;
+  node.position.set(s.x, terrainHeightAt(map, s.x, s.z), s.z);
+  node.rotation.y = s.yaw;
+  const { width: w, depth: d, height: h } = s;
+  switch (s.kind) {
+    case 'house': {
+      parts.part('box', theme.plaster, node, [w, h * 0.62, d], [0, h * 0.31 - 0.2, 0]);
+      parts.part('box', theme.stone, node, [w + 0.1, 0.5, d + 0.1], [0, 0.05, 0]);
+      const roof = h * 0.45;
+      const slope = Math.hypot(d / 2, roof);
+      const angle = Math.atan2(roof, d / 2);
+      parts.part('box', theme.roof, node, [w + 0.6, 0.22, slope + 0.3], [0, h * 0.62 + roof / 2 - 0.2, d / 4]).rotation.x = angle;
+      parts.part('box', theme.roof, node, [w + 0.6, 0.22, slope + 0.3], [0, h * 0.62 + roof / 2 - 0.2, -d / 4]).rotation.x = -angle;
+      // Gable ends: a box turned 45° shows a triangle above the eaves; squash it to the roof's height.
+      const gable = new TransformNode('gable', node.getScene());
+      gable.parent = node;
+      gable.position.y = h * 0.62 - 0.2;
+      gable.scaling.y = roof / (d / 2);
+      parts.part('box', theme.plaster, gable, [w - 0.1, d / Math.SQRT2, d / Math.SQRT2], [0, 0, 0]).rotation.x = Math.PI / 4;
+      parts.part('box', COLORS.darkWood, node, [1.1, 2, 0.12], [0, 1, d / 2 + 0.02]);
+      for (const side of [-1, 1]) parts.part('box', COLORS.pupil, node, [0.7, 0.7, 0.1], [side * w * 0.3, 1.8, d / 2 + 0.02]);
+      break;
+    }
+    case 'hut':
+      parts.part('box', theme.plaster, node, [w, h * 0.7, d], [0, h * 0.35, 0]);
+      parts.part('dome', theme.roof, node, [w * 1.05, h * 0.7, d * 1.05], [0, h * 0.7, 0]);
+      parts.part('box', COLORS.darkWood, node, [1, 1.6, 0.1], [0, 0.8, d / 2 + 0.02]);
+      break;
+    case 'wall': {
+      parts.part('box', theme.stone, node, [w, h, d], [0, h / 2 - 0.15, 0]);
+      for (let x = -w / 2 + CRENEL_SPACING / 2; x < w / 2; x += CRENEL_SPACING) {
+        parts.part('box', theme.stone, node, [CRENEL_SPACING * 0.55, 0.45, d], [x, h + 0.07, 0]);
+      }
+      break;
+    }
+    case 'tower':
+      parts.part('cylinder', theme.stone, node, [w / 2, h, d / 2], [0, h / 2 - 0.2, 0]);
+      parts.part('cone', theme.roof, node, [w * 0.65, 2.2, d * 0.65], [0, h + 0.9, 0]);
+      break;
+    case 'pillar':
+      parts.part('cylinder', theme.stone, node, [w / 2.4, h, d / 2.4], [0, h / 2, 0]);
+      parts.part('box', theme.stone, node, [w * 1.1, 0.35, d * 1.1], [0, h, 0]);
+      parts.part('box', theme.stone, node, [w * 1.1, 0.35, d * 1.1], [0, 0.15, 0]);
+      break;
+    case 'fence':
+      for (let x = -w / 2; x <= w / 2 + 0.01; x += FENCE_POST_SPACING) parts.part('box', COLORS.wood, node, [0.16, h, 0.16], [x, h / 2, 0]);
+      parts.part('box', COLORS.wood, node, [w, 0.12, 0.08], [0, h * 0.75, 0]);
+      parts.part('box', COLORS.wood, node, [w, 0.12, 0.08], [0, h * 0.4, 0]);
+      break;
+    case 'well':
+      parts.part('cylinder', theme.stone, node, [w / 2, h, d / 2], [0, h / 2, 0]);
+      parts.part('cylinder', '#3E6E8E', node, [w / 2.6, 0.1, d / 2.6], [0, h + 0.02, 0]);
+      for (const side of [-1, 1]) parts.part('box', COLORS.wood, node, [0.15, 2.2, 0.15], [side * w * 0.4, h + 1, 0]);
+      parts.part('box', theme.roof, node, [w * 1.1, 0.15, d * 0.9], [0, h + 2.1, 0]);
+      break;
   }
 }
 

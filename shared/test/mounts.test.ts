@@ -131,3 +131,19 @@ describe('stolen horses', () => {
     expect(horse.hp < horse.maxHp || me.hp < me.maxHp).toBe(true);
   });
 });
+
+describe('horse jumping', () => {
+  it('jumps when the rider presses jump', () => {
+    const state = newMatch({}, { commanderHorses: true });
+    const me = commanderOf(state, 0);
+    const horse = horseOf(state, me);
+    const ground = horse.pos.y;
+    let peak = 0;
+    stepMatch(state, new Map([[0, { ...neutralInput(), jump: true }]]), 1 / 60);
+    for (let i = 0; i < 60; i++) {
+      stepMatch(state, new Map([[0, neutralInput()]]), 1 / 60);
+      peak = Math.max(peak, horse.pos.y - ground);
+    }
+    expect(peak).toBeCloseTo(HORSE.jumpHeight, 1);
+  });
+});

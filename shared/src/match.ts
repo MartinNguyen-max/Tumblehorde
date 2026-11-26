@@ -7,6 +7,7 @@ import { distanceXZ, normalizeXZ } from './math.ts';
 import { livingSoldiers, updateFollowAnchors } from './orders.ts';
 import { stepMovement } from './physics.ts';
 import { randomRange } from './random.ts';
+import { steerAroundStructures } from './structures.ts';
 import { terrainHeightAt } from './terrain.ts';
 import type { Army, CommanderInput, MatchState, Unit } from './types.ts';
 import { areEnemies, canBeTargeted, canUseShield, getUnit, isMounted, isPerson, rangedStatsFor } from './units.ts';
@@ -202,6 +203,19 @@ function updateMatchPhase(state: MatchState, dt: number): void {
   }
 }
 
+/** AI-driven units walk along walls towards gates; players steer themselves. */
+function steerAiAroundStructures(state: MatchState): void {
+  for (const army of state.armies) {
+    const commander = state.units[army.commanderId];
+    const playerControlled = !army.isBot && commander?.alive === true;
+    for (const id of army.soldierIds) {
+      const unit = state.units[id];
+      if (unit?.alive) steerAroundStructures(unit, state.settings.map);
+    }
+    if (commander?.alive && !playerControlled) steerAroundStructures(commander, state.settings.map);
+  }
+}
+
 /** Advances the whole battle by one fixed step. `inputs` maps army id to its player's input. */
 export function stepMatch(state: MatchState, inputs: ReadonlyMap<number, CommanderInput>, dt: number): void {
   state.events = [];
@@ -217,6 +231,7 @@ export function stepMatch(state: MatchState, inputs: ReadonlyMap<number, Command
     else runLeaderlessArmy(state, army, step);
     runArmyAi(state, army, step);
   }
+  steerAiAroundStructures(state);
   updateTimers(state, step);
   updateWeapons(state);
   progressActions(state, step);

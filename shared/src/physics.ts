@@ -2,6 +2,7 @@ import { BODY, COMMANDER, HORSE, MAP, MOVEMENT, SHIELD, SIM } from './config.ts'
 import { applyHit } from './combat.ts';
 import { dirToYaw, normalizeXZ, turnTowards, wrapAngle, yawToDir } from './math.ts';
 import { syncRiderToHorse } from './mounts.ts';
+import { resolveStructures } from './structures.ts';
 import { mapObstacles, terrainHeightAt } from './terrain.ts';
 import type { MapId } from './maps.ts';
 import type { MatchState, Unit } from './types.ts';
@@ -70,6 +71,7 @@ export function steerHorse(state: MatchState, horse: Unit, dt: number): void {
   const move = clampedMove(rider);
   if (move.amount < 0.1) {
     accelerateTowards(horse, 0, 0, BODY.horseAccel * dt);
+    jumpHorse(horse, rider);
     return;
   }
   const wanted = dirToYaw(move.x, move.z);
@@ -78,6 +80,13 @@ export function steerHorse(state: MatchState, horse: Unit, dt: number): void {
   const forward = yawToDir(horse.yaw);
   const speed = HORSE.speed * move.amount * alignment;
   accelerateTowards(horse, forward.x * speed, forward.z * speed, BODY.horseAccel * dt);
+  jumpHorse(horse, rider);
+}
+
+function jumpHorse(horse: Unit, rider: Unit): void {
+  if (!rider.intent.jump || !horse.onGround) return;
+  horse.vel.y = Math.sqrt(2 * SIM.gravity * HORSE.jumpHeight);
+  horse.onGround = false;
 }
 
 export function integrateBody(unit: Unit, dt: number, map: MapId): void {
@@ -209,13 +218,32 @@ function resolvePair(state: MatchState, a: Unit, b: Unit): void {
   const dist = Math.sqrt(distSq);
   const n = dist > 1e-6 ? normalizeXZ(dx, dz) : { x: 1, z: 0 };
   const overlap = minDistance - dist;
-  const massA = bodyMass(a);
-  const massB = bodyMass(b);
-  const shareA = massB / (massA + massB);
+  const shareA = pushShareOf(state, a, b);
   a.pos.x -= n.x * overlap * shareA;
   a.pos.z -= n.z * overlap * shareA;
   b.pos.x += n.x * overlap * (1 - shareA);
   b.pos.z += n.z * overlap * (1 - shareA);
+}
+
+/** A commander (or the horse they ride) has right of way: their own soldiers step aside. */
+function leadsTheArmy(state: MatchState, unit: Unit): boolean {
+  if (unit.kind === 'commander') return true;
+  return isHorse(unit) && getUnit(state, unit.riderId)?.kind === 'commander';
+}
+
+/** How much of the overlap `a` moves; `b` moves the rest. */
+function pushShareOf(state: MatchState, a: Unit, b: Unit): number {
+  const aLeads = leadsTheArmy(state, a);
+  const bLeads = leadsTheArmy(state, b);
+  if (aLeads !== bLeads) {
+    const leader = aLeads ? a : b;
+    const other = aLeads ? b : a;
+    const leaderShare = areEnemies(state, leader, other) ? BODY.commanderShoveShare : 0;
+    return aLeads ? leaderShare : 1 - leaderShare;
+  }
+  const massA = bodyMass(a);
+  const massB = bodyMass(b);
+  return massB / (massA + massB);
 }
 
 function tryTrample(state: MatchState, horse: Unit, victim: Unit): void {
@@ -240,6 +268,7 @@ function slideDownedCommander(state: MatchState, unit: Unit, dt: number): void {
   integrateBody(unit, dt, state.settings.map);
   applyMapEdge(unit);
   resolveObstacles(unit, state.settings.map);
+  resolveStructures(unit, state.settings.map);
 }
 
 export function stepMovement(state: MatchState, dt: number): void {
@@ -259,6 +288,7 @@ export function stepMovement(state: MatchState, dt: number): void {
       }
     }
     resolveObstacles(unit, state.settings.map);
+    resolveStructures(unit, state.settings.map);
   }
   separateBodies(state);
   for (const unit of state.units) {

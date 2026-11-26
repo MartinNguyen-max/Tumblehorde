@@ -21,6 +21,12 @@ The simulation for all unit types lives in `/shared` and is covered by Vitest
 (`npm test`). The online flow is covered by `npm run smoke -w server` against a
 running server. Run the game with `npm run dev` (see `README.md`).
 
+After the first playtests (2026-11-26): three battlefields with structures (walled village,
+farm, ruins), faceted googly-eyed characters, commander kit (sword/spear/bow, horse, shield on
+horseback), Hold forms up around the commander, `6`–`9` select who hears orders, smarter bots
+(form up → march → shield wall standoff → engage → regroup), leaderless armies run themselves,
+much longer battles. See `DECISIONS.md` and `BALANCE.md` for details.
+
 Next up after v1: playtesting and balance tuning, sound, more maps, more bot
 difficulty levels (see "Out of scope for v1").
 

@@ -62,7 +62,7 @@ describe('orders', () => {
 
   it('Hold forms up around the commander: shield wall ahead, archers behind', () => {
     const state = quietMatch(20);
-    const me = place(commanderOf(state, 0), -20, 0, Math.PI / 2);
+    const me = place(commanderOf(state, 0), -70, 0, Math.PI / 2);
     applyCommand(state, 0, { type: 'order', order: 'hold', group: null });
     run(state, 8);
     const soldiers = livingSoldiers(state, state.armies[0]!);

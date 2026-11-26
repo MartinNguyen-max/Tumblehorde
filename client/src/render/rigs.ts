@@ -87,8 +87,8 @@ function addEyes(parts: PartFactory, head: TransformNode, forward: number, size:
   const deadEyes = node('dead-eyes', head);
   for (const side of [-1, 1]) {
     const x = side * PUPIL_SPREAD;
-    parts.part('sphere', COLORS.eyeWhite, head, [size, size * 1.1, size * 0.6], [x, 0, forward], NO_SHADOW_GLOSS);
-    pupils.push(parts.part('sphere', COLORS.pupil, head, [size * 0.45, size * 0.5, size * 0.3], [x, 0, forward + size * 0.24], NO_SHADOW_GLOSS));
+    parts.part('eye', COLORS.eyeWhite, head, [size, size * 1.1, size * 0.6], [x, 0, forward], NO_SHADOW_GLOSS);
+    pupils.push(parts.part('eye', COLORS.pupil, head, [size * 0.45, size * 0.5, size * 0.3], [x, 0, forward + size * 0.24], NO_SHADOW_GLOSS));
     const cross = node('x-eye', deadEyes, x, 0, forward + size * 0.3);
     parts.part('box', COLORS.pupil, cross, [size * 0.7, size * 0.12, 0.02], [0, 0, 0], { castShadow: false }).rotation.z = 0.8;
     parts.part('box', COLORS.pupil, cross, [size * 0.7, size * 0.12, 0.02], [0, 0, 0], { castShadow: false }).rotation.z = -0.8;
@@ -289,8 +289,8 @@ export function createHorseRig(scene: Scene, parts: PartFactory, palette: ArmyPa
   parts.part('sphere', COLORS.mane, head, [0.3, 0.26, 0.2], [0, -0.13, 0.58], GLOSS);
   for (const side of [-1, 1]) {
     parts.part('smoothCone', hide, head, [0.1, 0.22, 0.1], [side * 0.12, 0.3, 0.02], GLOSS);
-    parts.part('sphere', COLORS.eyeWhite, head, [0.15, 0.17, 0.15], [side * 0.18, 0.1, 0.25], NO_SHADOW_GLOSS);
-    parts.part('sphere', COLORS.pupil, head, [0.07, 0.08, 0.07], [side * 0.24, 0.1, 0.28], NO_SHADOW_GLOSS);
+    parts.part('eye', COLORS.eyeWhite, head, [0.15, 0.17, 0.15], [side * 0.18, 0.1, 0.25], NO_SHADOW_GLOSS);
+    parts.part('eye', COLORS.pupil, head, [0.07, 0.08, 0.07], [side * 0.24, 0.1, 0.28], NO_SHADOW_GLOSS);
   }
   const legs: TransformNode[] = [];
   for (const [x, z] of [[-0.28, 0.68], [0.28, 0.68], [-0.28, -0.68], [0.28, -0.68]] as const) {

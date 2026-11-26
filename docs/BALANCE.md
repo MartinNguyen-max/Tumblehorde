@@ -122,3 +122,14 @@ These values replace the ones above where they differ.
 | Commander weapons | sword | sword, spear (30 dmg, 2.8 m; 45 dmg lance on horseback), bow (35 dmg, 45 m, 1.0 s) |
 
 Bot-vs-bot battles now last about 1–3 minutes (median 2:12 over 24 seeded battles), up from 30–60 s.
+
+## Tuning round 2
+
+| Value | Before | Now |
+|---|---|---|
+| Map size | 150 × 150 m | 220 × 220 m |
+| Spawn circle radius | 55 m | 85 m (170 m between two armies) |
+| Form-up time | 15 s | 20 s |
+| Commander body slide when knocked out | – | 50 % of the killing blow's push |
+| Horse jump height | – | 1.4 m |
+| Commander shove share vs. enemies (own soldiers: 0) | 50 % | 30 % |

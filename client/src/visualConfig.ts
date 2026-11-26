@@ -83,6 +83,9 @@ export interface MapTheme {
   /** Little tufts or pebbles scattered for texture. */
   tuft: string;
   tuftCount: number;
+  stone: string;
+  plaster: string;
+  roof: string;
 }
 
 export const MAP_THEMES: Record<MapId, MapTheme> = {
@@ -104,7 +107,10 @@ export const MAP_THEMES: Record<MapId, MapTheme> = {
     bush: '#4E9E42',
     bushCount: 70,
     tuft: '#6FBF4A',
-    tuftCount: 260,
+    tuftCount: 420,
+    stone: '#A6A39A',
+    plaster: '#EDE4CF',
+    roof: '#B5533C',
   },
   desert: {
     sky: '#8FCBEA',
@@ -124,7 +130,10 @@ export const MAP_THEMES: Record<MapId, MapTheme> = {
     bush: '#9A9A52',
     bushCount: 40,
     tuft: '#C7A46B',
-    tuftCount: 160,
+    tuftCount: 260,
+    stone: '#D9C29A',
+    plaster: '#D8AE7E',
+    roof: '#B98455',
   },
   highlands: {
     sky: '#A6C6E2',
@@ -132,19 +141,22 @@ export const MAP_THEMES: Record<MapId, MapTheme> = {
     hemiSky: '#D6E6F5',
     hemiGround: '#5F6E58',
     sun: '#F4F1E6',
-    ground: { hue: 0.27, saturation: 0.25, lightMin: 0.4, lightMax: 0.47 },
-    path: { hue: 0.09, saturation: 0.22, lightMin: 0.47, lightMax: 0.53 },
-    rock: { hue: 0.6, saturation: 0.05, lightMin: 0.5, lightMax: 0.6 },
-    rockHeight: 1.6,
+    ground: { hue: 0.6, saturation: 0.06, lightMin: 0.5, lightMax: 0.58 },
+    path: { hue: 0.08, saturation: 0.2, lightMin: 0.44, lightMax: 0.5 },
+    rock: { hue: 0.6, saturation: 0.07, lightMin: 0.38, lightMax: 0.46 },
+    rockHeight: 2.2,
     treeTrunk: '#5E3F26',
     leaves: '#2F6B3A',
     leavesTop: '#3E8048',
     rockColor: '#8E9399',
     cactus: '#4E9445',
-    bush: '#4F7B44',
-    bushCount: 45,
-    tuft: '#7F8A86',
-    tuftCount: 220,
+    bush: '#6E7C5E',
+    bushCount: 20,
+    tuft: '#8A8F8C',
+    tuftCount: 360,
+    stone: '#8C8C88',
+    plaster: '#CFC8B8',
+    roof: '#5E6B7A',
   },
 };
 
@@ -160,8 +172,8 @@ export const LIGHTING = {
   sunDirection: [-26, -42, -18] as const,
   shadowMapSize: 2048,
   shadowRange: 45,
-  fogStart: 60,
-  fogEnd: 150,
+  fogStart: 70,
+  fogEnd: 210,
 } as const;
 
 export const CAMERA = {

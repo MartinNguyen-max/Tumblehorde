@@ -2,6 +2,7 @@ import { AI, ARROW, BODY, TERRAIN } from './config.ts';
 import { applyHit } from './combat.ts';
 import { dirToYaw, normalizeXZ, segmentSegmentDistanceSq, yawToDir, type Vec3 } from './math.ts';
 import { randomRange } from './random.ts';
+import { hitsStructure } from './structures.ts';
 import { terrainHeightAt } from './terrain.ts';
 import type { Arrow, MatchState, Unit } from './types.ts';
 import { bodyRadius, isHorse, isMounted, rangedStatsFor, teamOf } from './units.ts';
@@ -133,11 +134,11 @@ export function stepArrows(state: MatchState, dt: number): void {
       continue;
     }
     const ground = terrainHeightAt(state.settings.map, arrow.pos.x, arrow.pos.z);
-    if (arrow.pos.y <= ground) {
+    if (arrow.pos.y <= ground || hitsStructure(state.settings.map, arrow.pos, ground)) {
       const speed = Math.hypot(arrow.vel.x, arrow.vel.y, arrow.vel.z) || 1;
       state.events.push({
         type: 'arrowLanded',
-        pos: { x: arrow.pos.x, y: ground, z: arrow.pos.z },
+        pos: { x: arrow.pos.x, y: Math.max(ground, arrow.pos.y), z: arrow.pos.z },
         dir: { x: arrow.vel.x / speed, y: arrow.vel.y / speed, z: arrow.vel.z / speed },
       });
       continue;

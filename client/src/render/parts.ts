@@ -9,7 +9,10 @@ import {
   StandardMaterial,
 } from './babylon.ts';
 
-/** Faceted shapes for the low-poly world; smooth ones for the round, toy-like characters. */
+/**
+ * Everything is faceted (flat-shaded, few sides) so characters sit between blocky and round:
+ * chunky and clean like the world, still a bit goofy. Only eyes stay smooth, to read as googly.
+ */
 export type PartShape =
   | 'box'
   | 'cone'
@@ -21,7 +24,8 @@ export type PartShape =
   | 'dome'
   | 'disc'
   | 'torus'
-  | 'smoothCone';
+  | 'smoothCone'
+  | 'eye';
 
 export interface PartOptions {
   castShadow?: boolean;
@@ -84,17 +88,19 @@ export class PartFactory {
       case 'bush':
         return flat(MeshBuilder.CreateIcoSphere(name, { radius: 1, subdivisions: 1, flat: true }, s));
       case 'sphere':
-        return MeshBuilder.CreateSphere(name, { diameter: 1, segments: 5 }, s);
+        return flat(MeshBuilder.CreateIcoSphere(name, { radius: 0.5, subdivisions: 1, flat: true }, s));
       case 'capsule':
-        return MeshBuilder.CreateCapsule(name, { height: 1, radius: 0.5, tessellation: 10, capSubdivisions: 2 }, s);
+        return flat(MeshBuilder.CreateCapsule(name, { height: 1, radius: 0.5, tessellation: 8, capSubdivisions: 2 }, s));
       case 'dome':
-        return MeshBuilder.CreateSphere(name, { diameter: 1, segments: 6, slice: 0.5 }, s);
+        return flat(MeshBuilder.CreateSphere(name, { diameter: 1, segments: 3, slice: 0.5 }, s));
       case 'disc':
-        return MeshBuilder.CreateCylinder(name, { diameter: 1, height: 1, tessellation: 12 }, s);
+        return flat(MeshBuilder.CreateCylinder(name, { diameter: 1, height: 1, tessellation: 8 }, s));
       case 'torus':
-        return MeshBuilder.CreateTorus(name, { diameter: 1, thickness: 0.14, tessellation: 12 }, s);
+        return flat(MeshBuilder.CreateTorus(name, { diameter: 1, thickness: 0.14, tessellation: 8 }, s));
       case 'smoothCone':
-        return MeshBuilder.CreateCylinder(name, { diameterTop: 0, diameterBottom: 1, height: 1, tessellation: 8 }, s);
+        return flat(MeshBuilder.CreateCylinder(name, { diameterTop: 0, diameterBottom: 1, height: 1, tessellation: 6 }, s));
+      case 'eye':
+        return MeshBuilder.CreateSphere(name, { diameter: 1, segments: 6 }, s);
     }
   }
 

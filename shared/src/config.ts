@@ -29,25 +29,25 @@ export const MOVEMENT = {
 } as const;
 
 export const MAP = {
-  size: 150,
-  halfSize: 75,
+  size: 220,
+  halfSize: 110,
   /** Distance from the edge where the player starts seeing the warning. */
   edgeWarningDistance: 4,
   edgePushSpeed: 6,
   /** Hard limit past the edge, so nothing can ever escape. */
   edgeHardOvershoot: 1,
-  /** Armies start on a circle of this radius, so two armies are 110 m apart (~20 s walk). */
-  armySpawnRadius: 55,
+  /** Armies start on a circle of this radius, so two armies are 170 m apart (~35 s walk). */
+  armySpawnRadius: 85,
   seed: 1337,
 } as const;
 
 export const TERRAIN = {
   /** Terrain extends past the playable map so the horizon is filled. */
-  extent: 110,
+  extent: 150,
   cellSize: 2.5,
   hillBlendDistance: 26,
   /** Rim hills outside the map that frame the battlefield. */
-  rimStart: 80,
+  rimStart: 115,
   rimSlope: 0.22,
 } as const;
 
@@ -68,6 +68,8 @@ export const BODY = {
   saddleHeight: 1.35,
   personMass: 1,
   horseMass: 4,
+  /** How much of a crowd push a commander takes from enemies (own soldiers always make way). */
+  commanderShoveShare: 0.3,
   personTurnRate: 14,
   horseTurnRate: 3.2,
   horseAccel: 14,
@@ -227,6 +229,7 @@ export const RIDER = {
 export const HORSE = {
   hp: 280,
   speed: 11,
+  jumpHeight: 1.4,
   /** A horse moving faster than this tramples enemies it runs into. */
   trampleMinSpeed: 6,
   trample: { strength: 12, stun: 1.5 } satisfies KnockbackStats,
@@ -369,7 +372,7 @@ export const BOT = {
 
 export const MATCH = {
   /** Armies form up this long before bots start to march. */
-  prepareTime: 15,
+  prepareTime: 20,
   disconnectTimeout: 30,
   /** Bodies of a forfeited army pop up with this much random velocity. */
   forfeitPopSideways: 2,

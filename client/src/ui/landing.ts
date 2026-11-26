@@ -6,8 +6,8 @@ export interface LandingHooks {
   onStartLocal(settings: MatchSettings): void;
   onCreateRoom(name: string): void;
   onJoinRoom(name: string, code: string): void;
-  /** The battlefield choice changed: show it behind the menu (null = random). */
-  onMapPreview(map: MapId | null): void;
+  /** Any setting changed: show that battle (bots only) behind the menu. */
+  onPreview(settings: MatchSettings): void;
 }
 
 const NAME_STORAGE_KEY = 'tumblehorde.name';
@@ -35,12 +35,16 @@ function storeName(name: string): void {
 /** The landing page: local battle setup and the online entry points. */
 export class Landing {
   private readonly root = byId('landing');
-  private readonly size = segmented(byId('opt-size'));
-  private readonly map = segmented(byId('opt-map'), (value) => this.hooks.onMapPreview(isMapId(value) ? value : null));
-  private readonly mode = segmented(byId('opt-mode'), () => this.renderTeams());
+  private readonly size = segmented(byId('opt-size'), () => this.preview());
+  private readonly map = segmented(byId('opt-map'), () => this.preview());
+  private readonly mode = segmented(byId('opt-mode'), () => {
+    this.renderTeams();
+    this.preview();
+  });
   private readonly bots = segmented(byId('opt-bots'), () => {
     this.teams = defaultTeams(Number(this.bots.get()) + 1);
     this.renderTeams();
+    this.preview();
   });
   private readonly teamField = byId('team-field');
   private readonly teamList = byId('team-list');
@@ -60,6 +64,7 @@ export class Landing {
       if (!chip || chip.disabled || !Number.isInteger(index)) return;
       this.teams[index] = this.teams[index] === 0 ? 1 : 0;
       this.renderTeams();
+      this.preview();
     });
     this.startButton.addEventListener('click', () => hooks.onStartLocal(this.settings()));
     byId('create-room').addEventListener('click', () => hooks.onCreateRoom(this.playerName()));
@@ -115,6 +120,16 @@ export class Landing {
       seed: (Date.now() ^ MAP.seed) | 0,
       map: this.pickMap(),
     };
+  }
+
+  private preview(): void {
+    this.hooks.onPreview(this.previewSettings());
+  }
+
+  /** The battle as set up, with a bot in your place, for the live preview. */
+  previewSettings(): MatchSettings {
+    const settings = this.settings();
+    return { ...settings, armies: settings.armies.map((a, i) => ({ ...a, isBot: true, name: i === 0 ? 'Your army' : a.name })) };
   }
 
   /** The chosen battlefield, or null for random. */

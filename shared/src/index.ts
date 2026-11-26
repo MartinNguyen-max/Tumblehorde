@@ -4,6 +4,7 @@ export * from './random.ts';
 export * from './types.ts';
 export * from './maps.ts';
 export * from './terrain.ts';
+export * from './structures.ts';
 export * from './spawn.ts';
 export * from './units.ts';
 export * from './formation.ts';

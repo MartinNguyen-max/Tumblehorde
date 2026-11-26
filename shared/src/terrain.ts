@@ -3,6 +3,7 @@ import { MAPS, type MapDefinition, type MapId, type ObstacleKind } from './maps.
 import { clamp, distanceXZ, type Vec2 } from './math.ts';
 import { createRandom, randomRange, type RandomSource } from './random.ts';
 import { allPossibleSpawnPoints } from './spawn.ts';
+import { nearStructure, STRUCTURE_CLEARANCE } from './structures.ts';
 
 export type { ObstacleKind } from './maps.ts';
 
@@ -101,25 +102,26 @@ export function mapObstacles(map: MapId): Obstacle[] {
   const rng = createRandom(MAP.seed + map.length * 7919);
   const spawns = allPossibleSpawnPoints();
   const obstacles: Obstacle[] = [];
-  for (const group of def.inside) placeInside(obstacles, rng, spawns, group);
+  for (const group of def.inside) placeInside(map, obstacles, rng, spawns, group);
   placeScenery(obstacles, rng, def);
   layouts.set(map, obstacles);
   return obstacles;
 }
 
-function isClearSpot(p: Vec2, spawns: Vec2[], placed: Obstacle[]): boolean {
+function isClearSpot(map: MapId, p: Vec2, spawns: Vec2[], placed: Obstacle[]): boolean {
   if (Math.hypot(p.x, p.z) < OBSTACLES.keepClearOfCenter) return false;
+  if (nearStructure(map, p.x, p.z, STRUCTURE_CLEARANCE)) return false;
   if (isOnPath(p.x, p.z)) return false;
   if (spawns.some((s) => distanceXZ(s, p) < OBSTACLES.keepClearOfSpawn)) return false;
   return !placed.some((o) => distanceXZ(o, p) < 4);
 }
 
-function placeInside(out: Obstacle[], rng: RandomSource, spawns: Vec2[], group: MapDefinition['inside'][number]): void {
+function placeInside(map: MapId, out: Obstacle[], rng: RandomSource, spawns: Vec2[], group: MapDefinition['inside'][number]): void {
   const limit = MAP.halfSize - 6;
   let placed = 0;
   for (let attempt = 0; attempt < group.count * 40 && placed < group.count; attempt++) {
     const p = { x: randomRange(rng, -limit, limit), z: randomRange(rng, -limit, limit) };
-    if (!isClearSpot(p, spawns, out)) continue;
+    if (!isClearSpot(map, p, spawns, out)) continue;
     const scale = randomRange(rng, group.scaleMin, group.scaleMax);
     out.push({ kind: group.kind, x: p.x, z: p.z, scale, radius: OBSTACLE_RADIUS[group.kind] * scale, variant: rng.seed >>> 0 });
     placed++;

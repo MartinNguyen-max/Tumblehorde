@@ -69,3 +69,9 @@ Decisions made while building v1. None of them replace an earlier line.
 - **Characters are round "beans" with googly eyes (Fall Guys style)** instead of boxes: glossy capsules and spheres, Roman crested helmets, scuta with emblem and boss, round shields for commanders and riders. Swings vary (chop, swipe, thrust, commander spin); hits squash and wobble, stunned units see stars, flung units flail, the dead get X eyes. Corpses always topple and sink away after ~25 s.
 - **A knocked-out commander's body is simulated** (it slides from the blow) and they get up exactly where it lies; the camera stays on the body.
 - **Battlefield choice on the landing page** (Random, Meadow, Desert, Rocks) also switches the live background battle.
+- **The map is now 220 × 220 m** (replaces "about 150 × 150 m"), armies start on a 85 m circle (170 m apart for two armies) and bots form up for 20 s. Requested by the player: more time to plan before contact.
+- **Every battlefield has structures with real collision** (oriented boxes in `shared/src/structures.ts`): the Rocky Highlands are bare rock with a walled village in the middle (gates on the roads, towers, houses with narrow alleys, a well); the Meadow has a farmstead with fences and field walls; the Desert has temple ruins and adobe huts. Arrows hit them. AI soldiers follow walls to get around them (no full pathfinding).
+- **Characters are faceted** (flat-shaded, few sides) instead of smooth: between the first boxes and the round beans, as the player asked. Eyes stay smooth and googly.
+- **Horses jump** when the rider jumps.
+- **Commanders have right of way:** their own soldiers always step aside, and enemies only shove them a little, so they don't get stuck in crowds.
+- **The landing page battle mirrors the current setup** (bot armies, teams, army size, battlefield).

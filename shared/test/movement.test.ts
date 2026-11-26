@@ -67,3 +67,16 @@ describe('commander movement', () => {
     expect(me.pos.x).toBeGreaterThan(-MAP.halfSize);
   });
 });
+
+describe('crowds', () => {
+  it('make way for their own commander', async () => {
+    const { firstOfKind, soldiersOf } = await import('./helpers.ts');
+    const state = newMatch({ armies: [{ name: 'A', team: 0, isBot: false }, { name: 'B', team: 1, isBot: false }] });
+    const me = place(commanderOf(state, 0), -70, 0, Math.PI / 2);
+    // Pack the swordsmen tightly right in front of the commander.
+    soldiersOf(state, 0).filter((u) => u.kind === 'swordsman').forEach((u, i) => place(u, -68 + (i % 2) * 0.9, (Math.floor(i / 2) - 1.5) * 0.9));
+    void firstOfKind;
+    run(state, { ...neutralInput(Math.PI / 2), moveX: 1 }, 1.5);
+    expect(me.pos.x).toBeGreaterThan(-63);
+  });
+});
