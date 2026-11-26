@@ -1,5 +1,5 @@
 import { type InstancedMesh, TransformNode, type Scene } from './babylon.ts';
-import type { ArrowView, Vec3 } from '@tumblehorde/shared';
+import type { ArrowView, ProjectileKind, Vec3 } from '@tumblehorde/shared';
 import { COLORS, EFFECTS, ROMAN } from '../visualConfig.ts';
 import type { PartFactory } from './parts.ts';
 
@@ -72,8 +72,15 @@ export class Effects {
     this.parts = parts;
   }
 
-  private makeArrow(): TransformNode {
-    const node = new TransformNode('arrow', this.scene);
+  private makeArrow(kind: ProjectileKind): TransformNode {
+    const node = new TransformNode(kind, this.scene);
+    if (kind === 'pilum') {
+      // A thrown spear: long wooden shaft, iron shank and point. Its tip sits where an arrow's does.
+      this.parts.part('box', ROMAN.wood, node, [0.07, 0.07, 1.5], [0, 0, -0.45]);
+      this.parts.part('box', ROMAN.iron, node, [0.04, 0.04, 0.5], [0, 0, 0.3]);
+      this.parts.part('box', ROMAN.steel, node, [0.09, 0.09, 0.16], [0, 0, 0.55]);
+      return node;
+    }
     this.parts.part('box', COLORS.darkWood, node, [0.04, 0.04, 0.9], [0, 0, 0]);
     this.parts.part('box', COLORS.steel, node, [0.07, 0.07, 0.14], [0, 0, 0.5]);
     this.parts.part('box', COLORS.edgePost, node, [0.14, 0.02, 0.16], [0, 0, -0.38]);
@@ -86,7 +93,7 @@ export class Effects {
       seen.add(arrow.id);
       let node = this.flying.get(arrow.id);
       if (!node) {
-        node = this.makeArrow();
+        node = this.makeArrow(arrow.kind);
         this.flying.set(arrow.id, node);
       }
       node.position.set(arrow.x, arrow.y, arrow.z);
@@ -99,8 +106,8 @@ export class Effects {
     }
   }
 
-  stickArrow(pos: Vec3, dir: Vec3, now: number): void {
-    const node = this.makeArrow();
+  stickArrow(pos: Vec3, dir: Vec3, kind: ProjectileKind, now: number): void {
+    const node = this.makeArrow(kind);
     // The tip sits ARROW_TIP_OFFSET ahead of the node; bury it a little below the surface.
     const back = ARROW_EMBED_DEPTH - ARROW_TIP_OFFSET;
     node.position.set(pos.x + dir.x * back, pos.y + dir.y * back, pos.z + dir.z * back);

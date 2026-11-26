@@ -3,6 +3,7 @@ import {
   type CommanderInput,
   COMMANDER_WEAPONS,
   HALVES,
+  neutralInput,
   distanceToEdge,
   MAP,
   type MatchView,
@@ -123,6 +124,8 @@ export class GameController {
         this.order(order);
       } else if (code === HOLD_KEY) {
         this.wheel.press();
+      } else if (code === 'KeyR') {
+        this.session.command({ type: 'volley', at: this.aimPoint(), group: this.listening() });
       } else if (code === 'KeyF') {
         this.session.command({ type: 'advance', group: this.listening() });
       } else if (code === 'Digit4') {
@@ -199,6 +202,7 @@ export class GameController {
       jump: this.input.isHeld('Space'),
       attack: this.input.mouseLeft && !this.wheel.isOpen && !this.swallowClick,
       shield: this.input.mouseRight,
+      crouch: this.input.isHeld('KeyC') || this.input.isHeld('ControlLeft'),
       aim: this.aimPoint(),
     };
   }
@@ -214,7 +218,7 @@ export class GameController {
       this.session.setInput(this.buildInput());
     } else {
       this.wheel.cancel();
-      this.session.setInput({ moveX: 0, moveZ: 0, faceYaw: this.camera.yaw, jump: false, attack: false, shield: false, aim: null });
+      this.session.setInput(neutralInput(this.camera.yaw));
     }
     if (active) this.session.update(dt);
 

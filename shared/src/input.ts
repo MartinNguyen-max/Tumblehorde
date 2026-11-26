@@ -21,7 +21,7 @@ function finiteNumber(value: unknown): number | null {
 }
 
 export function neutralInput(faceYaw = 0): CommanderInput {
-  return { moveX: 0, moveZ: 0, faceYaw, jump: false, attack: false, shield: false, aim: null };
+  return { moveX: 0, moveZ: 0, faceYaw, jump: false, attack: false, shield: false, crouch: false, aim: null };
 }
 
 /** Validates untrusted input from a client. Returns null if it is malformed. */
@@ -40,6 +40,7 @@ export function sanitizeInput(raw: unknown): CommanderInput | null {
     jump: raw.jump === true,
     attack: raw.attack === true,
     shield: raw.shield === true,
+    crouch: raw.crouch === true,
     aim: sanitizePoint(raw.aim),
   };
 }
@@ -85,6 +86,14 @@ export function sanitizeCommand(raw: unknown): Command | null {
       return { type: 'banquet' };
     case 'rally':
       return { type: 'rally' };
+    case 'volley': {
+      const at = sanitizePoint(raw.at);
+      if (!at) return null;
+      const group = raw.group;
+      if (group === undefined || group === null) return { type: 'volley', at, group: null };
+      if (typeof group !== 'number' || !Number.isInteger(group) || group < 0 || group >= ARMY.maxGroups) return null;
+      return { type: 'volley', at, group };
+    }
     case 'advance': {
       const group = raw.group;
       if (group === undefined || group === null) return { type: 'advance', group: null };

@@ -14,7 +14,7 @@ import type { Vec3 } from './math.ts';
 import type { EntityId, Intent, MatchState, Unit, UnitKind, Weapon } from './types.ts';
 
 export function emptyIntent(yaw: number): Intent {
-  return { moveX: 0, moveZ: 0, faceYaw: yaw, jump: false, attack: false, shield: false, aim: null };
+  return { moveX: 0, moveZ: 0, faceYaw: yaw, jump: false, attack: false, shield: false, crouch: false, aim: null };
 }
 
 export function maxHpFor(kind: UnitKind): number {
@@ -77,8 +77,10 @@ export function createUnit(id: EntityId, kind: UnitKind, armyId: number, pos: Ve
     respawnTimer: 0,
     drunk: false,
     wet: false,
+    crouching: false,
+    spearThrown: false,
     intent: emptyIntent(yaw),
-    ai: { targetId: null, thinkTimer: 0, shieldTimer: 0, chargePoint: null, horseTargetId: null, watchId: null, navGoal: null, navPoint: null, navTimer: 0 },
+    ai: { targetId: null, thinkTimer: 0, shieldTimer: 0, chargePoint: null, horseTargetId: null, watchId: null, navGoal: null, navPoint: null, navTimer: 0, throwTargetId: null, throwAt: null },
   };
 }
 
@@ -181,8 +183,21 @@ export function teamOf(state: MatchState, unit: Unit): number {
   return state.armies[sideArmyId(state, unit)]?.team ?? -1;
 }
 
+/** Two armies that made an alliance by crouching at each other. */
+export function allied(state: MatchState, a: number, b: number): boolean {
+  return state.alliances.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
+}
+
+/** Armies on different teams fight, unless they are allied. */
+export function armiesHostile(state: MatchState, a: number, b: number): boolean {
+  if (a === b) return false;
+  const teamA = state.armies[a]?.team ?? -1;
+  const teamB = state.armies[b]?.team ?? -1;
+  return teamA !== teamB && !allied(state, a, b);
+}
+
 export function areEnemies(state: MatchState, a: Unit, b: Unit): boolean {
-  return teamOf(state, a) !== teamOf(state, b);
+  return armiesHostile(state, sideArmyId(state, a), sideArmyId(state, b));
 }
 
 /** What a swing can connect with: people, and horses nobody is riding. */

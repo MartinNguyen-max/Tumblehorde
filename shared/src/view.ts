@@ -1,7 +1,7 @@
 import { lerp, wrapAngle } from './math.ts';
 import { matchDuration } from './match.ts';
 import { livingSoldiers } from './orders.ts';
-import type { ActionKind, ArmySize, BanquetState, Formation, GameMode, MatchPhase, MatchState, Order, Unit, UnitKind, Weapon } from './types.ts';
+import type { ActionKind, ArmySize, BanquetState, Formation, ProjectileKind, GameMode, MatchPhase, MatchState, Order, Unit, UnitKind, Weapon } from './types.ts';
 
 /** What a client needs to draw a unit. Built from the simulation or decoded from the network. */
 export interface UnitView {
@@ -30,10 +30,12 @@ export interface UnitView {
   group: number;
   weapon: Weapon;
   drunk: boolean;
+  crouching: boolean;
 }
 
 export interface ArrowView {
   id: number;
+  kind: ProjectileKind;
   x: number;
   y: number;
   z: number;
@@ -54,6 +56,9 @@ export interface ArmyView {
   /** The formation Hold uses. */
   formation: Formation;
   banquet: BanquetState;
+  /** Armies this one made an alliance with. */
+  allies: number[];
+  spearsThrown: boolean;
   kills: number;
   deaths: number;
   commanderDeaths: number;
@@ -102,6 +107,7 @@ export function unitView(u: Unit): UnitView {
     group: u.group,
     weapon: u.weapon,
     drunk: u.drunk,
+    crouching: u.crouching,
   };
 }
 
@@ -114,7 +120,7 @@ export function matchView(state: MatchState): MatchView {
     mode: state.settings.mode,
     armySize: state.settings.armySize,
     units: state.units.map(unitView),
-    arrows: state.arrows.map((a) => ({ id: a.id, x: a.pos.x, y: a.pos.y, z: a.pos.z, vx: a.vel.x, vy: a.vel.y, vz: a.vel.z })),
+    arrows: state.arrows.map((a) => ({ id: a.id, kind: a.kind, x: a.pos.x, y: a.pos.y, z: a.pos.z, vx: a.vel.x, vy: a.vel.y, vz: a.vel.z })),
     armies: state.armies.map((army) => ({
       id: army.id,
       team: army.team,
@@ -126,6 +132,8 @@ export function matchView(state: MatchState): MatchView {
       orders: army.groupOrders.map((g) => g.order),
       formation: army.formation,
       banquet: army.banquet,
+      allies: state.alliances.flatMap(([a, b]) => (a === army.id ? [b] : b === army.id ? [a] : [])),
+      spearsThrown: army.spearsThrown,
       kills: army.stats.kills,
       deaths: army.stats.deaths,
       commanderDeaths: army.stats.commanderDeaths,

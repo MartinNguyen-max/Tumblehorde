@@ -4,7 +4,7 @@ import { isMapChoice, MAP_IDS, type MapChoice, type MapId, MAPS, mapFromRandom }
 import { DEFENDER_TEAM } from './spawn.ts';
 import { createRandom, nextRandom } from './random.ts';
 import { createMatch } from './setup.ts';
-import type { ActionKind, ArmySize, Command, CommanderInput, GameMode, MatchPhase, MatchSettings, SimEvent } from './types.ts';
+import type { ActionKind, ArmySize, Command, ProjectileKind, CommanderInput, GameMode, MatchPhase, MatchSettings, SimEvent } from './types.ts';
 import { unitView, type ArmyView, type ArrowView, type MatchView, type UnitView } from './view.ts';
 
 // ---------- Messages ----------
@@ -148,7 +148,8 @@ const VELOCITY_SCALE = 100;
 const HP_SCALE = 10;
 const TIMER_SCALE = 20;
 const NONE = 0xffff;
-const ACTIONS: readonly ActionKind[] = ['none', 'melee', 'shoot'];
+const ACTIONS: readonly ActionKind[] = ['none', 'melee', 'shoot', 'throw'];
+const PROJECTILES: readonly ProjectileKind[] = ['arrow', 'pilum'];
 const PHASES: readonly MatchPhase[] = ['playing', 'ending', 'over'];
 
 const FLAG_ALIVE = 1;
@@ -156,13 +157,14 @@ const FLAG_GROUND = 2;
 const FLAG_SHIELD = 4;
 const FLAG_INVULNERABLE = 8;
 const FLAG_DRUNK = 16;
+const FLAG_CROUCH = 32;
 
 const HEADER_BYTES = 4 + 4 + 1 + 1 + 2 + 2;
 const ALIVE_UNIT_BYTES = 1 + 6 + 2 + 6 + 2 + 1 + 1 + 1 + 2 + 2 + 1 + 1 + 1;
 const DEAD_UNIT_BYTES = 1 + 1;
 /** A downed commander also sends where their body lies, since they get up there. */
 const DOWNED_COMMANDER_EXTRA_BYTES = 6;
-const ARROW_BYTES = 4 + 6 + 6;
+const ARROW_BYTES = 4 + 1 + 6 + 6;
 
 function quantizeTimer(seconds: number): number {
   return Math.max(0, Math.min(255, Math.round(seconds * TIMER_SCALE)));
@@ -198,6 +200,7 @@ export function encodeSnapshot(view: MatchView): Uint8Array {
     if (u.shieldUp) flags |= FLAG_SHIELD;
     if (u.invulnerable) flags |= FLAG_INVULNERABLE;
     if (u.drunk) flags |= FLAG_DRUNK;
+    if (u.crouching) flags |= FLAG_CROUCH;
     d.setUint8(o++, flags);
     if (!u.alive) {
       d.setUint8(o++, quantizeTimer(u.respawnTimer));
@@ -234,6 +237,7 @@ export function encodeSnapshot(view: MatchView): Uint8Array {
   for (const a of view.arrows) {
     d.setUint32(o, a.id);
     o += 4;
+    d.setUint8(o++, PROJECTILES.indexOf(a.kind));
     d.setInt16(o, clampInt16(a.x * POSITION_SCALE));
     d.setInt16(o + 2, clampInt16(a.y * POSITION_SCALE));
     d.setInt16(o + 4, clampInt16(a.z * POSITION_SCALE));
@@ -335,6 +339,7 @@ export function decodeSnapshot(bytes: Uint8Array, ctx: SnapshotContext): MatchVi
       shieldUp: (flags & FLAG_SHIELD) !== 0,
       invulnerable: (flags & FLAG_INVULNERABLE) !== 0,
       drunk: (flags & FLAG_DRUNK) !== 0,
+      crouching: (flags & FLAG_CROUCH) !== 0,
       stunTimer,
       action,
       actionTimer,
@@ -349,6 +354,7 @@ export function decodeSnapshot(bytes: Uint8Array, ctx: SnapshotContext): MatchVi
   for (let i = 0; i < arrowCount; i++) {
     const id = d.getUint32(o);
     o += 4;
+    const kind = PROJECTILES[d.getUint8(o++)] ?? 'arrow';
     const x = d.getInt16(o) / POSITION_SCALE;
     const y = d.getInt16(o + 2) / POSITION_SCALE;
     const z = d.getInt16(o + 4) / POSITION_SCALE;
@@ -357,7 +363,7 @@ export function decodeSnapshot(bytes: Uint8Array, ctx: SnapshotContext): MatchVi
     const vy = d.getInt16(o + 2) / VELOCITY_SCALE;
     const vz = d.getInt16(o + 4) / VELOCITY_SCALE;
     o += 6;
-    arrows.push({ id, x, y, z, vx, vy, vz });
+    arrows.push({ id, kind, x, y, z, vx, vy, vz });
   }
   return {
     time,
@@ -396,5 +402,6 @@ function emptyUnit(info: Roster[number]): UnitView {
     group: 0,
     weapon: 'sword',
     drunk: false,
+    crouching: false,
   };
 }

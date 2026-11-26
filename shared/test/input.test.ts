@@ -4,7 +4,7 @@ import { sanitizeCommand, sanitizeInput } from '../src/input.ts';
 describe('sanitizeInput', () => {
   it('accepts well-formed input', () => {
     expect(sanitizeInput({ moveX: 0.5, moveZ: 0, faceYaw: 1, jump: true, attack: false, shield: false })).toEqual({
-      moveX: 0.5, moveZ: 0, faceYaw: 1, jump: true, attack: false, shield: false, aim: null,
+      moveX: 0.5, moveZ: 0, faceYaw: 1, jump: true, attack: false, shield: false, crouch: false, aim: null,
     });
   });
 
@@ -33,6 +33,7 @@ describe('sanitizeCommand', () => {
     expect(sanitizeCommand({ type: 'formation', formation: 'line', group: 1 })).toEqual({ type: 'formation', formation: 'line', group: 1 });
     expect(sanitizeCommand({ type: 'banquet', extra: 1 })).toEqual({ type: 'banquet' });
     expect(sanitizeCommand({ type: 'rally' })).toEqual({ type: 'rally' });
+    expect(sanitizeCommand({ type: 'volley', at: { x: 1, y: 2, z: 3 } })).toEqual({ type: 'volley', at: { x: 1, y: 2, z: 3 }, group: null });
   });
 
   it.each([
@@ -43,6 +44,8 @@ describe('sanitizeCommand', () => {
     { type: 'split', groupCount: 4 },
     { type: 'formation', formation: 'hexagon' },
     { type: 'advance', group: 9 },
+    { type: 'volley', at: { x: 'a', y: 0, z: 0 } },
+    { type: 'volley' },
     { type: 'formation' },
     { type: 'nuke' },
     null,

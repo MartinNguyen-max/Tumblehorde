@@ -507,6 +507,41 @@ export const RALLY = {
   cooldown: 6,
 } as const;
 
+/** Alliances: crouch a few times at another commander; if they crouch back up close, you are allies. */
+export const ALLIANCE = {
+  tapsNeeded: 4,
+  tapWindow: 3.5,
+  /** The two commanders must be this close... */
+  range: 16,
+  /** ...and look at each other within this angle. */
+  lookAngle: 30 * DEG,
+  /** An offer waits this long for the crouch back. */
+  offerTime: 10,
+  /** Bots rarely agree. */
+  botAcceptChance: 0.25,
+  /** A bot that agrees crouches back for this long, this fast. */
+  botAnswerTime: 2.2,
+  botCrouchRate: 4,
+} as const;
+
+/** Crouching walks slowly. */
+export const CROUCH = {
+  speedFactor: 0.45,
+} as const;
+
+/** The one spear volley of a battle: pila thrown at enemies around where the commander looks. */
+export const VOLLEY = {
+  range: 30,
+  /** Enemies this close to the aimed spot are the targets. */
+  targetRadius: 9,
+  speed: 22,
+  damage: 50,
+  knockback: { strength: 7, stun: 1 } satisfies KnockbackStats,
+  windup: 0.45,
+  /** Soldiers throw one after another within this many seconds. */
+  maxDelay: 0.6,
+} as const;
+
 export const MATCH = {
   /** Armies form up this long before bots start to march. */
   prepareTime: 20,

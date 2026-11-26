@@ -32,6 +32,7 @@ export function createMatch(settings: MatchSettings): MatchState {
     phase: 'playing',
     endTimer: 0,
     winnerTeam: null,
+    alliances: [],
     events: [],
   };
   settings.armies.forEach((setup, index) => {
@@ -129,11 +130,14 @@ function createArmy(
     searchTimer: 0,
     feastTimer: 0,
     rallyTimer: 0,
+    gesture: { taps: [], wasCrouching: false },
+    allyOffer: null,
+    spearsThrown: false,
     eliminated: false,
     forfeited: false,
     disconnectTimer: null,
     stats: { kills: 0, deaths: 0, commanderDeaths: 0 },
-    bot: { orderTimer: 0, thinkTimer: 0, standoffTimer: 0 },
+    bot: { orderTimer: 0, thinkTimer: 0, standoffTimer: 0, allyAnswer: null },
     startingSoldiers: soldierIds.length,
   };
 }

@@ -1,8 +1,9 @@
 import { runArmyAi } from './ai.ts';
+import { updateAlliances } from './alliances.ts';
 import { updateBanquets, updateStumbles } from './banquet.ts';
 import { beginNavigationStep } from './navigation.ts';
 import { updateIntel } from './perception.ts';
-import { fireArrow, stepArrows } from './arrows.ts';
+import { fireArrow, stepArrows, throwPilum } from './arrows.ts';
 import { runBotArmy, runLeaderlessArmy } from './bot.ts';
 import { ARCHER, COMMANDER, MATCH, SIM } from './config.ts';
 import { applyKnockback, isFreeToAct, killUnit, knockbackVector, resolveMelee, startMelee, thrustsOverShield } from './combat.ts';
@@ -13,7 +14,7 @@ import { randomRange } from './random.ts';
 import { steerAroundStructures } from './structures.ts';
 import { terrainHeightAt } from './terrain.ts';
 import type { Army, CommanderInput, MatchState, Unit } from './types.ts';
-import { areEnemies, canBeTargeted, canUseShield, getUnit, isMounted, isPerson, rangedStatsFor } from './units.ts';
+import { areEnemies, armiesHostile, canBeTargeted, canUseShield, getUnit, isMounted, isPerson, rangedStatsFor, setWeapon } from './units.ts';
 
 /** Archers switch from the bow to melee when the target is this close. */
 const ARCHER_BOW_MIN_DISTANCE = ARCHER.melee.range + 0.6;
@@ -28,6 +29,7 @@ export function applyPlayerInput(state: MatchState, army: Army, input: Commander
     intent.jump = false;
     intent.attack = false;
     intent.shield = false;
+    intent.crouch = false;
     intent.aim = null;
     return;
   }
@@ -38,6 +40,7 @@ export function applyPlayerInput(state: MatchState, army: Army, input: Commander
   intent.jump = input.jump;
   intent.attack = input.attack;
   intent.shield = input.shield;
+  intent.crouch = input.crouch;
 }
 
 function startShot(unit: Unit): boolean {
@@ -68,6 +71,16 @@ export function updateWeapons(state: MatchState): void {
   }
 }
 
+/** The spear leaves the hand; from now on this soldier fights with the sword. */
+function releaseSpear(state: MatchState, unit: Unit): void {
+  const target = getUnit(state, unit.ai.throwTargetId);
+  throwPilum(state, unit, target && canBeTargeted(target) ? target : null, unit.ai.throwAt);
+  unit.spearThrown = true;
+  unit.ai.throwTargetId = null;
+  unit.ai.throwAt = null;
+  setWeapon(unit, 'sword');
+}
+
 /**
  * Counts down windups and resolves the strike or releases the arrow when they finish.
  * Everything that finishes in the same step lands together: otherwise whoever comes first
@@ -85,6 +98,7 @@ export function progressActions(state: MatchState, dt: number): void {
   }
   for (const { unit, action } of finished) {
     if (action === 'melee') resolveMelee(state, unit);
+    else if (action === 'throw') releaseSpear(state, unit);
     else {
       const target = getUnit(state, unit.ai.targetId);
       fireArrow(state, unit, target && canBeTargeted(target) ? target : null, unit.intent.aim);
@@ -198,10 +212,16 @@ export function teamsStanding(state: MatchState): Set<number> {
   return teams;
 }
 
+/** The battle is decided once nobody left standing is hostile to anyone else left standing. */
+function anyHostilityLeft(state: MatchState): boolean {
+  const standing = state.armies.filter((a) => !a.eliminated);
+  return standing.some((a) => standing.some((b) => armiesHostile(state, a.id, b.id)));
+}
+
 function updateMatchPhase(state: MatchState, dt: number): void {
   if (state.phase === 'playing') {
     const teams = teamsStanding(state);
-    if (teams.size > 1) return;
+    if (anyHostilityLeft(state)) return;
     state.phase = 'ending';
     state.endTimer = MATCH.endDelay;
     state.winnerTeam = teams.size === 1 ? ([...teams][0] ?? null) : null;
@@ -253,6 +273,7 @@ export function stepMatch(state: MatchState, inputs: ReadonlyMap<number, Command
   stepArrows(state, step);
   updateFollowAnchors(state, step);
   updateBanquets(state, step);
+  updateAlliances(state, step);
   updateRespawns(state, step);
   updateDisconnects(state, step);
   updateElimination(state);

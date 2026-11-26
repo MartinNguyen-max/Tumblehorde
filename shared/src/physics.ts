@@ -1,4 +1,4 @@
-import { BODY, COMMANDER, HORSE, MAP, MOVEMENT, SHIELD, SIM, WATER } from './config.ts';
+import { BODY, COMMANDER, CROUCH, HORSE, MAP, MOVEMENT, SHIELD, SIM, WATER } from './config.ts';
 import { applyHit, applyKnockback, knockbackVector } from './combat.ts';
 import { dirToYaw, normalizeXZ, turnTowards, wrapAngle, yawToDir } from './math.ts';
 import { syncRiderToHorse } from './mounts.ts';
@@ -42,11 +42,13 @@ export function personSpeed(unit: Unit): number {
   if (unit.shieldUp) speed *= SHIELD.speedFactor;
   if (unit.action !== 'none') speed *= MOVEMENT.attackingSpeedFactor;
   if (unit.wet) speed *= WATER.wadeSpeedFactor;
+  if (unit.crouching) speed *= CROUCH.speedFactor;
   return speed;
 }
 
 /** Applies the unit's intent to its velocity and facing. Persons on foot only. */
 export function steerPerson(unit: Unit, dt: number): void {
+  unit.crouching = unit.intent.crouch && unit.stunTimer <= 0;
   if (unit.stunTimer > 0) {
     applyFriction(unit, dt);
     return;
@@ -319,6 +321,7 @@ export function stepMovement(state: MatchState, dt: number): void {
     const horse = getUnit(state, unit.mountId);
     if (!horse) continue;
     syncRiderToHorse(unit, horse);
+    unit.crouching = unit.intent.crouch && unit.stunTimer <= 0;
     if (unit.stunTimer <= 0) unit.yaw = turnTowards(unit.yaw, unit.intent.faceYaw, BODY.personTurnRate * dt);
   }
 }

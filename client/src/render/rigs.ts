@@ -36,6 +36,14 @@ const SPEAR_LANCE = -1.25;
 const ARM_SPEAR_GUARD = -2.2;
 const ARM_LANCE = -1.15;
 const BROW_SCOWL = 0.4;
+const CROUCH_RATE = 9;
+const CROUCH_DROP = 0.42;
+const CROUCH_LEGS = 1.1;
+const CROUCH_SADDLE_LEAN = 0.5;
+const THROW_RATE = 8;
+/** Throwing arm cocked back over the shoulder, and the spear's total pitch: pointing a bit upwards. */
+const THROW_ARM = -3.1;
+const THROW_SPEAR = -1.85;
 /** How long the commander's speech and the soldiers' cheering last. */
 const SPEECH_TIME = 2.4;
 const CHEER_TIME = 2.6;
@@ -73,6 +81,9 @@ export interface PersonRig extends PersonBody {
   shieldAmount: number;
   /** 0 = spear upright on the shoulder, 1 = levelled and ready. */
   guardAmount: number;
+  crouchAmount: number;
+  /** Winding up a spear throw. */
+  throwAmount: number;
   drawAmount: number;
   knockdown: number;
   hitAge: number;
@@ -156,6 +167,8 @@ export function createPersonRig(scene: Scene, parts: PartFactory, kind: UnitKind
     swingStyle: 'chop',
     shieldAmount: 0,
     guardAmount: 0,
+    crouchAmount: 0,
+    throwAmount: 0,
     drawAmount: 0,
     knockdown: 0,
     hitAge: HIT_REACTION_TIME,
@@ -429,6 +442,9 @@ export function animatePerson(rig: PersonRig, view: UnitView, ctx: AnimationCont
   rig.stars.setEnabled(dizzy);
   if (dizzy) rig.stars.rotation.y = now * 6;
 
+  animateCrouch(rig, view, dt, mounted);
+  animateThrow(rig, view, dt);
+
   let shouting = animateSpeech(rig, dt);
   if (!stunned && !mounted) shouting = animateCheer(rig, dt) || shouting;
   else if (rig.cheerAge !== null) rig.cheerAge = null;
@@ -437,6 +453,34 @@ export function animatePerson(rig: PersonRig, view: UnitView, ctx: AnimationCont
   rig.mouth.setEnabled(!shouting && !grinning);
   rig.mouthOpen?.setEnabled(shouting || grinning);
   rig.root.setEnabled(!view.invulnerable || Math.sin(now * BLINK_RATE) > -0.3);
+}
+
+/** Ducking down: a squat on foot (feet out front, very undignified), a low lean in the saddle. */
+function animateCrouch(rig: PersonRig, view: UnitView, dt: number, mounted: boolean): void {
+  rig.crouchAmount = approach(rig.crouchAmount, view.crouching ? 1 : 0, dt * CROUCH_RATE);
+  const c = rig.crouchAmount;
+  if (c <= 0) return;
+  if (mounted) {
+    rig.body.rotation.x += CROUCH_SADDLE_LEAN * c;
+    return;
+  }
+  rig.body.position.y -= CROUCH_DROP * c;
+  rig.body.rotation.x += 0.15 * c;
+  rig.legL.rotation.x -= CROUCH_LEGS * c;
+  rig.legR.rotation.x -= CROUCH_LEGS * c;
+}
+
+/** Winding up to throw the spear: arm cocked back over the shoulder, spear pointing up at the target. */
+function animateThrow(rig: PersonRig, view: UnitView, dt: number): void {
+  rig.throwAmount = approach(rig.throwAmount, view.action === 'throw' ? 1 : 0, dt * THROW_RATE);
+  const t = rig.throwAmount;
+  if (t <= 0) return;
+  const armPitch = lerp(rig.armR.rotation.x, THROW_ARM, t);
+  rig.armR.rotation.x = armPitch;
+  rig.armR.position.z = 0.01 - 0.2 * t;
+  const spear = rig.weapons.spear;
+  if (spear) spear.rotation.x = THROW_SPEAR - armPitch;
+  rig.body.rotation.y += -0.4 * t;
 }
 
 /** Pose the weapon arm with the blade (or spear) pointing at the sky. */

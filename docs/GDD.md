@@ -28,6 +28,8 @@ Inspiration: Shieldwall (combat and shields), Bannerlord (army and commander), F
 | 4 | Split the army in two; press again to pick which half hears you (A, B, whole army) |
 | 5 | Banquet (once per battle) |
 | 6 | Rally speech |
+| R | Throw spears at the enemies where you look (once per battle) |
+| C (held) | Crouch; crouch 4× at another commander up close to offer an alliance |
 | Q / E | Sword or spear / mount or dismount |
 | V | Overview camera |
 

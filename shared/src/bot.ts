@@ -5,7 +5,8 @@ import { advanceArmy, armyCenter, centroid, holdAt, issueOrder, livingSoldiers, 
 import { fogOfWar } from './perception.ts';
 import { armySpawn, gatePost, isDefender } from './spawn.ts';
 import type { Army, MatchState, Order, Unit } from './types.ts';
-import { canBeTargeted, getUnit, setWeapon } from './units.ts';
+import { armiesHostile, canBeTargeted, getUnit, setWeapon } from './units.ts';
+import { answerIntent } from './alliances.ts';
 
 /**
  * - form: the first seconds of a battle; hold and let everyone plan.
@@ -47,7 +48,7 @@ export function nearestEnemyArmy(state: MatchState, army: Army, from: Vec2): Ene
   let best: EnemyArmy | null = null;
   let bestDistance = Infinity;
   for (const other of state.armies) {
-    if (other.eliminated || other.team === army.team) continue;
+    if (other.eliminated || !armiesHostile(state, army.id, other.id)) continue;
     const center = armyCenter(state, other);
     if (!center) continue;
     const d = distanceXZ(from, center);
@@ -142,7 +143,10 @@ function botCommanderIntent(state: MatchState, commander: Unit): void {
   intent.shield = false;
   intent.jump = false;
   intent.aim = null;
+  intent.crouch = false;
   if (commander.stunTimer > 0) return;
+  const army = state.armies[commander.armyId];
+  if (army && answerIntent(state, army, commander)) return;
   const target = getUnit(state, commander.ai.targetId);
   const validTarget = target && canBeTargeted(target) ? target : null;
   if (commander.ai.shieldTimer > 0 && commander.mountId === null) {

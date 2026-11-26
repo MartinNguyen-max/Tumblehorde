@@ -31,6 +31,8 @@ const CHEER_POPUPS = 6;
 const SHOUT_HEIGHT = 2.6;
 const HIC_CHANCE = 0.5;
 const GROUP_LABELS = ['A', 'B'] as const;
+const BANNER_SECONDS = 1.2;
+const ALLY_BANNER_SECONDS = 3.5;
 const HP_LABEL_HEIGHT = 2.75;
 const FOE_LABEL_HEIGHT = 3.4;
 const POPUP_RISE = 40;
@@ -75,6 +77,7 @@ export class Hud {
   private readonly cmds = byId('hud-cmds');
   private readonly splitLabel = byId('hud-split-label');
   private readonly advanceCmd = byId('hud-advance');
+  private readonly volleyCmd = byId('hud-volley');
   private readonly banquetCmd = byId('hud-banquet');
   private readonly banquetLabel = byId('hud-banquet-label');
   private readonly rallyCmd = byId('hud-rally');
@@ -139,10 +142,14 @@ export class Hud {
     setTimeout(() => line.remove(), HUD.killFeedSeconds * 1000);
   }
 
-  private showBanner(text: string): void {
+  private showBanner(text: string, seconds = BANNER_SECONDS): void {
     this.banner.textContent = text;
     this.banner.classList.add('on');
-    this.bannerTimer = 1.2;
+    this.bannerTimer = seconds;
+  }
+
+  private plainName(view: MatchView, armyId: number): string {
+    return armyId === this.myArmyId ? 'You' : (view.armies[armyId]?.name ?? '?');
   }
 
   private addPopup(unit: UnitView, text: string, className: string, delay = 0, height = 2.2): void {
@@ -218,6 +225,22 @@ export class Hud {
           break;
         case 'rally':
           this.showRally(view, event.armyId, event.commanderId);
+          break;
+        case 'allyOffer':
+          if (event.to === myArmyId) this.showBanner(`${this.plainName(view, event.from)} wants to be allies! Look at them and crouch (C) 4×`, ALLY_BANNER_SECONDS);
+          else if (event.from === myArmyId) this.showBanner(`Alliance offered to ${this.plainName(view, event.to)}…`, ALLY_BANNER_SECONDS);
+          break;
+        case 'allyRefused':
+          if (event.from === myArmyId) this.showBanner(`${this.plainName(view, event.to)} refuses. No friends today.`, ALLY_BANNER_SECONDS);
+          break;
+        case 'alliance': {
+          const other = event.a === myArmyId ? event.b : event.b === myArmyId ? event.a : null;
+          if (other !== null) this.showBanner(`You and ${this.plainName(view, other)} are allies now!`, ALLY_BANNER_SECONDS);
+          this.pushFeed(`🤝 ${this.armyName(view, event.a)} and ${this.armyName(view, event.b)} made an alliance`);
+          break;
+        }
+        case 'volley':
+          if (event.armyId === myArmyId) this.showBanner('Spears away!');
           break;
         case 'advance':
           if (event.armyId === myArmyId) this.showBanner(event.group === null ? 'Advance!' : `Group ${GROUP_LABELS[event.group] ?? ''} · Advance!`);
@@ -307,6 +330,7 @@ export class Hud {
     this.rallyCmd.classList.toggle('off', !canOrder);
     const holding = selected === null ? army.orders.includes('hold') : army.orders[selected] === 'hold';
     this.advanceCmd.classList.toggle('off', !canOrder || !holding);
+    this.volleyCmd.classList.toggle('off', !canOrder || army.spearsThrown);
     const label = `Hold · ${FORMATION_LABEL[army.formation]}`;
     if (this.holdLabel.textContent !== label) this.holdLabel.textContent = label;
   }
@@ -398,7 +422,8 @@ export class Hud {
   private updateFoeLabel(ctx: HudContext): void {
     const { view, scene } = ctx;
     const camera = scene.activeCamera;
-    const myTeam = view.armies[this.myArmyId]?.team;
+    const me = view.armies[this.myArmyId];
+    const myTeam = me?.team;
     if (!camera) return;
     // Compare headings only: the camera looks down at the commander, so pitch would hide far armies.
     const forward = camera.getDirection(Vector3.Forward());
@@ -406,7 +431,7 @@ export class Hud {
     const origin = camera.position;
     let best: { angle: number; x: number; y: number; z: number; count: number; armyId: number } | null = null;
     for (const army of view.armies) {
-      if (army.team === myTeam || army.eliminated) continue;
+      if (army.team === myTeam || army.eliminated || me?.allies.includes(army.id)) continue;
       let x = 0;
       let y = 0;
       let z = 0;

@@ -7,10 +7,16 @@ export interface ResultsHooks {
   onMenu(): void;
 }
 
+/** Whoever is still standing at the end won: one army, a team, or a band of allies. */
+function standing(view: MatchView): MatchView['armies'] {
+  return view.armies.filter((a) => !a.eliminated);
+}
+
 export function resultTitle(view: MatchView, myArmyId: number | null): string {
-  if (view.winnerTeam === null) return 'Draw!';
+  const winners = standing(view);
+  if (winners.length === 0) return 'Draw!';
   if (myArmyId === null) return 'Battle over';
-  return view.armies[myArmyId]?.team === view.winnerTeam ? 'Victory!' : 'Defeat';
+  return winners.some((a) => a.id === myArmyId) ? 'Victory!' : 'Defeat';
 }
 
 /** The after-battle screen: status for every army, duration, kills and deaths. */
@@ -28,7 +34,7 @@ export class Results {
 
   show(view: MatchView, myArmyId: number | null, rematchLabel = 'Rematch'): void {
     this.title.textContent = resultTitle(view, myArmyId);
-    const winners = view.armies.filter((a) => a.team === view.winnerTeam).map((a) => a.name);
+    const winners = standing(view).map((a) => a.name);
     const winnerText = winners.length > 0 ? ` · Winner: ${winners.join(' & ')}` : '';
     this.sub.textContent = `The battle lasted ${formatTime(view.duration)}${winnerText}`;
     this.body.innerHTML = view.armies

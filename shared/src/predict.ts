@@ -16,6 +16,7 @@ export function predictCommanderStep(unit: Unit, input: CommanderInput, dt: numb
   unit.intent.moveZ = input.moveZ;
   unit.intent.faceYaw = input.faceYaw;
   unit.intent.jump = input.jump;
+  unit.intent.crouch = input.crouch;
   unit.shieldUp = input.shield && canUseShield(unit) && unit.stunTimer <= 0 && unit.action === 'none';
   steerPerson(unit, dt);
   integrateBody(unit, dt, map);

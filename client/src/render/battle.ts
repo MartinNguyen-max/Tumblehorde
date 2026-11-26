@@ -122,7 +122,7 @@ export class BattleRenderer {
           break;
         }
         case 'arrowLanded':
-          this.effects.stickArrow(event.pos, event.dir, now);
+          this.effects.stickArrow(event.pos, event.dir, event.kind, now);
           this.effects.burst('dust', event.pos.x, event.pos.y + 0.1, event.pos.z, 3);
           break;
         case 'trample':

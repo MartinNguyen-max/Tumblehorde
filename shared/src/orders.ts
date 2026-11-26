@@ -1,12 +1,13 @@
 import { finishFeast } from './banquet.ts';
-import { ARMY, BANQUET, FORMATION, MOVEMENT, RALLY } from './config.ts';
+import { ARMY, BANQUET, FORMATION, MOVEMENT, RALLY, VOLLEY } from './config.ts';
 import { assignHoldSlots, followCenter, formationSlots, holdSlots, supportSlots, type FormationSlot } from './formation.ts';
 import { localStep, navGrid, navigate, nearestWalkable } from './navigation.ts';
 import { attackGoal } from './perception.ts';
-import { clamp, dirToYaw, distanceXZ, normalizeXZ, turnTowards, type Vec2 } from './math.ts';
+import { clamp, dirToYaw, distanceXZ, normalizeXZ, turnTowards, type Vec2, type Vec3 } from './math.ts';
 import { toggleMount } from './mounts.ts';
 import type { Army, Command, EntityId, Formation, GroupOrder, MatchState, Order, Unit, UnitKind } from './types.ts';
-import { getUnit, setWeapon } from './units.ts';
+import { armiesHostile, canBeTargeted, getUnit, setWeapon, sideArmyId } from './units.ts';
+import { nextRandom } from './random.ts';
 
 /**
  * Splitting is by unit type, so groups are tactically useful:
@@ -61,7 +62,7 @@ export function nearestEnemyCenter(state: MatchState, army: Army, from: Vec2): V
   let best: Vec2 | null = null;
   let bestDistance = Infinity;
   for (const other of state.armies) {
-    if (other.eliminated || other.team === army.team) continue;
+    if (other.eliminated || !armiesHostile(state, army.id, other.id)) continue;
     const center = armyCenter(state, other);
     if (!center) continue;
     const d = distanceXZ(from, center);
@@ -129,6 +130,35 @@ export function holdAt(state: MatchState, army: Army, anchor: Vec2, yaw: number)
   for (let g = 0; g < army.groupCount; g++) {
     army.groupOrders[g] = { order: 'hold', anchor: { ...anchor }, anchorYaw: yaw, aroundCommander: false, formation: army.formation };
   }
+}
+
+/**
+ * Once per battle: every soldier (of `group`, or all) still carrying a spear throws it at an
+ * enemy near the spot `at` the commander looked at, if one is in range; one after another.
+ */
+export function throwSpears(state: MatchState, army: Army, at: Vec3, group: number | null): boolean {
+  if (army.spearsThrown || !canGiveOrders(state, army)) return false;
+  const targets = state.units.filter(
+    (u) => canBeTargeted(u) && armiesHostile(state, army.id, sideArmyId(state, u)) && distanceXZ(u.pos, at) <= VOLLEY.targetRadius,
+  );
+  let throwers = 0;
+  for (const soldier of livingSoldiers(state, army)) {
+    if ((group !== null && soldier.group !== group) || soldier.kind !== 'swordsman' || soldier.spearThrown) continue;
+    if (soldier.stunTimer > 0 || soldier.action !== 'none') continue;
+    const inRange = targets.filter((t) => distanceXZ(t.pos, soldier.pos) <= VOLLEY.range);
+    if (inRange.length === 0 && distanceXZ(soldier.pos, at) > VOLLEY.range) continue;
+    const target = inRange[Math.floor(nextRandom(state.rng) * inRange.length)] ?? null;
+    soldier.weapon = 'spear';
+    soldier.action = 'throw';
+    soldier.actionTimer = VOLLEY.windup + nextRandom(state.rng) * VOLLEY.maxDelay;
+    soldier.ai.throwTargetId = target?.id ?? null;
+    soldier.ai.throwAt = { ...at };
+    throwers++;
+  }
+  if (throwers === 0) return false;
+  army.spearsThrown = true;
+  state.events.push({ type: 'volley', armyId: army.id });
+  return true;
 }
 
 /** Every holding group (or just `group`) steps forward, turning to face where the commander looks. */
@@ -253,6 +283,8 @@ export function applyCommand(state: MatchState, armyId: number, command: Command
       return rally(state, army);
     case 'advance':
       return advanceFormation(state, army, command.group);
+    case 'volley':
+      return throwSpears(state, army, command.at, command.group);
     case 'mount': {
       const commander = getUnit(state, army.commanderId);
       return commander ? toggleMount(state, commander) : false;

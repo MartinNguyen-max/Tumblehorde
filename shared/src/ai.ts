@@ -313,6 +313,12 @@ function shieldIntent(state: MatchState, unit: Unit): void {
 export function soldierIntent(state: MatchState, unit: Unit, order: GroupOrder, slot: FormationSlot): void {
   resetIntent(unit);
   if (unit.stunTimer > 0) return;
+  if (unit.action === 'throw') {
+    const target = getUnit(state, unit.ai.throwTargetId);
+    const at = target?.pos ?? unit.ai.throwAt;
+    if (at) faceTowards(unit, at);
+    return;
+  }
   if (unit.action === 'shoot') {
     const target = getUnit(state, unit.ai.targetId);
     if (target) faceTowards(unit, target.pos);
@@ -436,7 +442,8 @@ export function runArmyAi(state: MatchState, army: Army, dt: number): void {
 
 /** Swordsmen march and hold with the spear and draw the sword to attack. */
 export function weaponForOrder(unit: Unit, order: GroupOrder): Weapon | null {
-  if (unit.kind !== 'swordsman') return null;
+  if (unit.kind !== 'swordsman' || unit.action === 'throw') return null;
+  if (unit.spearThrown) return 'sword';
   return order.order === 'attack' ? 'sword' : 'spear';
 }
 

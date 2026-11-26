@@ -19,7 +19,7 @@ export type ArmyMix = 'legion' | 'mixed';
 export type BanquetState = 'ready' | 'feasting' | 'drunk';
 
 /** What a unit is doing with its weapon right now. */
-export type ActionKind = 'none' | 'melee' | 'shoot';
+export type ActionKind = 'none' | 'melee' | 'shoot' | 'throw';
 
 /** The per-tick wishes of a unit, written by a player's input or by the AI. */
 export interface Intent {
@@ -30,6 +30,8 @@ export interface Intent {
   jump: boolean;
   attack: boolean;
   shield: boolean;
+  /** Ducking down. Tapped a few times at another commander, it offers an alliance. */
+  crouch: boolean;
   /** Where a player aims their bow; bots aim at their target instead. */
   aim: Vec3 | null;
 }
@@ -47,6 +49,9 @@ export interface AiMemory {
   navGoal: Vec2 | null;
   navPoint: Vec2 | null;
   navTimer: number;
+  /** What a thrown spear is aimed at: an enemy, or a spot on the ground. */
+  throwTargetId: EntityId | null;
+  throwAt: Vec3 | null;
 }
 
 export interface Unit {
@@ -83,6 +88,9 @@ export interface Unit {
   drunk: boolean;
   /** Standing in water right now. */
   wet: boolean;
+  crouching: boolean;
+  /** This soldier has thrown its spear and fights on with the sword. */
+  spearThrown: boolean;
   intent: Intent;
   ai: AiMemory;
 }
@@ -109,6 +117,8 @@ export interface BotBrain {
   thinkTimer: number;
   /** Seconds spent facing the enemy without engaging. */
   standoffTimer: number;
+  /** A bot commander that agreed to an alliance crouches back at `to` for `timer` seconds. */
+  allyAnswer: { to: number; timer: number } | null;
 }
 
 export interface Army {
@@ -133,6 +143,12 @@ export interface Army {
   feastTimer: number;
   /** Seconds until the commander can give another rousing speech. */
   rallyTimer: number;
+  /** Recent crouch taps by the commander, for offering alliances. */
+  gesture: { taps: number[]; wasCrouching: boolean };
+  /** An alliance this army offered, waiting for an answer. */
+  allyOffer: { to: number; time: number } | null;
+  /** The one spear volley of the battle has been thrown. */
+  spearsThrown: boolean;
   eliminated: boolean;
   /** When the commander dies for good (forfeit), they never respawn. */
   forfeited: boolean;
@@ -143,8 +159,11 @@ export interface Army {
   startingSoldiers: number;
 }
 
+export type ProjectileKind = 'arrow' | 'pilum';
+
 export interface Arrow {
   id: EntityId;
+  kind: ProjectileKind;
   armyId: number;
   shooterId: EntityId;
   damage: number;
@@ -186,7 +205,7 @@ export type SimEvent =
   | { type: 'death'; unitId: EntityId; killerArmyId: number | null; knockback: Vec3 }
   | { type: 'swing'; unitId: EntityId }
   | { type: 'arrowFired'; arrowId: EntityId; shooterId: EntityId }
-  | { type: 'arrowLanded'; pos: Vec3; dir: Vec3 }
+  | { type: 'arrowLanded'; pos: Vec3; dir: Vec3; kind: ProjectileKind }
   | { type: 'respawn'; unitId: EntityId }
   | { type: 'mount'; riderId: EntityId; horseId: EntityId }
   | { type: 'dismount'; riderId: EntityId; horseId: EntityId; thrown: boolean }
@@ -195,6 +214,10 @@ export type SimEvent =
   | { type: 'order'; armyId: number; group: number | null; order: Order; formation: Formation }
   | { type: 'split'; armyId: number; groupCount: number }
   | { type: 'advance'; armyId: number; group: number | null }
+  | { type: 'allyOffer'; from: number; to: number }
+  | { type: 'allyRefused'; from: number; to: number }
+  | { type: 'alliance'; a: number; b: number }
+  | { type: 'volley'; armyId: number }
   | { type: 'banquet'; armyId: number }
   | { type: 'drunk'; armyId: number }
   | { type: 'rally'; armyId: number; commanderId: EntityId }
@@ -215,6 +238,8 @@ export interface MatchState {
   phase: MatchPhase;
   endTimer: number;
   winnerTeam: number | null;
+  /** Pairs of army ids that made an alliance: they cannot hurt each other. */
+  alliances: [number, number][];
   /** Events produced during the latest step. Cleared at the start of every step. */
   events: SimEvent[];
 }
@@ -227,6 +252,7 @@ export interface CommanderInput {
   jump: boolean;
   attack: boolean;
   shield: boolean;
+  crouch: boolean;
   aim: Vec3 | null;
 }
 
@@ -241,4 +267,6 @@ export type Command =
   | { type: 'banquet' }
   | { type: 'rally' }
   /** Holding formations step forward a few meters, towards where the commander looks. */
-  | { type: 'advance'; group: number | null };
+  | { type: 'advance'; group: number | null }
+  /** Once per battle: the soldiers throw their spears at enemies around `at`. */
+  | { type: 'volley'; at: Vec3; group: number | null };

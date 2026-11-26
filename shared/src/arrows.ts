@@ -1,11 +1,11 @@
-import { AI, ARROW, BODY, TERRAIN } from './config.ts';
+import { AI, ARROW, BODY, TERRAIN, VOLLEY } from './config.ts';
 import { applyHit } from './combat.ts';
 import { dirToYaw, normalizeXZ, segmentSegmentDistanceSq, yawToDir, type Vec3 } from './math.ts';
 import { randomRange } from './random.ts';
 import { hitsStructure } from './structures.ts';
 import { terrainHeightAt } from './terrain.ts';
 import type { Arrow, MatchState, Unit } from './types.ts';
-import { bodyRadius, isHorse, isMounted, rangedStatsFor, teamOf } from './units.ts';
+import { armiesHostile, bodyRadius, isHorse, isMounted, rangedStatsFor, sideArmyId } from './units.ts';
 
 const SHOULDER_HEIGHT = 1.4;
 const CHEST_HEIGHT = 1.1;
@@ -28,7 +28,7 @@ export function aimPoint(target: Unit): Vec3 {
 }
 
 /** Launch velocity that leads a moving target, with the bot's aiming spread applied. */
-export function aimArrow(state: MatchState, shooter: Unit, target: Unit): Vec3 {
+export function aimArrow(state: MatchState, shooter: Unit, target: Unit, speed: number = ARROW.speed): Vec3 {
   const origin = { x: shooter.pos.x, y: shooter.pos.y + SHOULDER_HEIGHT, z: shooter.pos.z };
   const goal = aimPoint(target);
   let flightTime = 0;
@@ -39,27 +39,27 @@ export function aimArrow(state: MatchState, shooter: Unit, target: Unit): Vec3 {
     const pz = goal.z + target.vel.z * flightTime;
     const dx = Math.hypot(px - origin.x, pz - origin.z);
     yaw = dirToYaw(px - origin.x, pz - origin.z);
-    pitch = solveLaunchAngle(dx, goal.y - origin.y, ARROW.speed, ARROW.gravity) ?? Math.PI / 4;
-    flightTime = dx / (ARROW.speed * Math.cos(pitch));
+    pitch = solveLaunchAngle(dx, goal.y - origin.y, speed, ARROW.gravity) ?? Math.PI / 4;
+    flightTime = dx / (speed * Math.cos(pitch));
   }
   yaw += randomRange(state.rng, -AI.aimYawSpread, AI.aimYawSpread);
   pitch += randomRange(state.rng, -AI.aimPitchSpread, AI.aimPitchSpread);
-  return launchVelocity(yaw, pitch);
+  return launchVelocity(yaw, pitch, speed);
 }
 
-function launchVelocity(yaw: number, pitch: number): Vec3 {
+function launchVelocity(yaw: number, pitch: number, speed: number = ARROW.speed): Vec3 {
   const dir = yawToDir(yaw);
-  const horizontal = Math.cos(pitch) * ARROW.speed;
-  return { x: dir.x * horizontal, y: Math.sin(pitch) * ARROW.speed, z: dir.z * horizontal };
+  const horizontal = Math.cos(pitch) * speed;
+  return { x: dir.x * horizontal, y: Math.sin(pitch) * speed, z: dir.z * horizontal };
 }
 
 /** Launch velocity that lands on a point the player aimed at (no spread: players aim themselves). */
-export function aimAtPoint(shooter: Unit, point: Vec3): Vec3 {
+export function aimAtPoint(shooter: Unit, point: Vec3, speed: number = ARROW.speed): Vec3 {
   const origin = { x: shooter.pos.x, y: shooter.pos.y + SHOULDER_HEIGHT, z: shooter.pos.z };
   const dx = Math.hypot(point.x - origin.x, point.z - origin.z);
   const yaw = dx > 1e-3 ? dirToYaw(point.x - origin.x, point.z - origin.z) : shooter.yaw;
-  const pitch = solveLaunchAngle(dx, point.y - origin.y, ARROW.speed, ARROW.gravity) ?? Math.PI / 4;
-  return launchVelocity(yaw, pitch);
+  const pitch = solveLaunchAngle(dx, point.y - origin.y, speed, ARROW.gravity) ?? Math.PI / 4;
+  return launchVelocity(yaw, pitch, speed);
 }
 
 export function fireArrow(state: MatchState, shooter: Unit, target: Unit | null, aim: Vec3 | null = null): Arrow {
@@ -67,6 +67,7 @@ export function fireArrow(state: MatchState, shooter: Unit, target: Unit | null,
   const forward = yawToDir(dirToYaw(vel.x, vel.z));
   const arrow: Arrow = {
     id: state.nextArrowId++,
+    kind: 'arrow',
     armyId: shooter.armyId,
     shooterId: shooter.id,
     damage: rangedStatsFor(shooter)?.damage ?? 0,
@@ -84,6 +85,26 @@ export function fireArrow(state: MatchState, shooter: Unit, target: Unit | null,
   return arrow;
 }
 
+/** A soldier hurls their spear: at an enemy (leading them), or at the spot the commander looked at. */
+export function throwPilum(state: MatchState, thrower: Unit, target: Unit | null, at: Vec3 | null): Arrow {
+  const vel = target ? aimArrow(state, thrower, target, VOLLEY.speed) : aimAtPoint(thrower, at ?? aimPoint(thrower), VOLLEY.speed);
+  const forward = yawToDir(dirToYaw(vel.x, vel.z));
+  const pilum: Arrow = {
+    id: state.nextArrowId++,
+    kind: 'pilum',
+    armyId: thrower.armyId,
+    shooterId: thrower.id,
+    damage: VOLLEY.damage,
+    knockback: VOLLEY.knockback,
+    pos: { x: thrower.pos.x + forward.x * 0.5, y: thrower.pos.y + SHOULDER_HEIGHT + 0.3, z: thrower.pos.z + forward.z * 0.5 },
+    vel,
+    age: 0,
+  };
+  state.arrows.push(pilum);
+  state.events.push({ type: 'arrowFired', arrowId: pilum.id, shooterId: thrower.id });
+  return pilum;
+}
+
 /** The capsule used for arrow hits, as a segment plus radius. */
 export function hitCapsule(unit: Unit): { a: Vec3; b: Vec3; radius: number } {
   const { x, y, z } = unit.pos;
@@ -99,12 +120,11 @@ export function hitCapsule(unit: Unit): { a: Vec3; b: Vec3; radius: number } {
 }
 
 function findArrowVictim(state: MatchState, arrow: Arrow, from: Vec3, to: Vec3): Unit | null {
-  const shooterTeam = state.armies[arrow.armyId]?.team ?? -1;
   let best: Unit | null = null;
   let bestDistance = Infinity;
   for (const unit of state.units) {
     if (!unit.alive || unit.invulnerableTimer > 0) continue;
-    if (teamOf(state, unit) === shooterTeam) continue;
+    if (!armiesHostile(state, arrow.armyId, sideArmyId(state, unit))) continue;
     const capsule = hitCapsule(unit);
     const reach = capsule.radius + ARROW.radius;
     if (segmentSegmentDistanceSq(from, to, capsule.a, capsule.b) > reach * reach) continue;
@@ -140,6 +160,7 @@ export function stepArrows(state: MatchState, dt: number): void {
         type: 'arrowLanded',
         pos: { x: arrow.pos.x, y: Math.max(ground, arrow.pos.y), z: arrow.pos.z },
         dir: { x: arrow.vel.x / speed, y: arrow.vel.y / speed, z: arrow.vel.z / speed },
+        kind: arrow.kind,
       });
       continue;
     }
