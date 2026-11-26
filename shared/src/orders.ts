@@ -1,6 +1,7 @@
 import { finishFeast } from './banquet.ts';
 import { ARMY, BANQUET, MOVEMENT, RALLY } from './config.ts';
 import { assignHoldSlots, followCenter, formationSlots, holdSlots, supportSlots, type FormationSlot } from './formation.ts';
+import { navGrid, navigate, nearestWalkable } from './navigation.ts';
 import { clamp, dirToYaw, distanceXZ, normalizeXZ, turnTowards, type Vec2 } from './math.ts';
 import { toggleMount } from './mounts.ts';
 import type { Army, Command, EntityId, Formation, GroupOrder, MatchState, Order, Unit, UnitKind } from './types.ts';
@@ -111,13 +112,20 @@ export function advanceArmy(state: MatchState, army: Army, target: Vec2, step: n
   if (!canActLeaderless(state, army)) return false;
   const here = centroid(livingSoldiers(state, army));
   if (!here) return false;
-  const dir = normalizeXZ(target.x - here.x, target.z - here.z);
-  const anchor = { x: here.x + dir.x * step, z: here.z + dir.z * step };
-  const anchorYaw = dirToYaw(dir.x, dir.z);
-  for (let g = 0; g < army.groupCount; g++) {
-    army.groupOrders[g] = { order: 'hold', anchor, anchorYaw, aroundCommander: false, formation: army.formation };
-  }
+  // Along the streets, not through the houses.
+  const waypoint = navigate(state.settings.map, here, target);
+  const dir = normalizeXZ(waypoint.x - here.x, waypoint.z - here.z);
+  const anchor = nearestWalkable(state.settings.map, { x: here.x + dir.x * step, z: here.z + dir.z * step });
+  holdAt(state, army, anchor, dirToYaw(dir.x, dir.z));
   return true;
+}
+
+/** The whole army holds at a given spot, facing `yaw`, in its current formation. */
+export function holdAt(state: MatchState, army: Army, anchor: Vec2, yaw: number): void {
+  finishFeast(state, army);
+  for (let g = 0; g < army.groupCount; g++) {
+    army.groupOrders[g] = { order: 'hold', anchor: { ...anchor }, anchorYaw: yaw, aroundCommander: false, formation: army.formation };
+  }
 }
 
 /** Once per battle: the army gathers round the commander, drinks, and is drunk for good. */
@@ -213,9 +221,16 @@ export function formationTargets(state: MatchState, army: Army): Map<EntityId, F
     if (!groupOrder) continue;
     const members = groupMembers(state, army, g);
     if (members.length === 0) continue;
-    for (const [id, slot] of groupSlots(groupOrder, g, army.groupCount, members)) targets.set(id, slot);
+    for (const [id, slot] of groupSlots(groupOrder, g, army.groupCount, members)) targets.set(id, walkableSlot(state, slot));
   }
   return targets;
+}
+
+/** A place that falls inside a building moves to the nearest spot in the street. */
+function walkableSlot(state: MatchState, slot: FormationSlot): FormationSlot {
+  if (!navGrid(state.settings.map).hasObstacles) return slot;
+  const free = nearestWalkable(state.settings.map, slot);
+  return free === slot ? slot : { x: free.x, z: free.z, yaw: slot.yaw };
 }
 
 function groupSlots(groupOrder: GroupOrder, group: number, groupCount: number, members: readonly Unit[]): Map<EntityId, FormationSlot> {

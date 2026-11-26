@@ -1,5 +1,5 @@
 import { MAP, OBSTACLES, TERRAIN } from './config.ts';
-import { MAPS, type MapDefinition, type MapId, type ObstacleKind } from './maps.ts';
+import { CASTLE, CITY, MAPS, type MapDefinition, type MapId, type ObstacleKind } from './maps.ts';
 import { clamp, distanceXZ, type Vec2 } from './math.ts';
 import { createRandom, randomRange, type RandomSource } from './random.ts';
 import { allPossibleSpawnPoints } from './spawn.ts';
@@ -18,10 +18,6 @@ function hillHeight(def: MapDefinition, x: number, z: number): number {
   let h =
     Math.sin(x * hills.frequencyX) * Math.cos(z * hills.frequencyZ) * hills.amplitude +
     Math.sin(x * ripples.frequencyX + z * ripples.frequencyZ) * ripples.amplitude;
-  if (def.crags > 0) {
-    // Sharp ridges: the absolute value of a sine makes pointy crests.
-    h += (Math.abs(Math.sin(x * 0.11 - z * 0.07)) - 0.5) * def.crags * 2;
-  }
   const rimDistance = Math.max(Math.abs(x), Math.abs(z)) - TERRAIN.rimStart;
   const rim = rimDistance > 0 ? rimDistance * TERRAIN.rimSlope : 0;
   return h * blend + rim;
@@ -71,9 +67,23 @@ export function terrainHeightAt(map: MapId, x: number, z: number): number {
   return h00 + v * (h01 - h00) + u * (h11 - h01);
 }
 
-/** The path (sand, dirt or packed earth depending on the map) that winds across along the X axis. */
-export function isOnPath(x: number, z: number): boolean {
-  return Math.abs(z + Math.sin(x * 0.09) * 5) < 6.5;
+/**
+ * Roads: a winding path across the meadow, a straight road up to the castle gate, and the
+ * paved streets of the city.
+ */
+export function isOnPath(map: MapId, x: number, z: number): boolean {
+  switch (MAPS[map].layout) {
+    case 'open':
+      return Math.abs(z + Math.sin(x * 0.09) * 5) < 6.5;
+    case 'siege':
+      return x < CASTLE.west + CASTLE.wallThickness && Math.abs(z + Math.sin(x * 0.06) * 3 * Math.min(1, (CASTLE.west - x) / 40)) < 4.5;
+    case 'city':
+      return CITY.lines.some((line) => Math.abs(x - line) < streetHalf(line) || Math.abs(z - line) < streetHalf(line)) || Math.max(Math.abs(x), Math.abs(z)) < CITY.forumHalf;
+  }
+}
+
+function streetHalf(line: number): number {
+  return (line === 0 ? CITY.avenueWidth : CITY.streetWidth) / 2;
 }
 
 export interface Obstacle {
@@ -100,7 +110,7 @@ export function mapObstacles(map: MapId): Obstacle[] {
   if (cached) return cached;
   const def = MAPS[map];
   const rng = createRandom(MAP.seed + map.length * 7919);
-  const spawns = allPossibleSpawnPoints();
+  const spawns = allPossibleSpawnPoints(map);
   const obstacles: Obstacle[] = [];
   for (const group of def.inside) placeInside(map, obstacles, rng, spawns, group);
   placeScenery(obstacles, rng, def);
@@ -111,7 +121,7 @@ export function mapObstacles(map: MapId): Obstacle[] {
 function isClearSpot(map: MapId, p: Vec2, spawns: Vec2[], placed: Obstacle[]): boolean {
   if (Math.hypot(p.x, p.z) < OBSTACLES.keepClearOfCenter) return false;
   if (nearStructure(map, p.x, p.z, STRUCTURE_CLEARANCE)) return false;
-  if (isOnPath(p.x, p.z)) return false;
+  if (isOnPath(map, p.x, p.z)) return false;
   if (spawns.some((s) => distanceXZ(s, p) < OBSTACLES.keepClearOfSpawn)) return false;
   return !placed.some((o) => distanceXZ(o, p) < 4);
 }

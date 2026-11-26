@@ -4,7 +4,8 @@ import { formationSlots, holdSlots } from './formation.ts';
 import { centroid, groupForKind } from './orders.ts';
 import { yawToDir, type Vec2, type Vec3 } from './math.ts';
 import { createRandom } from './random.ts';
-import { armySpawnPoint } from './spawn.ts';
+import { nearestWalkable } from './navigation.ts';
+import { armySpawn } from './spawn.ts';
 import { terrainHeightAt } from './terrain.ts';
 import type { Army, ArmyMix, ArmySize, MatchSettings, MatchState, SoldierKind, Unit } from './types.ts';
 import { createUnit } from './units.ts';
@@ -78,7 +79,7 @@ function createArmy(
   isBot: boolean,
   settings: MatchSettings,
 ): Army {
-  const spawn = armySpawnPoint(armyId, settings.armies.length);
+  const spawn = armySpawn(settings, armyId);
   const forward = yawToDir(spawn.yaw);
   const commanderPos = groundPos(settings,
     spawn.position.x + forward.x * FORMATION.commanderSpawnAhead,
@@ -87,7 +88,7 @@ function createArmy(
   const commander = isBot && !ARMY.botCommanders ? null : addCommander(state, armyId, commanderPos, spawn.yaw);
 
   const kinds = soldierKindsFor(settings.armySize, settings.mix);
-  const slots = startingSlots(kinds, spawn.position, spawn.yaw);
+  const slots = startingSlots(kinds, spawn.position, spawn.yaw).map((slot) => nearestWalkable(settings.map, slot));
   const soldierIds: number[] = [];
   const soldiers: Unit[] = [];
   kinds.forEach((kind, i) => {

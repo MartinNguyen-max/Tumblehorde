@@ -13,6 +13,7 @@ export * from './combat.ts';
 export * from './mounts.ts';
 export * from './arrows.ts';
 export * from './physics.ts';
+export * from './navigation.ts';
 export * from './orders.ts';
 export * from './banquet.ts';
 export * from './ai.ts';

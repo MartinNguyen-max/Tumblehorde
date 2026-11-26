@@ -1,27 +1,79 @@
 import { ARMY, MAP } from './config.ts';
-import type { Vec2 } from './math.ts';
+import { CASTLE, CITY, MAPS, type MapId } from './maps.ts';
+import { dirToYaw, type Vec2 } from './math.ts';
+import type { MatchSettings } from './types.ts';
 
 export interface SpawnPoint {
   position: Vec2;
-  /** Yaw facing the map center. */
+  /** Yaw the army faces at the start. */
   yaw: number;
 }
 
-/**
- * Armies are spread evenly on a circle around the center, far enough apart that there
- * is time to plan before the lines meet.
- */
-export function armySpawnPoint(index: number, armyCount: number): SpawnPoint {
+/** On the castle map the army on team 0 holds the castle (in free-for-all: the first army). */
+export const DEFENDER_TEAM = 0;
+
+export function isDefender(settings: Pick<MatchSettings, 'map' | 'mode' | 'armies'>, index: number): boolean {
+  if (MAPS[settings.map].layout !== 'siege') return false;
+  return settings.mode === 'teams' ? settings.armies[index]?.team === DEFENDER_TEAM : index === 0;
+}
+
+const FACING_EAST = Math.PI / 2;
+const FACING_WEST = -Math.PI / 2;
+
+/** Armies are spread evenly on a circle around the center, far enough apart to plan before the lines meet. */
+function circleSpawn(index: number, armyCount: number): SpawnPoint {
   const radius = MAP.armySpawnRadius;
   const angle = Math.PI + (index * 2 * Math.PI) / armyCount;
   const position = { x: Math.cos(angle) * radius, z: Math.sin(angle) * radius };
   return { position, yaw: Math.atan2(-position.x, -position.z) };
 }
 
-export function allPossibleSpawnPoints(): Vec2[] {
+/** City armies start in the squares at the ends of the avenues: west, east, north, south. */
+function citySpawn(index: number): SpawnPoint {
+  const d = CITY.spawnDistance;
+  const ends: Vec2[] = [{ x: -d, z: 0 }, { x: d, z: 0 }, { x: 0, z: d }, { x: 0, z: -d }];
+  const position = ends[index % ends.length] ?? { x: -d, z: 0 };
+  return { position, yaw: dirToYaw(-position.x, -position.z) };
+}
+
+/** Siege: the defender forms up in the courtyard behind the gate, attackers line up in the field. */
+const SIEGE = {
+  defender: { x: CASTLE.west + 14, z: 0 },
+  attackerX: -70,
+  attackerSpacing: 46,
+} as const;
+
+function siegeSpawn(settings: Pick<MatchSettings, 'map' | 'mode' | 'armies'>, index: number): SpawnPoint {
+  if (isDefender(settings, index)) return { position: { ...SIEGE.defender }, yaw: FACING_WEST };
+  const attackers = settings.armies.map((_, i) => i).filter((i) => !isDefender(settings, i));
+  const slot = attackers.indexOf(index);
+  const z = (slot - (attackers.length - 1) / 2) * SIEGE.attackerSpacing;
+  return { position: { x: SIEGE.attackerX, z }, yaw: FACING_EAST };
+}
+
+/** Where army `index` starts. */
+export function armySpawn(settings: Pick<MatchSettings, 'map' | 'mode' | 'armies'>, index: number): SpawnPoint {
+  switch (MAPS[settings.map].layout) {
+    case 'open':
+      return circleSpawn(index, settings.armies.length);
+    case 'city':
+      return citySpawn(index);
+    case 'siege':
+      return siegeSpawn(settings, index);
+  }
+}
+
+/** The defender's post: just inside the gate, facing out. */
+export function gatePost(): SpawnPoint {
+  return { position: { x: CASTLE.west + 4, z: 0 }, yaw: FACING_WEST };
+}
+
+/** Every place an army could start on this map, kept clear of trees and rocks. */
+export function allPossibleSpawnPoints(map: MapId): Vec2[] {
   const points: Vec2[] = [];
   for (let count = ARMY.minArmies; count <= ARMY.maxArmies; count++) {
-    for (let i = 0; i < count; i++) points.push(armySpawnPoint(i, count).position);
+    const armies = Array.from({ length: count }, (_, i) => ({ name: '', team: i === 0 ? DEFENDER_TEAM : 1, isBot: true }));
+    for (let i = 0; i < count; i++) points.push(armySpawn({ map, mode: 'teams', armies }, i).position);
   }
   return points;
 }

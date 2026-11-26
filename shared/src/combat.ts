@@ -165,9 +165,13 @@ export function startMelee(state: MatchState, unit: Unit): boolean {
 }
 
 export function isFreeToAct(unit: Unit): boolean {
-  return (
-    unit.alive && unit.action === 'none' && unit.cooldownTimer <= 0 && unit.stunTimer <= 0 && !unit.shieldUp
-  );
+  if (!unit.alive || unit.action !== 'none' || unit.cooldownTimer > 0 || unit.stunTimer > 0) return false;
+  return !unit.shieldUp || thrustsOverShield(unit);
+}
+
+/** On foot, a spear is thrust over the top of a raised shield: the shield stays up. */
+export function thrustsOverShield(unit: Unit): boolean {
+  return unit.weapon === 'spear' && !isMounted(unit) && canUseShield(unit);
 }
 
 /** Enemies inside the attacker's strike cone, nearest first. */

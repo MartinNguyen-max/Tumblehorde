@@ -57,8 +57,15 @@
             <div class="seg" id="opt-map" role="radiogroup">
               <button data-value="random" class="on">Random</button>
               <button data-value="meadow">Meadow</button>
-              <button data-value="desert">Desert</button>
-              <button data-value="highlands">Rocks</button>
+              <button data-value="castle">Castle</button>
+              <button data-value="city">City</button>
+            </div>
+          </div>
+          <div class="field" id="siege-field" hidden>
+            <span class="field-label">At the castle <small>(one army holds the gate, the rest attack)</small></span>
+            <div class="seg" id="opt-role" role="radiogroup">
+              <button data-value="defend" class="on">Defend the gate</button>
+              <button data-value="attack">Attack</button>
             </div>
           </div>
           <div class="field" id="team-field" hidden>
@@ -118,6 +125,15 @@
             <div class="seg" id="lobby-mode">
               <button data-value="ffa">Free-for-all</button>
               <button data-value="teams">2 teams</button>
+            </div>
+          </div>
+          <div class="field">
+            <span class="field-label">Battlefield</span>
+            <div class="seg" id="lobby-map">
+              <button data-value="random">Random</button>
+              <button data-value="meadow">Meadow</button>
+              <button data-value="castle">Castle</button>
+              <button data-value="city">City</button>
             </div>
           </div>
         </div>

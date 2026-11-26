@@ -95,7 +95,7 @@ export interface MapTheme {
   sun: string;
   ground: HslRange;
   path: HslRange;
-  /** High or steep ground turns into this (rocky highlands). Null keeps the ground color. */
+  /** High or steep ground turns into this. Null keeps the ground color. */
   rock: HslRange | null;
   /** Height above which ground counts as rock. */
   rockHeight: number;
@@ -112,6 +112,9 @@ export interface MapTheme {
   stone: string;
   plaster: string;
   roof: string;
+  /** Houses pick from these, so a street does not look copy-pasted. */
+  plasters: readonly string[];
+  roofs: readonly string[];
 }
 
 export const MAP_THEMES: Record<MapId, MapTheme> = {
@@ -137,59 +140,65 @@ export const MAP_THEMES: Record<MapId, MapTheme> = {
     stone: '#A6A39A',
     plaster: '#EDE4CF',
     roof: '#B5533C',
+    plasters: ['#EDE4CF'],
+    roofs: ['#B5533C'],
   },
-  desert: {
-    sky: '#8FCBEA',
-    fog: '#F1DDB4',
-    hemiSky: '#DDEEFF',
-    hemiGround: '#C9A56A',
-    sun: '#FFE9C4',
-    ground: { hue: 0.1, saturation: 0.5, lightMin: 0.66, lightMax: 0.74 },
-    path: { hue: 0.08, saturation: 0.42, lightMin: 0.55, lightMax: 0.61 },
+  castle: {
+    sky: '#93C8EC',
+    fog: '#A9D2EE',
+    hemiSky: '#C4E3FF',
+    hemiGround: '#5C8A3E',
+    sun: '#FFF2DA',
+    ground: { hue: 0.25, saturation: 0.42, lightMin: 0.39, lightMax: 0.47 },
+    path: { hue: 0.09, saturation: 0.3, lightMin: 0.56, lightMax: 0.62 },
     rock: null,
     rockHeight: 99,
-    treeTrunk: '#7A5A38',
-    leaves: '#6E9B3C',
-    leavesTop: '#86B04A',
-    rockColor: '#C98B5A',
-    cactus: '#4E9445',
-    bush: '#9A9A52',
-    bushCount: 40,
-    tuft: '#C7A46B',
-    tuftCount: 260,
-    stone: '#D9C29A',
-    plaster: '#D8AE7E',
-    roof: '#B98455',
+    treeTrunk: '#6E4528',
+    leaves: '#3F8A3A',
+    leavesTop: '#52A347',
+    rockColor: '#9EA3A0',
+    cactus: '#5E9E4A',
+    bush: '#4A9440',
+    bushCount: 60,
+    tuft: '#6CB648',
+    tuftCount: 380,
+    stone: '#A29D92',
+    plaster: '#E6DCC6',
+    roof: '#8E4A36',
+    plasters: ['#E6DCC6'],
+    roofs: ['#8E4A36', '#7A3F2F'],
   },
-  highlands: {
-    sky: '#A6C6E2',
-    fog: '#C4D2DD',
-    hemiSky: '#D6E6F5',
-    hemiGround: '#5F6E58',
-    sun: '#F4F1E6',
-    ground: { hue: 0.6, saturation: 0.06, lightMin: 0.5, lightMax: 0.58 },
-    path: { hue: 0.08, saturation: 0.2, lightMin: 0.44, lightMax: 0.5 },
-    rock: { hue: 0.6, saturation: 0.07, lightMin: 0.38, lightMax: 0.46 },
-    rockHeight: 2.2,
-    treeTrunk: '#5E3F26',
-    leaves: '#2F6B3A',
-    leavesTop: '#3E8048',
-    rockColor: '#8E9399',
-    cactus: '#4E9445',
-    bush: '#6E7C5E',
-    bushCount: 20,
-    tuft: '#8A8F8C',
-    tuftCount: 360,
-    stone: '#8C8C88',
-    plaster: '#CFC8B8',
-    roof: '#5E6B7A',
+  city: {
+    sky: '#8EC9EE',
+    fog: '#BFD9EA',
+    hemiSky: '#D8ECFF',
+    hemiGround: '#8C7A62',
+    sun: '#FFF0D6',
+    ground: { hue: 0.08, saturation: 0.12, lightMin: 0.6, lightMax: 0.66 },
+    path: { hue: 0.07, saturation: 0.14, lightMin: 0.68, lightMax: 0.74 },
+    rock: null,
+    rockHeight: 99,
+    treeTrunk: '#6E4528',
+    leaves: '#3F8A3A',
+    leavesTop: '#52A347',
+    rockColor: '#B0ACA2',
+    cactus: '#5E9E4A',
+    bush: '#5C8E46',
+    bushCount: 0,
+    tuft: '#8B9A6A',
+    tuftCount: 0,
+    stone: '#BDB4A3',
+    plaster: '#EFE3C8',
+    roof: '#B5533C',
+    plasters: ['#EFE3C8', '#E9CBA0', '#DDB48A', '#F3E6CF', '#E3C2B0'],
+    roofs: ['#B5533C', '#A3462F', '#C4643F', '#9C5236'],
   },
 };
 
 export const MAP_NAMES: Record<MapId, string> = {
   meadow: 'Green Meadow',
-  desert: 'Sunbaked Dunes',
-  highlands: 'Rocky Highlands',
+  castle: 'Castle Siege',
+  city: 'The City',
 };
 
 export const LIGHTING = {

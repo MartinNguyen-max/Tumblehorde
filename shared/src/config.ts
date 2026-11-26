@@ -347,6 +347,20 @@ export const FORMATION = {
   commanderSpawnAhead: 5,
 } as const;
 
+/** Grid navigation for AI soldiers on maps with buildings. */
+export const NAV = {
+  cellSize: 1.5,
+  /** Extra room kept from walls, on top of a body's radius. */
+  clearance: 0.3,
+  /** How far (in cells) to look for a free spot when a formation place falls inside a building. */
+  searchRadius: 10,
+  /** Flow fields built per simulation step at most; more wait for the next step. */
+  fieldsPerStep: 3,
+  cachedFields: 96,
+  /** Cells to look ahead along the flow, so paths cut corners smoothly. */
+  lookahead: 8,
+} as const;
+
 export const AI = {
   thinkInterval: 0.2,
   reactionRadius: 25,
@@ -355,6 +369,8 @@ export const AI = {
   holdEngageRadius: 6,
   shieldReactRadius: 3.5,
   shieldMinHold: 0.6,
+  /** Medium bots do not see every blow coming: the chance a soldier raises the shield against one. */
+  shieldReactChance: 0.6,
   /** Units on Hold raise shields towards enemy archers within this distance. */
   shieldWallArcherRadius: 40,
   archerMinDistance: 15,

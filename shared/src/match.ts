@@ -1,9 +1,10 @@
 import { runArmyAi } from './ai.ts';
 import { updateBanquets, updateStumbles } from './banquet.ts';
+import { beginNavigationStep } from './navigation.ts';
 import { fireArrow, stepArrows } from './arrows.ts';
 import { runBotArmy, runLeaderlessArmy } from './bot.ts';
 import { ARCHER, COMMANDER, MATCH, SIM } from './config.ts';
-import { applyKnockback, isFreeToAct, killUnit, knockbackVector, resolveMelee, startMelee } from './combat.ts';
+import { applyKnockback, isFreeToAct, killUnit, knockbackVector, resolveMelee, startMelee, thrustsOverShield } from './combat.ts';
 import { distanceXZ, normalizeXZ } from './math.ts';
 import { livingSoldiers, updateFollowAnchors } from './orders.ts';
 import { stepMovement } from './physics.ts';
@@ -58,22 +59,30 @@ function wantsBow(state: MatchState, unit: Unit): boolean {
 export function updateWeapons(state: MatchState): void {
   for (const unit of state.units) {
     if (!unit.alive || !isPerson(unit)) continue;
-    unit.shieldUp = unit.intent.shield && canUseShield(unit) && unit.stunTimer <= 0 && unit.action === 'none';
-    if (!unit.intent.attack || unit.shieldUp) continue;
+    const busy = unit.action !== 'none' && !(unit.action === 'melee' && thrustsOverShield(unit));
+    unit.shieldUp = unit.intent.shield && canUseShield(unit) && unit.stunTimer <= 0 && !busy;
+    if (!unit.intent.attack || (unit.shieldUp && !thrustsOverShield(unit))) continue;
     if (wantsBow(state, unit)) startShot(unit);
     else startMelee(state, unit);
   }
 }
 
-/** Counts down windups and resolves the strike or releases the arrow when they finish. */
+/**
+ * Counts down windups and resolves the strike or releases the arrow when they finish.
+ * Everything that finishes in the same step lands together: otherwise whoever comes first
+ * in the unit list would stun the other out of their swing and always win the exchange.
+ */
 export function progressActions(state: MatchState, dt: number): void {
+  const finished: { unit: Unit; action: Exclude<Unit['action'], 'none'> }[] = [];
   for (const unit of state.units) {
     if (!unit.alive || unit.action === 'none') continue;
     unit.actionTimer -= dt;
     if (unit.actionTimer > 0) continue;
-    const action = unit.action;
+    finished.push({ unit, action: unit.action });
     unit.action = 'none';
     unit.actionTimer = 0;
+  }
+  for (const { unit, action } of finished) {
     if (action === 'melee') resolveMelee(state, unit);
     else {
       const target = getUnit(state, unit.ai.targetId);
@@ -224,6 +233,7 @@ export function stepMatch(state: MatchState, inputs: ReadonlyMap<number, Command
   const step = Math.min(dt, SIM.maxDeltaTime);
   state.time += step;
   state.tick++;
+  beginNavigationStep();
 
   for (const army of state.armies) {
     if (army.eliminated) continue;

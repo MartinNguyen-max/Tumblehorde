@@ -12,6 +12,7 @@ import {
   generateRoomCode,
   type InputMessage,
   type LobbyMessage,
+  type MapChoice,
   MATCH,
   type MatchState,
   matchView,
@@ -67,6 +68,7 @@ export class BattleRoom extends Room {
   private hostId = '';
   private mode: GameMode = 'ffa';
   private armySize: ArmySize = ARMY.sizes[1];
+  private map: MapChoice = 'random';
   private phase: RoomPhase = 'lobby';
   private match: MatchState | null = null;
   private pendingEvents: SimEvent[] = [];
@@ -167,6 +169,7 @@ export class BattleRoom extends Room {
       phase: this.phase,
       mode: this.mode,
       armySize: this.armySize,
+      map: this.map,
       players: this.players
         .filter((p) => !p.left)
         .map((p) => ({ sessionId: p.sessionId, name: p.name, team: p.team, connected: p.connected })),
@@ -199,6 +202,7 @@ export class BattleRoom extends Room {
     if (!settings || client.sessionId !== this.hostId || this.phase !== 'lobby') return;
     this.mode = settings.mode;
     this.armySize = settings.armySize;
+    this.map = settings.map;
     this.broadcastLobby();
   }
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { MapChoice } from '../src/maps.ts';
 import { stepMatch } from '../src/match.ts';
 import {
   battleSettings,
@@ -58,12 +59,13 @@ describe('snapshot codec', () => {
 });
 
 describe('lobby rules', () => {
-  const lobby = (mode: 'ffa' | 'teams', teams: number[]): LobbyMessage => ({
+  const lobby = (mode: 'ffa' | 'teams', teams: number[], map: MapChoice = 'random'): LobbyMessage => ({
     code: 'ABCDE',
     hostId: 'a',
     phase: 'lobby',
     mode,
     armySize: 15,
+    map,
     players: teams.map((team, i) => ({ sessionId: String(i), name: `P${i}`, team, connected: true })),
   });
 
@@ -75,6 +77,14 @@ describe('lobby rules', () => {
   it('needs both teams filled in team mode', () => {
     expect(canStartBattle(lobby('teams', [0, 0, 0]))).toBe(false);
     expect(canStartBattle(lobby('teams', [0, 1, 1]))).toBe(true);
+  });
+
+  it('lets exactly one player hold the castle in team mode', () => {
+    expect(canStartBattle(lobby('teams', [0, 0, 1], 'castle'))).toBe(false);
+    expect(canStartBattle(lobby('teams', [0, 1, 1], 'castle'))).toBe(true);
+    expect(canStartBattle(lobby('ffa', [0, 0, 0], 'castle'))).toBe(true);
+    for (let seed = 0; seed < 30; seed++) expect(battleSettings(lobby('teams', [0, 0, 1]), seed).map).not.toBe('castle');
+    expect(battleSettings(lobby('teams', [0, 1], 'city'), 3).map).toBe('city');
   });
 
   it('turns a lobby into match settings with one army per player', () => {
@@ -94,7 +104,9 @@ describe('message validation', () => {
   });
 
   it('only allows known lobby settings', () => {
-    expect(sanitizeLobbySettings({ mode: 'teams', armySize: 25 })).toEqual({ mode: 'teams', armySize: 25 });
+    expect(sanitizeLobbySettings({ mode: 'teams', armySize: 25 })).toEqual({ mode: 'teams', armySize: 25, map: 'random' });
+    expect(sanitizeLobbySettings({ mode: 'teams', armySize: 25, map: 'castle' })).toEqual({ mode: 'teams', armySize: 25, map: 'castle' });
+    expect(sanitizeLobbySettings({ mode: 'teams', armySize: 25, map: 'moon' })).toBeNull();
     expect(sanitizeLobbySettings({ mode: 'teams', armySize: 20 })).toBeNull();
     expect(sanitizeLobbySettings({ mode: 'chaos', armySize: 25 })).toBeNull();
   });

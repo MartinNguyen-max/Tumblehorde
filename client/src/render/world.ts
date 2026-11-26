@@ -26,6 +26,7 @@ import {
   type MapId,
   mapObstacles,
   mapStructures,
+  nearStructure,
   type Obstacle,
   type Structure,
   randomRange,
@@ -194,7 +195,7 @@ function createTerrain(scene: Scene, map: MapId, theme: MapTheme): Mesh {
       const slope = Math.max(Math.abs(a[1] - b[1]), Math.abs(b[1] - c[1]), Math.abs(a[1] - c[1])) / TERRAIN.cellSize;
       if (slope > ROCK_SLOPE || cy > theme.rockHeight) return pick(rng, theme.rock);
     }
-    return isOnPath(cx, cz) ? pick(rng, theme.path) : pick(rng, theme.ground);
+    return isOnPath(map, cx, cz) ? pick(rng, theme.path) : pick(rng, theme.ground);
   };
   const addTriangle = (a: Vertex, b: Vertex, c: Vertex): void => {
     const color = colorFor(a, b, c);
@@ -264,6 +265,12 @@ function placeObstacle(parts: PartFactory, root: TransformNode, map: MapId, o: O
 }
 
 const CRENEL_SPACING = 1.3;
+
+/** Picks a color for a building from its position, the same every time. */
+function variant(colors: readonly string[], a: number, b: number): string | undefined {
+  const hash = Math.abs(Math.floor(a * 7.3 + b * 3.1));
+  return colors[hash % colors.length];
+}
 const FENCE_POST_SPACING = 1.6;
 
 /** Houses, walls, towers and ruins. Their collision boxes live in the shared simulation. */
@@ -273,21 +280,23 @@ function createStructure(parts: PartFactory, root: TransformNode, map: MapId, s:
   node.position.set(s.x, terrainHeightAt(map, s.x, s.z), s.z);
   node.rotation.y = s.yaw;
   const { width: w, depth: d, height: h } = s;
+  const plaster = variant(theme.plasters, s.x, s.z) ?? theme.plaster;
+  const roofColor = variant(theme.roofs, s.z, s.x) ?? theme.roof;
   switch (s.kind) {
     case 'house': {
-      parts.part('box', theme.plaster, node, [w, h * 0.62, d], [0, h * 0.31 - 0.2, 0]);
+      parts.part('box', plaster, node, [w, h * 0.62, d], [0, h * 0.31 - 0.2, 0]);
       parts.part('box', theme.stone, node, [w + 0.1, 0.5, d + 0.1], [0, 0.05, 0]);
       const roof = h * 0.45;
       const slope = Math.hypot(d / 2, roof);
       const angle = Math.atan2(roof, d / 2);
-      parts.part('box', theme.roof, node, [w + 0.6, 0.22, slope + 0.3], [0, h * 0.62 + roof / 2 - 0.2, d / 4]).rotation.x = angle;
-      parts.part('box', theme.roof, node, [w + 0.6, 0.22, slope + 0.3], [0, h * 0.62 + roof / 2 - 0.2, -d / 4]).rotation.x = -angle;
+      parts.part('box', roofColor, node, [w + 0.6, 0.22, slope + 0.3], [0, h * 0.62 + roof / 2 - 0.2, d / 4]).rotation.x = angle;
+      parts.part('box', roofColor, node, [w + 0.6, 0.22, slope + 0.3], [0, h * 0.62 + roof / 2 - 0.2, -d / 4]).rotation.x = -angle;
       // Gable ends: a box turned 45° shows a triangle above the eaves; squash it to the roof's height.
       const gable = new TransformNode('gable', node.getScene());
       gable.parent = node;
       gable.position.y = h * 0.62 - 0.2;
       gable.scaling.y = roof / (d / 2);
-      parts.part('box', theme.plaster, gable, [w - 0.1, d / Math.SQRT2, d / Math.SQRT2], [0, 0, 0]).rotation.x = Math.PI / 4;
+      parts.part('box', plaster, gable, [w - 0.1, d / Math.SQRT2, d / Math.SQRT2], [0, 0, 0]).rotation.x = Math.PI / 4;
       parts.part('box', COLORS.darkWood, node, [1.1, 2, 0.12], [0, 1, d / 2 + 0.02]);
       for (const side of [-1, 1]) parts.part('box', COLORS.pupil, node, [0.7, 0.7, 0.1], [side * w * 0.3, 1.8, d / 2 + 0.02]);
       break;
@@ -318,6 +327,36 @@ function createStructure(parts: PartFactory, root: TransformNode, map: MapId, s:
       parts.part('box', COLORS.wood, node, [w, 0.12, 0.08], [0, h * 0.75, 0]);
       parts.part('box', COLORS.wood, node, [w, 0.12, 0.08], [0, h * 0.4, 0]);
       break;
+    case 'keep': {
+      parts.part('box', theme.stone, node, [w, h, d], [0, h / 2 - 0.15, 0]);
+      for (const [x, z, along] of [[0, d / 2, true], [0, -d / 2, true], [w / 2, 0, false], [-w / 2, 0, false]] as const) {
+        const length = along ? w : d;
+        for (let t = -length / 2 + CRENEL_SPACING / 2; t < length / 2; t += CRENEL_SPACING) {
+          parts.part('box', theme.stone, node, [along ? CRENEL_SPACING * 0.55 : 0.6, 0.6, along ? 0.6 : CRENEL_SPACING * 0.55], [along ? t : x, h + 0.15, along ? z : t]);
+        }
+      }
+      parts.part('box', COLORS.darkWood, node, [2.4, 3.2, 0.2], [0, 1.6, d / 2 + 0.05]);
+      parts.part('cylinder', COLORS.darkWood, node, [0.08, 4, 0.08], [0, h + 2, 0]);
+      parts.part('box', COLORS.accent, node, [0.05, 1.1, 1.8], [0, h + 3.3, 0.9]);
+      break;
+    }
+    case 'temple': {
+      // A podium, a ring of columns, and a gabled roof: the forum's temple.
+      parts.part('box', theme.stone, node, [w + 1.2, 1, d + 1.2], [0, 0.35, 0]);
+      parts.part('box', COLORS.edgePost, node, [w * 0.6, h * 0.7, d * 0.55], [0, h * 0.4, -d * 0.1]);
+      const columns = 6;
+      for (let i = 0; i < columns; i++) {
+        const x = -w / 2 + 0.6 + (i * (w - 1.2)) / (columns - 1);
+        for (const z of [d / 2 - 0.4, -d / 2 + 0.4]) parts.part('cylinder', COLORS.edgePost, node, [0.35, h * 0.72, 0.35], [x, 0.85 + h * 0.36, z]);
+      }
+      parts.part('box', COLORS.edgePost, node, [w + 0.4, 0.6, d + 0.4], [0, h * 0.88, 0]);
+      const rise = h * 0.22;
+      const slope = Math.hypot(d / 2, rise);
+      const angle = Math.atan2(rise, d / 2);
+      parts.part('box', roofColor, node, [w + 0.8, 0.25, slope + 0.3], [0, h * 0.95 + rise / 2, d / 4]).rotation.x = angle;
+      parts.part('box', roofColor, node, [w + 0.8, 0.25, slope + 0.3], [0, h * 0.95 + rise / 2, -d / 4]).rotation.x = -angle;
+      break;
+    }
     case 'well':
       parts.part('cylinder', theme.stone, node, [w / 2, h, d / 2], [0, h / 2, 0]);
       parts.part('cylinder', '#3E6E8E', node, [w / 2.6, 0.1, d / 2.6], [0, h + 0.02, 0]);
@@ -336,13 +375,13 @@ function createScenery(parts: PartFactory, root: TransformNode, map: MapId, them
   });
   for (let i = 0; i < theme.bushCount; i++) {
     const { x, z } = inMap();
-    if (isOnPath(x, z)) continue;
+    if (isOnPath(map, x, z) || nearStructure(map, x, z, 1)) continue;
     const bush = parts.part('bush', theme.bush, root, [0.85, 0.6, 0.85], [x, terrainHeightAt(map, x, z) + 0.35, z]);
     bush.rotation.y = randomRange(rng, 0, 3);
   }
   for (let i = 0; i < theme.tuftCount; i++) {
     const { x, z } = inMap();
-    if (isOnPath(x, z)) continue;
+    if (isOnPath(map, x, z) || nearStructure(map, x, z, 0.5)) continue;
     const tuft = parts.part('cone', theme.tuft, root, [0.12, 0.35, 0.12], [x, terrainHeightAt(map, x, z) + 0.15, z], { castShadow: false });
     tuft.rotation.set(randomRange(rng, -0.3, 0.3), 0, randomRange(rng, -0.3, 0.3));
   }

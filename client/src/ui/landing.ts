@@ -1,4 +1,4 @@
-import { type ArmySetup, type ArmySize, type GameMode, isMapId, MAP, type MapId, mapFromRandom, type MatchSettings } from '@tumblehorde/shared';
+import { type ArmySetup, type ArmySize, DEFENDER_TEAM, type GameMode, isMapId, MAP, type MapId, MAPS, mapFromRandom, type MatchSettings } from '@tumblehorde/shared';
 import { paletteForArmy } from '../palettes.ts';
 import { byId, escapeHtml, segmented } from './dom.ts';
 
@@ -36,7 +36,12 @@ function storeName(name: string): void {
 export class Landing {
   private readonly root = byId('landing');
   private readonly size = segmented(byId('opt-size'), () => this.preview());
-  private readonly map = segmented(byId('opt-map'), () => this.preview());
+  private readonly map = segmented(byId('opt-map'), () => {
+    this.renderTeams();
+    this.preview();
+  });
+  private readonly role = segmented(byId('opt-role'), () => this.preview());
+  private readonly siegeField = byId('siege-field');
   private readonly mode = segmented(byId('opt-mode'), () => {
     this.renderTeams();
     this.preview();
@@ -97,7 +102,9 @@ export class Landing {
   }
 
   private renderTeams(): void {
-    const isTeams = this.mode.get() === 'teams';
+    const siege = this.map.get() === 'castle';
+    this.siegeField.hidden = siege === false && this.map.get() !== 'random';
+    const isTeams = this.mode.get() === 'teams' && !siege;
     this.teamField.hidden = !isTeams;
     const setups = this.armySetups('teams');
     this.teamList.innerHTML = setups
@@ -112,14 +119,21 @@ export class Landing {
   }
 
   settings(): MatchSettings {
+    const map = this.pickMap();
+    const armySize = Number(this.size.get()) as ArmySize;
+    const seed = (Date.now() ^ MAP.seed) | 0;
+    if (MAPS[map].layout === 'siege') return { mode: 'teams', armySize, armies: this.siegeSetups(), seed, map };
     const mode = this.mode.get() === 'teams' ? 'teams' : 'ffa';
-    return {
-      mode,
-      armySize: Number(this.size.get()) as ArmySize,
-      armies: this.armySetups(mode),
-      seed: (Date.now() ^ MAP.seed) | 0,
-      map: this.pickMap(),
-    };
+    return { mode, armySize, armies: this.armySetups(mode), seed, map };
+  }
+
+  /** At the castle one army holds the gate: you, or the first bot while you and the rest attack. */
+  private siegeSetups(): ArmySetup[] {
+    const defending = this.role.get() === 'defend';
+    return this.armySetups('ffa').map((army, i) => {
+      const defender = defending ? i === 0 : i === 1;
+      return { ...army, team: defender ? DEFENDER_TEAM : DEFENDER_TEAM + 1 };
+    });
   }
 
   private preview(): void {

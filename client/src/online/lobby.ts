@@ -1,5 +1,6 @@
 import { Client, type Room } from '@colyseus/sdk';
 import {
+  DEFENDER_TEAM,
   canStartBattle,
   type LobbyMessage,
   NET,
@@ -67,6 +68,7 @@ export class OnlineLobby {
   private readonly teamButton = byId('lobby-team', HTMLButtonElement);
   private readonly sizeSeg = segmented(byId('lobby-size'), () => this.sendSettings());
   private readonly modeSeg = segmented(byId('lobby-mode'), () => this.sendSettings());
+  private readonly mapSeg = segmented(byId('lobby-map'), () => this.sendSettings());
   private room: Room | null = null;
   private lobby: LobbyMessage | null = null;
   private readonly hooks: LobbyHooks;
@@ -167,7 +169,7 @@ export class OnlineLobby {
   }
 
   private sendSettings(): void {
-    this.room?.send('settings', { mode: this.modeSeg.get(), armySize: Number(this.sizeSeg.get()) });
+    this.room?.send('settings', { mode: this.modeSeg.get(), armySize: Number(this.sizeSeg.get()), map: this.mapSeg.get() });
   }
 
   private render(): void {
@@ -181,6 +183,8 @@ export class OnlineLobby {
     this.linkEl.textContent = link;
     this.sizeSeg.set(String(lobby.armySize));
     this.modeSeg.set(lobby.mode);
+    this.mapSeg.set(lobby.map);
+    const siege = lobby.map === 'castle';
     for (const b of this.overlay.querySelectorAll<HTMLButtonElement>('#lobby-settings button')) b.disabled = !isHost;
     const armies = lobby.players.map((p, i) => ({ id: i, team: lobby.mode === 'ffa' ? i : p.team }));
     this.playersEl.innerHTML = lobby.players
@@ -189,7 +193,7 @@ export class OnlineLobby {
         const tags = [
           p.sessionId === lobby.hostId ? 'host' : '',
           p.sessionId === room.sessionId ? 'you' : '',
-          lobby.mode === 'teams' ? `team ${p.team + 1}` : '',
+          lobby.mode === 'teams' ? (siege ? (p.team === DEFENDER_TEAM ? 'defends the gate' : 'attacks') : `team ${p.team + 1}`) : '',
           p.connected ? '' : 'reconnecting…',
         ].filter(Boolean);
         return `<li><span class="dot" style="background:${color}"></span>${escapeHtml(p.name)}<span class="tag">${tags.join(' · ')}</span></li>`;
@@ -205,7 +209,9 @@ export class OnlineLobby {
         : lobby.players.length < NET.minPlayers
           ? 'Waiting for at least one more player to join…'
           : !ready
-            ? 'Both teams need at least one player.'
+            ? siege && lobby.mode === 'teams'
+              ? 'At the castle exactly one player defends the gate (team 1); everyone else attacks.'
+              : 'Both teams need at least one player.'
             : isHost
               ? 'Everyone is here? Start the battle!'
               : 'Waiting for the host to start the battle…';

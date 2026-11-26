@@ -3,6 +3,8 @@ import { dirToYaw, distanceXZ, normalizeXZ, wrapAngle, yawToDir, type Vec2 } fro
 import { feastSlots, staggerIntent } from './banquet.ts';
 import type { FormationSlot } from './formation.ts';
 import { mount, nearestFreeHorse } from './mounts.ts';
+import { nextRandom } from './random.ts';
+import { navigate } from './navigation.ts';
 import { formationTargets, orderOf } from './orders.ts';
 import type { Army, GroupOrder, Intent, MatchState, Unit, Weapon } from './types.ts';
 import { areEnemies, bodyRadius, canBeTargeted, canUseShield, getUnit, isMounted, meleeStatsFor, setWeapon } from './units.ts';
@@ -33,6 +35,12 @@ function setMove(intent: Intent, x: number, z: number, amount = 1): void {
   const dir = normalizeXZ(x, z);
   intent.moveX = dir.x * amount;
   intent.moveZ = dir.z * amount;
+}
+
+/** Walks towards a point, along the streets when buildings are in the way. */
+function walkTowards(state: MatchState, unit: Unit, point: Vec2, amount = 1): void {
+  const waypoint = navigate(state.settings.map, unit.pos, point);
+  setMove(unit.intent, waypoint.x - unit.pos.x, waypoint.z - unit.pos.z, amount);
 }
 
 function resetIntent(unit: Unit): void {
@@ -131,7 +139,7 @@ function updateShieldDecision(state: MatchState, unit: Unit, order: GroupOrder, 
   if (!canUseShield(unit) || isMounted(unit)) return;
   const threat = findMeleeThreat(state, unit);
   if (threat) {
-    unit.ai.shieldTimer = AI.shieldMinHold;
+    if (nextRandom(state.rng) < AI.shieldReactChance) unit.ai.shieldTimer = AI.shieldMinHold;
     return;
   }
   if (order.order === 'hold' && !target && nearestEnemyArcher(state, unit)) {
@@ -140,13 +148,13 @@ function updateShieldDecision(state: MatchState, unit: Unit, order: GroupOrder, 
 }
 
 /** Walks into melee range of the target and swings when lined up. */
-export function meleeIntent(unit: Unit, target: Unit): void {
+export function meleeIntent(state: MatchState, unit: Unit, target: Unit): void {
   const stats = meleeStatsFor(unit);
   if (!stats) return;
   const d = distanceXZ(unit.pos, target.pos);
   const reach = stats.range * AI.meleeApproachFactor + bodyRadius(target);
   faceTowards(unit, target.pos);
-  if (d > reach) setMove(unit.intent, target.pos.x - unit.pos.x, target.pos.z - unit.pos.z);
+  if (d > reach) walkTowards(state, unit, target.pos);
   else unit.intent.attack = isFacing(unit, target.pos);
 }
 
@@ -185,7 +193,7 @@ function archerIntent(state: MatchState, unit: Unit, target: Unit, order: GroupO
   }
   const preferred = ARCHER.ranged.range * AI.archerPreferredRangeFactor;
   if (d > preferred) {
-    if (order.order !== 'hold' && unit.action === 'none') setMove(unit.intent, target.pos.x - unit.pos.x, target.pos.z - unit.pos.z);
+    if (order.order !== 'hold' && unit.action === 'none') walkTowards(state, unit, target.pos);
     return;
   }
   unit.intent.attack = isFacing(unit, target.pos);
@@ -209,7 +217,8 @@ function withinHoldArc(unit: Unit, slot: FormationSlot, enemy: Unit): boolean {
  * the way (they have right of way, so pushing into them would leave the soldier stuck).
  */
 function walkToSlot(state: MatchState, unit: Unit, slot: Vec2, distance: number): void {
-  const dir = normalizeXZ(slot.x - unit.pos.x, slot.z - unit.pos.z);
+  const waypoint = navigate(state.settings.map, unit.pos, slot);
+  const dir = normalizeXZ(waypoint.x - unit.pos.x, waypoint.z - unit.pos.z);
   const leader = leaderBody(state, unit);
   const amount = Math.min(1, distance / ARRIVE_SLOWDOWN_DISTANCE);
   if (!leader) {
@@ -273,7 +282,7 @@ export function soldierIntent(state: MatchState, unit: Unit, order: GroupOrder, 
       return;
     }
     if (horse.alive && horse.riderId === null) {
-      setMove(unit.intent, horse.pos.x - unit.pos.x, horse.pos.z - unit.pos.z);
+      walkTowards(state, unit, horse.pos);
       faceTowards(unit, horse.pos);
       return;
     }
@@ -282,9 +291,9 @@ export function soldierIntent(state: MatchState, unit: Unit, order: GroupOrder, 
   const target = getUnit(state, unit.ai.targetId);
   const validTarget = target && canBeTargeted(target) ? target : null;
   if (unit.kind === 'swordsman' && order.order === 'hold' && holdLineIntent(state, unit, slot, validTarget)) return;
-  if (unit.ai.shieldTimer > 0 && canUseShield(unit)) {
+  if (unit.ai.shieldTimer > 0 && canUseShield(unit) && !(validTarget && canRiposte(unit, validTarget))) {
     shieldIntent(state, unit);
-    if (validTarget) meleeApproachOnly(unit, validTarget);
+    if (validTarget) meleeApproachOnly(state, unit, validTarget);
     else moveToSlot(state, unit, slot, order);
     unit.intent.attack = false;
     return;
@@ -295,7 +304,7 @@ export function soldierIntent(state: MatchState, unit: Unit, order: GroupOrder, 
   }
   if (unit.kind === 'archer') archerIntent(state, unit, validTarget, order);
   else if (isMounted(unit)) riderChargeIntent(unit, validTarget);
-  else meleeIntent(unit, validTarget);
+  else meleeIntent(state, unit, validTarget);
 }
 
 /**
@@ -313,18 +322,24 @@ function holdLineIntent(state: MatchState, unit: Unit, slot: FormationSlot, targ
   if (facingEnemy) faceTowards(unit, enemy.pos);
   else unit.intent.faceYaw = slot.yaw;
   const inReach = stats !== null && distanceXZ(unit.pos, enemy.pos) <= stats.range + bodyRadius(enemy);
-  if (facingEnemy && inReach && unit.cooldownTimer <= 0 && isFacing(unit, enemy.pos)) unit.intent.attack = true;
-  else unit.intent.shield = true;
+  // The shield stays up; the spear goes over it.
+  unit.intent.shield = true;
+  unit.intent.attack = facingEnemy && inReach && unit.cooldownTimer <= 0 && isFacing(unit, enemy.pos);
   return true;
 }
 
-function meleeApproachOnly(unit: Unit, target: Unit): void {
+/** Behind the shield, strike back the moment the enemy in reach is between blows. */
+function canRiposte(unit: Unit, target: Unit): boolean {
+  const stats = meleeStatsFor(unit);
+  if (!stats || unit.cooldownTimer > 0 || target.action === 'melee') return false;
+  return distanceXZ(unit.pos, target.pos) <= stats.range + bodyRadius(target) && isFacing(unit, target.pos);
+}
+
+function meleeApproachOnly(state: MatchState, unit: Unit, target: Unit): void {
   const stats = meleeStatsFor(unit);
   if (!stats) return;
   const d = distanceXZ(unit.pos, target.pos);
-  if (d > stats.range * AI.meleeApproachFactor + bodyRadius(target)) {
-    setMove(unit.intent, target.pos.x - unit.pos.x, target.pos.z - unit.pos.z);
-  }
+  if (d > stats.range * AI.meleeApproachFactor + bodyRadius(target)) walkTowards(state, unit, target.pos);
 }
 
 /** Feasting: walk to your place in the ring around the commander and drink. */

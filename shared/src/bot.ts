@@ -1,8 +1,8 @@
 import { findMeleeThreat, meleeIntent, nearestEnemy } from './ai.ts';
 import { AI, BOT, COMMANDER, FORMATION, MATCH } from './config.ts';
 import { dirToYaw, distanceXZ, normalizeXZ, type Vec2 } from './math.ts';
-import { advanceArmy, armyCenter, centroid, issueOrder, livingSoldiers, splitArmy } from './orders.ts';
-import { armySpawnPoint } from './spawn.ts';
+import { advanceArmy, armyCenter, centroid, holdAt, issueOrder, livingSoldiers, splitArmy } from './orders.ts';
+import { armySpawn, gatePost, isDefender } from './spawn.ts';
 import type { Army, MatchState, Order, Unit } from './types.ts';
 import { canBeTargeted, getUnit, setWeapon } from './units.ts';
 
@@ -93,7 +93,7 @@ function commanderGoal(state: MatchState, army: Army, commander: Unit, stance: B
     }
     case 'regroup':
       // Fall back to where the army started, then hold there.
-      return armySpawnPoint(army.id, state.armies.length).position;
+      return armySpawn(state.settings, army.id).position;
     case 'standoff':
     case 'engage': {
       // Wait until the troops stop following; otherwise they chase the commander backwards.
@@ -152,15 +152,27 @@ function botCommanderIntent(state: MatchState, commander: Unit): void {
     return;
   }
   if (validTarget) {
-    meleeIntent(commander, validTarget);
+    meleeIntent(state, commander, validTarget);
     return;
   }
   if (commander.ai.chargePoint) moveTowards(commander, commander.ai.chargePoint);
 }
 
+/** A castle's defenders hold the gate: the one place the attackers have to come through. */
+function defendGate(state: MatchState, army: Army): void {
+  const post = gatePost();
+  const order = army.groupOrders[0];
+  const holding = order?.order === 'hold' && distanceXZ(order.anchor, post.position) < 1;
+  if (!holding) holdAt(state, army, post.position, post.yaw);
+}
+
 /** Picks a stance and, at most every few seconds, turns it into orders. */
 function planArmy(state: MatchState, army: Army, dt: number, leaderless: boolean): { stance: BotStance; enemy: EnemyArmy } | null {
   army.bot.orderTimer -= dt;
+  if (isDefender(state.settings, army.id) && state.time >= MATCH.prepareTime) {
+    defendGate(state, army);
+    return null;
+  }
   const commander = getUnit(state, army.commanderId);
   const own = armyCenter(state, army) ?? commander?.pos;
   if (!own) return null;

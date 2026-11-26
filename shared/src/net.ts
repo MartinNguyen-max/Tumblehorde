@@ -1,6 +1,7 @@
 import { ARMY, NET, WEAPONS } from './config.ts';
 import { sanitizeCommand, sanitizeInput } from './input.ts';
-import { mapFromRandom } from './maps.ts';
+import { isMapChoice, MAP_IDS, type MapChoice, type MapId, MAPS, mapFromRandom } from './maps.ts';
+import { DEFENDER_TEAM } from './spawn.ts';
 import { createRandom, nextRandom } from './random.ts';
 import { createMatch } from './setup.ts';
 import type { ActionKind, ArmySize, Command, CommanderInput, GameMode, MatchPhase, MatchSettings, SimEvent } from './types.ts';
@@ -25,6 +26,7 @@ export interface LobbyMessage {
   phase: RoomPhase;
   mode: GameMode;
   armySize: ArmySize;
+  map: MapChoice;
   players: LobbyPlayer[];
 }
 
@@ -51,6 +53,7 @@ export interface SnapshotMessage {
 export interface LobbySettingsMessage {
   mode: GameMode;
   armySize: ArmySize;
+  map: MapChoice;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -73,7 +76,8 @@ export function sanitizeLobbySettings(raw: unknown): LobbySettingsMessage | null
   if (!isRecord(raw)) return null;
   const mode = raw.mode === 'ffa' || raw.mode === 'teams' ? raw.mode : null;
   const size = ARMY.sizes.find((s) => s === raw.armySize) ?? null;
-  return mode && size ? { mode, armySize: size } : null;
+  const map = raw.map === undefined ? 'random' : isMapChoice(raw.map) ? raw.map : null;
+  return mode && size && map ? { mode, armySize: size, map } : null;
 }
 
 /** Names are shown to other players: trim, drop control characters, cap the length. */
@@ -95,11 +99,23 @@ export function normalizeRoomCode(raw: string): string {
   return raw.toUpperCase().replace(/[^A-Z]/g, '').slice(0, NET.roomCodeLength);
 }
 
+/** In teams on the castle, exactly one player holds the gate. */
+function siegeTeamsFit(lobby: Pick<LobbyMessage, 'mode' | 'players'>): boolean {
+  return lobby.mode === 'ffa' || lobby.players.filter((p) => p.team === DEFENDER_TEAM).length === 1;
+}
+
 /** Free-for-all with any number of players, or two teams that both have someone on them. */
-export function canStartBattle(lobby: Pick<LobbyMessage, 'mode' | 'players'>): boolean {
+export function canStartBattle(lobby: Pick<LobbyMessage, 'mode' | 'players' | 'map'>): boolean {
   if (lobby.players.length < NET.minPlayers || lobby.players.length > NET.maxPlayers) return false;
+  if (lobby.map !== 'random' && MAPS[lobby.map].layout === 'siege' && !siegeTeamsFit(lobby)) return false;
   if (lobby.mode === 'ffa') return true;
   return new Set(lobby.players.map((p) => p.team)).size === 2;
+}
+
+/** A random map never lands on the castle when the teams do not fit a siege. */
+function randomMap(lobby: LobbyMessage, random: number): MapId {
+  const choices = MAP_IDS.filter((m) => MAPS[m].layout !== 'siege' || siegeTeamsFit(lobby));
+  return mapFromRandom(random, choices);
 }
 
 export function battleSettings(lobby: LobbyMessage, seed: number): MatchSettings {
@@ -108,7 +124,7 @@ export function battleSettings(lobby: LobbyMessage, seed: number): MatchSettings
     armySize: lobby.armySize,
     armies: lobby.players.map((p, i) => ({ name: p.name, team: lobby.mode === 'ffa' ? i : p.team, isBot: false })),
     seed,
-    map: mapFromRandom(nextRandom(createRandom(seed))),
+    map: lobby.map === 'random' ? randomMap(lobby, nextRandom(createRandom(seed))) : lobby.map,
   };
 }
 
