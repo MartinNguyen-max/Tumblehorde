@@ -241,10 +241,11 @@ export const RIDER = {
 
 export const HORSE = {
   hp: 280,
-  speed: 11,
+  /** A stocky war horse: quicker than a soldier, but not by much, so the army can keep up. */
+  speed: 7.5,
   jumpHeight: 1.4,
   /** A horse moving faster than this tramples enemies it runs into. */
-  trampleMinSpeed: 6,
+  trampleMinSpeed: 5,
   trample: { strength: 12, stun: 1.5 } satisfies KnockbackStats,
   trampleDamage: 10,
   /** A commander's charge breaks even a locked shield wall and leaves soldiers on the ground for a while. */
@@ -335,6 +336,12 @@ export const FORMATION = {
   rankGap: 1.0,
   /** Line formations stand this far ahead of the commander, so they stand right behind it. */
   holdLineAhead: 2.6,
+  /** A wedge's ranks grow by this many soldiers from its tip backwards. */
+  wedgeGrowth: 2,
+  /** A column is three soldiers wide: narrow enough for streets and the castle gate. */
+  columnWidth: 3,
+  /** Advance moves a holding formation this far forward. */
+  advanceStep: 4,
   /** The ring around the commander never gets smaller than this. */
   circleMinRadius: 2.4,
   defaultFormation: 'double' as const,
@@ -357,8 +364,11 @@ export const NAV = {
   /** How far (in cells) to look for a free spot when a formation place falls inside a building. */
   searchRadius: 10,
   /** Flow fields built per simulation step at most; more wait for the next step. */
-  fieldsPerStep: 3,
-  cachedFields: 96,
+  fieldsPerStep: 5,
+  cachedFields: 192,
+  /** Goals further away than this share fields: they snap to a lattice every `coarseCells` cells. */
+  coarseGoalDistance: 14,
+  coarseCells: 4,
   /** Cells to look ahead along the flow, so paths cut corners smoothly. */
   lookahead: 8,
   /** A soldier re-plans its next step this often, or when its goal moves this far. */
@@ -511,4 +521,4 @@ export const NET = {
 export const WEAPONS = ['sword', 'spear', 'bow'] as const;
 /** What a commander carries. The bow is parked along with archers for now. */
 export const COMMANDER_WEAPONS = ['sword', 'spear'] as const;
-export const FORMATIONS = ['line', 'double', 'circle'] as const;
+export const FORMATIONS = ['line', 'double', 'circle', 'wedge', 'column', 'square'] as const;

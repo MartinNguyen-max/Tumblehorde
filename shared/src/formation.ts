@@ -57,27 +57,47 @@ export function formationSlots(kinds: readonly UnitKind[], center: Vec2, yaw: nu
 
 const FULL_TURN = Math.PI * 2;
 
-function rankCount(formation: Formation): number {
-  return formation === 'line' ? 1 : 2;
+/**
+ * How many soldiers stand in each rank, front rank first, for the ranked formations:
+ * one long line, two lines, a wedge widening backwards from its tip, a column three wide
+ * (for streets and gates), and a square testudo block.
+ */
+export function rankSizes(formation: Exclude<Formation, 'circle'>, count: number): number[] {
+  const sizes: number[] = [];
+  const fill = (width: (rank: number) => number): number[] => {
+    for (let left = count, rank = 0; left > 0; rank++) {
+      const n = Math.min(left, Math.max(1, width(rank)));
+      sizes.push(n);
+      left -= n;
+    }
+    return sizes;
+  };
+  switch (formation) {
+    case 'line':
+      return fill(() => count);
+    case 'double':
+      return fill(() => Math.ceil(count / 2));
+    case 'wedge':
+      return fill((rank) => 1 + rank * FORMATION.wedgeGrowth);
+    case 'column':
+      return fill(() => FORMATION.columnWidth);
+    case 'square':
+      return fill(() => Math.ceil(Math.sqrt(count)));
+  }
 }
 
-/** Ranks of soldiers shoulder to shoulder, front rank first; each rank runs left to right. */
-export function rankSlots(count: number, frontCenter: Vec2, yaw: number, ranks: number): FormationSlot[] {
+/** Ranks of soldiers shoulder to shoulder, front rank first; each rank runs left to right, centered. */
+export function rankSlots(sizes: readonly number[], frontCenter: Vec2, yaw: number): FormationSlot[] {
   const forward = yawToDir(yaw);
   const right = { x: forward.z, z: -forward.x };
-  const perRank = Math.ceil(count / ranks);
   const slots: FormationSlot[] = [];
-  for (let i = 0; i < count; i++) {
-    const rank = Math.floor(i / perRank);
-    const inRank = Math.min(perRank, count - rank * perRank);
-    const side = ((i % perRank) - (inRank - 1) / 2) * FORMATION.tightSpacing;
+  sizes.forEach((inRank, rank) => {
     const back = rank * FORMATION.rankGap;
-    slots.push({
-      x: frontCenter.x + right.x * side - forward.x * back,
-      z: frontCenter.z + right.z * side - forward.z * back,
-      yaw,
-    });
-  }
+    for (let col = 0; col < inRank; col++) {
+      const side = (col - (inRank - 1) / 2) * FORMATION.tightSpacing;
+      slots.push({ x: frontCenter.x + right.x * side - forward.x * back, z: frontCenter.z + right.z * side - forward.z * back, yaw });
+    }
+  });
   return slots;
 }
 
@@ -103,10 +123,12 @@ export function ringSlots(count: number, center: Vec2, yaw: number): FormationSl
  */
 export function holdSlots(formation: Formation, count: number, anchor: Vec2, yaw: number, aroundCommander: boolean): FormationSlot[] {
   if (formation === 'circle') return ringSlots(count, anchor, yaw);
-  const ranks = rankCount(formation);
+  const sizes = rankSizes(formation, count);
+  const depth = (sizes.length - 1) * FORMATION.rankGap;
   const forward = yawToDir(yaw);
-  const ahead = aroundCommander ? FORMATION.holdLineAhead : ((Math.min(ranks, count) - 1) * FORMATION.rankGap) / 2;
-  return rankSlots(count, { x: anchor.x + forward.x * ahead, z: anchor.z + forward.z * ahead }, yaw, ranks);
+  // Around the commander the last rank stands just ahead of them; deep formations reach further out.
+  const ahead = aroundCommander ? Math.max(FORMATION.holdLineAhead, FORMATION.holdLineAhead - FORMATION.rankGap + depth) : depth / 2;
+  return rankSlots(sizes, { x: anchor.x + forward.x * ahead, z: anchor.z + forward.z * ahead }, yaw);
 }
 
 /**
@@ -130,10 +152,11 @@ export function assignHoldSlots(formation: Formation, positions: readonly Vec2[]
   const ahead = (p: Vec2): number => (p.x - anchor.x) * forward.x + (p.z - anchor.z) * forward.z;
   const side = (p: Vec2): number => (p.x - anchor.x) * right.x + (p.z - anchor.z) * right.z;
   indices.sort((a, b) => ahead(positionAt(positions, b)) - ahead(positionAt(positions, a)) || a - b);
-  const perRank = Math.ceil(positions.length / rankCount(formation));
-  for (let start = 0; start < indices.length; start += perRank) {
-    const rank = indices.slice(start, start + perRank).sort((a, b) => side(positionAt(positions, a)) - side(positionAt(positions, b)) || a - b);
+  let start = 0;
+  for (const size of rankSizes(formation, positions.length)) {
+    const rank = indices.slice(start, start + size).sort((a, b) => side(positionAt(positions, a)) - side(positionAt(positions, b)) || a - b);
     rank.forEach((unitIndex, col) => (result[unitIndex] = start + col));
+    start += size;
   }
   return result;
 }

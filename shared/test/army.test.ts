@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { ARMY, COMMANDER, FORMATION } from '../src/config.ts';
-import { ringRadius } from '../src/formation.ts';
+import { rankSizes, ringRadius } from '../src/formation.ts';
 import { killUnit } from '../src/combat.ts';
 import { neutralInput } from '../src/input.ts';
 import { stepMatch } from '../src/match.ts';
 import { distanceXZ, wrapAngle } from '../src/math.ts';
-import { applyCommand, armyCenter, groupForKind, livingSoldiers } from '../src/orders.ts';
+import { applyCommand, armyCenter, centroid, groupForKind, livingSoldiers } from '../src/orders.ts';
 import { soldierKindsFor } from '../src/setup.ts';
 import type { ArmyMix, ArmySize, MatchState } from '../src/types.ts';
 import { commanderOf, newMatch, place, soldiersOf } from './helpers.ts';
@@ -112,6 +112,37 @@ describe('orders', () => {
       const outward = Math.atan2(u.pos.x - me.pos.x, u.pos.z - me.pos.z);
       expect(Math.abs(wrapAngle(u.yaw - outward))).toBeLessThan(0.3);
     }
+  });
+
+  it('a wedge has its tip in front, a column is three wide, a testudo is a square block', () => {
+    expect(rankSizes('wedge', 15)).toEqual([1, 3, 5, 6]);
+    expect(rankSizes('column', 10)).toEqual([3, 3, 3, 1]);
+    expect(rankSizes('square', 25)).toEqual([5, 5, 5, 5, 5]);
+    expect(rankSizes('double', 25)).toEqual([13, 12]);
+    for (const formation of ['wedge', 'column', 'square'] as const) {
+      const state = quietMatch(25);
+      const me = place(commanderOf(state, 0), -70, 0, Math.PI / 2);
+      applyCommand(state, 0, { type: 'formation', formation });
+      run(state, 14);
+      const ahead = livingSoldiers(state, state.armies[0]!).map((u) => u.pos.x - me.pos.x);
+      // The whole formation stands in front of the commander.
+      expect(Math.min(...ahead)).toBeGreaterThan(0.8);
+    }
+  });
+
+  it('Advance moves a holding formation a few steps towards where the commander looks', () => {
+    const state = quietMatch(15);
+    const me = place(commanderOf(state, 0), -70, 0, Math.PI / 2);
+    applyCommand(state, 0, { type: 'order', order: 'hold', group: null });
+    run(state, 8);
+    const before = armyCenter(state, state.armies[0]!)!;
+    me.yaw = 0;
+    expect(applyCommand(state, 0, { type: 'advance', group: null })).toBe(true);
+    run(state, 6);
+    const after = centroid(livingSoldiers(state, state.armies[0]!))!;
+    expect(after.z - before.z).toBeGreaterThan(FORMATION.advanceStep - 1);
+    applyCommand(state, 0, { type: 'order', order: 'attack', group: null });
+    expect(applyCommand(state, 0, { type: 'advance', group: null })).toBe(false);
   });
 
   it('the next Hold remembers the chosen formation', () => {

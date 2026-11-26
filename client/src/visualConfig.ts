@@ -272,7 +272,7 @@ export const FORMATION_WHEEL = {
   /** The cursor must point within ~60° of an option to pick it. */
   minAlignment: 0.5,
   /** Distance (px) of the options from the center of the wheel. */
-  optionDistance: 120,
+  optionDistance: 150,
 } as const;
 
 export const HUD = {

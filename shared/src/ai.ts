@@ -5,7 +5,7 @@ import type { FormationSlot } from './formation.ts';
 import { mount, nearestFreeHorse } from './mounts.ts';
 import { fogOfWar, lookAround, nearestVisibleEnemy } from './perception.ts';
 import { nextRandom } from './random.ts';
-import { navigate } from './navigation.ts';
+import { clearPath, localStep, navigate } from './navigation.ts';
 import { formationTargets, orderOf } from './orders.ts';
 import type { Army, GroupOrder, Intent, MatchState, Unit, Weapon } from './types.ts';
 import { areEnemies, bodyRadius, canBeTargeted, canUseShield, getUnit, isMounted, meleeStatsFor, setWeapon } from './units.ts';
@@ -43,9 +43,19 @@ function routeStep(state: MatchState, unit: Unit, goal: Vec2): Vec2 {
   const ai = unit.ai;
   const moved = !ai.navGoal || distanceXZ(ai.navGoal, goal) > NAV.replanGoalShift;
   if (moved || !ai.navPoint || state.time >= ai.navTimer || distanceXZ(unit.pos, ai.navPoint) < NAV.cellSize) {
+    const map = state.settings.map;
+    const planned = navigate(map, unit.pos, goal);
     ai.navGoal = { x: goal.x, z: goal.z };
-    ai.navPoint = navigate(state.settings.map, unit.pos, goal);
-    ai.navTimer = state.time + NAV.replanInterval;
+    if (planned) {
+      ai.navPoint = planned;
+      ai.navTimer = state.time + NAV.replanInterval;
+    } else {
+      // No route yet: keep heading for the last waypoint if it is still in view, else take an
+      // open step towards the goal. Never straight into a wall. Try again next step.
+      const keep = ai.navPoint && !moved && clearPath(map, unit.pos, ai.navPoint) ? ai.navPoint : null;
+      ai.navPoint = keep ?? localStep(map, unit.pos, goal) ?? { x: unit.pos.x, z: unit.pos.z };
+      ai.navTimer = state.time;
+    }
   }
   const planned = ai.navPoint;
   // Heading straight for the goal: follow it exactly, even as it moves a little.

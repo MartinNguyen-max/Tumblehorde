@@ -74,6 +74,7 @@ export class Hud {
   private readonly flash = byId('damage-flash');
   private readonly cmds = byId('hud-cmds');
   private readonly splitLabel = byId('hud-split-label');
+  private readonly advanceCmd = byId('hud-advance');
   private readonly banquetCmd = byId('hud-banquet');
   private readonly banquetLabel = byId('hud-banquet-label');
   private readonly rallyCmd = byId('hud-rally');
@@ -218,6 +219,9 @@ export class Hud {
         case 'rally':
           this.showRally(view, event.armyId, event.commanderId);
           break;
+        case 'advance':
+          if (event.armyId === myArmyId) this.showBanner(event.group === null ? 'Advance!' : `Group ${GROUP_LABELS[event.group] ?? ''} · Advance!`);
+          break;
         case 'split':
           if (event.armyId === myArmyId) this.showBanner(event.groupCount === HALVES ? 'Split in two! Press 4 to pick a half' : 'Together again!');
           break;
@@ -301,6 +305,8 @@ export class Hud {
     const banquetText = army.banquet === 'drunk' ? 'Drunk! 🍷' : 'Banquet 🍷';
     if (this.banquetLabel.textContent !== banquetText) this.banquetLabel.textContent = banquetText;
     this.rallyCmd.classList.toggle('off', !canOrder);
+    const holding = selected === null ? army.orders.includes('hold') : army.orders[selected] === 'hold';
+    this.advanceCmd.classList.toggle('off', !canOrder || !holding);
     const label = `Hold · ${FORMATION_LABEL[army.formation]}`;
     if (this.holdLabel.textContent !== label) this.holdLabel.textContent = label;
   }
@@ -451,9 +457,30 @@ export class Hud {
 /** A little top-down sketch of the formation: dots for soldiers, a ring for the commander. */
 function formationIcon(formation: Formation): string {
   const dots: [number, number][] = [];
-  if (formation === 'line') for (let i = 0; i < 7; i++) dots.push([6 + i * 6, 18]);
-  else if (formation === 'double') for (let r = 0; r < 2; r++) for (let i = 0; i < 6; i++) dots.push([9 + i * 6, 14 + r * 6]);
-  else for (let i = 0; i < 10; i++) dots.push([24 + Math.sin((i / 10) * Math.PI * 2) * 12, 22 - Math.cos((i / 10) * Math.PI * 2) * 12]);
+  const rows = (sizes: number[], top: number): void =>
+    sizes.forEach((n, r) => {
+      for (let i = 0; i < n; i++) dots.push([24 + (i - (n - 1) / 2) * 6, top + r * 5.5]);
+    });
+  switch (formation) {
+    case 'line':
+      rows([7], 18);
+      break;
+    case 'double':
+      rows([6, 6], 14);
+      break;
+    case 'wedge':
+      rows([1, 3, 5], 8);
+      break;
+    case 'column':
+      rows([3, 3, 3, 3], 3);
+      break;
+    case 'square':
+      rows([4, 4, 4, 4], 3);
+      break;
+    case 'circle':
+      for (let i = 0; i < 10; i++) dots.push([24 + Math.sin((i / 10) * Math.PI * 2) * 12, 22 - Math.cos((i / 10) * Math.PI * 2) * 12]);
+      break;
+  }
   const commander = formation === 'circle' ? [24, 22] : [24, 32];
   const circles = dots.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.4"/>`).join('');
   return `<svg viewBox="0 0 48 40" aria-hidden="true"><g fill="currentColor">${circles}</g><circle cx="${commander[0]}" cy="${commander[1]}" r="3" fill="none" stroke="#f08a24" stroke-width="2"/></svg>`;

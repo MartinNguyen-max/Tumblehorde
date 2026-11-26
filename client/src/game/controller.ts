@@ -123,6 +123,8 @@ export class GameController {
         this.order(order);
       } else if (code === HOLD_KEY) {
         this.wheel.press();
+      } else if (code === 'KeyF') {
+        this.session.command({ type: 'advance', group: this.listening() });
       } else if (code === 'Digit4') {
         this.splitOrCycle();
       } else if (code === 'Digit5') {

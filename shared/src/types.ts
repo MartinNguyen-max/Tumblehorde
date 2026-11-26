@@ -12,7 +12,7 @@ export type Weapon = 'sword' | 'spear' | 'bow';
 export type GameMode = 'ffa' | 'teams';
 export type ArmySize = 15 | 25 | 40;
 /** How the player's army holds its ground: one long line, two lines, or a ring around the commander. */
-export type Formation = 'line' | 'double' | 'circle';
+export type Formation = 'line' | 'double' | 'circle' | 'wedge' | 'column' | 'square';
 /** `legion` is swordsmen only. `mixed` (swordsmen, archers, cavalry) is parked for now but still works. */
 export type ArmyMix = 'legion' | 'mixed';
 /** The banquet: once per battle the army feasts around its commander and is drunk ever after. */
@@ -190,6 +190,7 @@ export type SimEvent =
   | { type: 'edgePush'; unitId: EntityId }
   | { type: 'order'; armyId: number; group: number | null; order: Order; formation: Formation }
   | { type: 'split'; armyId: number; groupCount: number }
+  | { type: 'advance'; armyId: number; group: number | null }
   | { type: 'banquet'; armyId: number }
   | { type: 'drunk'; armyId: number }
   | { type: 'rally'; armyId: number; commanderId: EntityId }
@@ -233,4 +234,6 @@ export type Command =
   | { type: 'mount' }
   | { type: 'weapon'; weapon: Weapon }
   | { type: 'banquet' }
-  | { type: 'rally' };
+  | { type: 'rally' }
+  /** Holding formations step forward a few meters, towards where the commander looks. */
+  | { type: 'advance'; group: number | null };

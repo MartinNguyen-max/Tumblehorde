@@ -9,16 +9,25 @@ export interface WheelOption {
   dirY: number;
 }
 
+const SIN_60 = Math.sqrt(3) / 2;
+
+/** Six formations around the wheel, clockwise from the top left. */
 export const WHEEL_OPTIONS: readonly WheelOption[] = [
-  { formation: 'line', label: 'Long line', dirX: -1, dirY: 0 },
+  { formation: 'line', label: 'Long line', dirX: -SIN_60, dirY: -0.5 },
   { formation: 'double', label: 'Two lines', dirX: 0, dirY: -1 },
-  { formation: 'circle', label: 'Circle around me', dirX: 1, dirY: 0 },
+  { formation: 'wedge', label: 'Wedge', dirX: SIN_60, dirY: -0.5 },
+  { formation: 'circle', label: 'Circle around me', dirX: SIN_60, dirY: 0.5 },
+  { formation: 'square', label: 'Testudo block', dirX: 0, dirY: 1 },
+  { formation: 'column', label: 'Column', dirX: -SIN_60, dirY: 0.5 },
 ];
 
 export const FORMATION_LABEL: Record<Formation, string> = {
   line: 'Long line',
   double: 'Two lines',
   circle: 'Circle',
+  wedge: 'Wedge',
+  column: 'Column',
+  square: 'Testudo',
 };
 
 /** The option the cursor points at, or null inside the dead zone or when pointing away from all of them. */

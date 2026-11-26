@@ -1,7 +1,7 @@
 import { finishFeast } from './banquet.ts';
-import { ARMY, BANQUET, MOVEMENT, RALLY } from './config.ts';
+import { ARMY, BANQUET, FORMATION, MOVEMENT, RALLY } from './config.ts';
 import { assignHoldSlots, followCenter, formationSlots, holdSlots, supportSlots, type FormationSlot } from './formation.ts';
-import { navGrid, navigate, nearestWalkable } from './navigation.ts';
+import { localStep, navGrid, navigate, nearestWalkable } from './navigation.ts';
 import { attackGoal } from './perception.ts';
 import { clamp, dirToYaw, distanceXZ, normalizeXZ, turnTowards, type Vec2 } from './math.ts';
 import { toggleMount } from './mounts.ts';
@@ -116,7 +116,7 @@ export function advanceArmy(state: MatchState, army: Army, target: Vec2, step: n
   const here = centroid(livingSoldiers(state, army));
   if (!here) return false;
   // Along the streets, not through the houses.
-  const waypoint = navigate(state.settings.map, here, target);
+  const waypoint = navigate(state.settings.map, here, target) ?? localStep(state.settings.map, here, target) ?? target;
   const dir = normalizeXZ(waypoint.x - here.x, waypoint.z - here.z);
   const anchor = nearestWalkable(state.settings.map, { x: here.x + dir.x * step, z: here.z + dir.z * step });
   holdAt(state, army, anchor, dirToYaw(dir.x, dir.z));
@@ -129,6 +129,22 @@ export function holdAt(state: MatchState, army: Army, anchor: Vec2, yaw: number)
   for (let g = 0; g < army.groupCount; g++) {
     army.groupOrders[g] = { order: 'hold', anchor: { ...anchor }, anchorYaw: yaw, aroundCommander: false, formation: army.formation };
   }
+}
+
+/** Every holding group (or just `group`) steps forward, turning to face where the commander looks. */
+export function advanceFormation(state: MatchState, army: Army, group: number | null): boolean {
+  const commander = getUnit(state, army.commanderId);
+  if (!commander || !canGiveOrders(state, army)) return false;
+  const dir = { x: Math.sin(commander.yaw), z: Math.cos(commander.yaw) };
+  let moved = false;
+  army.groupOrders.forEach((order, g) => {
+    if (order.order !== 'hold' || (group !== null && group !== g)) return;
+    order.anchor = { x: order.anchor.x + dir.x * FORMATION.advanceStep, z: order.anchor.z + dir.z * FORMATION.advanceStep };
+    order.anchorYaw = commander.yaw;
+    moved = true;
+  });
+  if (moved) state.events.push({ type: 'advance', armyId: army.id, group });
+  return moved;
 }
 
 /** Once per battle: the army gathers round the commander, drinks, and is drunk for good. */
@@ -235,6 +251,8 @@ export function applyCommand(state: MatchState, armyId: number, command: Command
       return startBanquet(state, army);
     case 'rally':
       return rally(state, army);
+    case 'advance':
+      return advanceFormation(state, army, command.group);
     case 'mount': {
       const commander = getUnit(state, army.commanderId);
       return commander ? toggleMount(state, commander) : false;

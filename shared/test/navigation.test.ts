@@ -3,7 +3,7 @@ import { neutralInput } from '../src/input.ts';
 import { stepMatch } from '../src/match.ts';
 import { distanceXZ } from '../src/math.ts';
 import { CASTLE } from '../src/maps.ts';
-import { beginNavigationStep, clearPath, isWalkable, navigate, nearestWalkable } from '../src/navigation.ts';
+import { beginNavigationStep, clearPath, isWalkable, localStep, navigate, nearestWalkable } from '../src/navigation.ts';
 import { applyCommand, formationTargets, holdAt } from '../src/orders.ts';
 import { commanderOf, newMatch, place, soldiersOf } from './helpers.ts';
 
@@ -21,10 +21,18 @@ describe('navigation', () => {
   it('heads for the gate when the castle wall is in the way', () => {
     beginNavigationStep();
     const step = navigate('castle', OUTSIDE, INSIDE);
+    if (!step) throw new Error('expected a route');
     expect(step).not.toEqual(INSIDE);
     // The first leg runs towards the gate (z = 0), not into the wall.
     expect(step.z).toBeLessThan(OUTSIDE.z);
     expect(clearPath('castle', OUTSIDE, step)).toBe(true);
+  });
+
+  it('never steps straight into a wall while no route is ready', () => {
+    const towardsWall = localStep('castle', OUTSIDE, INSIDE);
+    if (!towardsWall) throw new Error('expected an open step');
+    expect(isWalkable('castle', towardsWall.x, towardsWall.z)).toBe(true);
+    expect(towardsWall.x).toBeLessThan(CASTLE.west - 1);
   });
 
   it('moves places inside buildings out into the street', () => {

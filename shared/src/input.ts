@@ -85,6 +85,12 @@ export function sanitizeCommand(raw: unknown): Command | null {
       return { type: 'banquet' };
     case 'rally':
       return { type: 'rally' };
+    case 'advance': {
+      const group = raw.group;
+      if (group === undefined || group === null) return { type: 'advance', group: null };
+      if (typeof group !== 'number' || !Number.isInteger(group) || group < 0 || group >= ARMY.maxGroups) return null;
+      return { type: 'advance', group };
+    }
     case 'weapon':
       return isWeapon(raw.weapon) ? { type: 'weapon', weapon: raw.weapon } : null;
     default:
