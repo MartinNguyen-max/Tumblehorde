@@ -49,12 +49,21 @@ npm run build        # production build of the client into client/dist
 |---|---|
 | WASD / Space | Move / jump |
 | Left click / right click (hold) | Strike / shield |
-| 1 / 2 / 3 | Follow / Hold (form up around you) / Attack |
-| 6 / 7 / 8 / 9 | Orders go to: whole army / swordsmen / archers / cavalry |
-| Q | Switch weapon: sword, spear, bow |
-| E | Mount or dismount a free horse |
+| 1 / 3 | Follow / Attack |
+| 2 (tap) | Hold in the current formation |
+| 2 (keep down) | Formation wheel: long line, two lines, wedge, circle around you, testudo block, pincer |
+| 4 | Split the army in two; again: pick half A, half B or the whole army |
+| 5 / 6 | Banquet (once: a very drunk, very tough army) / rally speech |
+| F | Advance: holding soldiers step forward towards where you look |
+| R | Throw spears at the enemies where you look (once per battle) |
+| Ctrl (hold) | Crouch; crouch 4× at another player's commander up close to offer an alliance |
+| Q / E | Sword or spear / mount or dismount the horse |
+| M | Sound on/off (also the speaker button, top right) |
 | V, mouse wheel | Overview camera, zoom |
 | Esc | Pause (local) / release the mouse |
+
+Battlefields: Green Meadow, Castle Siege (one army holds the gate behind a moat) and The City
+(narrow streets; soldiers only see what is in plain sight).
 
 ## Layout
 
