@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Tumblehorde — a goofy, fast 3D army battler in your browser. Lead your wobbly horde, shove, tumble and conquer." />
+    <title>Tumblehorde</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='14' y='22' width='36' height='30' rx='4' fill='%233C7BD0'/%3E%3Crect x='18' y='6' width='28' height='18' rx='3' fill='%23E8B88A'/%3E%3Crect x='16' y='4' width='32' height='8' rx='2' fill='%23CFD6DC'/%3E%3Cpath d='M32 0 L36 6 L28 6Z' fill='%23F08A24'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <canvas id="scene" tabindex="-1"></canvas>
+
+    <div id="loading" class="loading">
+      <div class="loading-logo">Tumblehorde</div>
+      <div class="loading-text">Waking up the horde…</div>
+    </div>
+
+    <!-- Landing page -->
+    <main id="landing" class="landing" hidden>
+      <div class="landing-panel">
+        <header class="brand">
+          <h1 class="logo">Tumblehorde</h1>
+          <p class="tagline">Lead a wobbly army. Shove, tumble, conquer.</p>
+        </header>
+
+        <section class="card" aria-labelledby="local-title">
+          <h2 id="local-title">Battle the bots</h2>
+          <div class="field">
+            <span class="field-label">Army size</span>
+            <div class="seg" id="opt-size" role="radiogroup">
+              <button data-value="10" class="on">10</button>
+              <button data-value="20">20</button>
+              <button data-value="30">30</button>
+            </div>
+          </div>
+          <div class="field">
+            <span class="field-label">Mode</span>
+            <div class="seg" id="opt-mode" role="radiogroup">
+              <button data-value="ffa" class="on">Free-for-all</button>
+              <button data-value="teams">2 teams</button>
+            </div>
+          </div>
+          <div class="field">
+            <span class="field-label">Bot armies</span>
+            <div class="seg" id="opt-bots" role="radiogroup">
+              <button data-value="1" class="on">1</button>
+              <button data-value="2">2</button>
+              <button data-value="3">3</button>
+            </div>
+          </div>
+          <div class="field" id="team-field" hidden>
+            <span class="field-label">Teams <small>(click a bot to switch sides)</small></span>
+            <div class="team-list" id="team-list"></div>
+          </div>
+          <button class="btn primary" id="start-local">Start battle</button>
+        </section>
+
+        <section class="card" aria-labelledby="online-title">
+          <h2 id="online-title">Play online</h2>
+          <div class="field">
+            <label class="field-label" for="player-name">Your name</label>
+            <input id="player-name" maxlength="16" placeholder="Commander" autocomplete="off" />
+          </div>
+          <div class="row">
+            <button class="btn" id="create-room">Create room</button>
+            <input id="room-code" maxlength="5" placeholder="CODE" autocomplete="off" class="code-input" />
+            <button class="btn" id="join-room">Join</button>
+          </div>
+          <p class="hint" id="online-hint">Battle 1–3 friends. Share the room code or link.</p>
+        </section>
+
+        <details class="card controls">
+          <summary>Controls</summary>
+          <ul>
+            <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move &nbsp; <kbd>Space</kbd> jump</li>
+            <li><kbd>Left click</kbd> strike &nbsp; <kbd>Right click</kbd> (hold) shield</li>
+            <li><kbd>1</kbd> Follow &nbsp; <kbd>2</kbd> Hold &nbsp; <kbd>3</kbd> Attack</li>
+            <li><kbd>4</kbd> Split into groups &nbsp; <kbd>Tab</kbd> pick group</li>
+            <li><kbd>E</kbd> mount / dismount a free horse</li>
+            <li><kbd>V</kbd> overview camera &nbsp; <kbd>Wheel</kbd> zoom &nbsp; <kbd>Esc</kbd> pause</li>
+          </ul>
+        </details>
+        <footer class="foot">v1 prototype · Babylon.js + Havok · <a href="https://github.com/" id="repo-link" hidden>source</a></footer>
+      </div>
+    </main>
+
+    <!-- Online lobby -->
+    <section id="lobby" class="overlay" hidden>
+      <div class="dialog">
+        <h2>Room <span id="lobby-code" class="code"></span></h2>
+        <p class="hint">Share this link: <a id="lobby-link" href="#"></a> <button class="btn tiny" id="copy-link">Copy</button></p>
+        <ul class="lobby-players" id="lobby-players"></ul>
+        <div class="lobby-settings" id="lobby-settings">
+          <div class="field">
+            <span class="field-label">Army size</span>
+            <div class="seg" id="lobby-size">
+              <button data-value="10">10</button>
+              <button data-value="20">20</button>
+              <button data-value="30">30</button>
+            </div>
+          </div>
+          <div class="field">
+            <span class="field-label">Mode</span>
+            <div class="seg" id="lobby-mode">
+              <button data-value="ffa">Free-for-all</button>
+              <button data-value="teams">2 teams</button>
+            </div>
+          </div>
+        </div>
+        <p class="hint" id="lobby-status"></p>
+        <div class="row">
+          <button class="btn" id="lobby-leave">Leave</button>
+          <button class="btn" id="lobby-team">Switch team</button>
+          <button class="btn primary" id="lobby-start">Start battle</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- In-game HUD -->
+    <section id="hud" class="hud" hidden>
+      <div class="hud-top-left">
+        <div class="pill" id="hud-army"></div>
+        <div class="pill subtle" id="hud-time">0:00</div>
+      </div>
+      <div class="kill-feed" id="kill-feed"></div>
+      <div class="label hp-label" id="hp-label">
+        <div class="hpbar"><div class="hpfill" id="hp-fill"></div></div>
+        <div class="hptext" id="hp-text">You · 100 HP</div>
+      </div>
+      <div class="label foe-label" id="foe-label"></div>
+      <div id="popups"></div>
+      <div class="toast" id="toast">The map ends here, go back and fight!</div>
+      <div class="banner" id="banner"></div>
+      <div class="center-msg" id="center-msg"></div>
+      <div class="damage-flash" id="damage-flash"></div>
+      <div class="hud-bottom">
+        <div class="groups" id="hud-groups"></div>
+        <div class="cmds" id="hud-cmds">
+          <span class="cmd" data-order="follow"><b>1</b>Follow</span>
+          <span class="cmd" data-order="hold"><b>2</b>Hold</span>
+          <span class="cmd" data-order="attack"><b>3</b>Attack</span>
+          <span class="cmd" data-order="split"><b>4</b>Split into groups</span>
+        </div>
+        <div class="kit" id="hud-kit">
+          <span class="slot" id="kit-sword">Sword · left click</span>
+          <span class="slot" id="kit-shield">Shield · right click</span>
+          <span class="slot off" id="kit-horse">Horse · none nearby</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="click-to-play" class="overlay soft" hidden>
+      <div class="dialog small">
+        <h2 id="ctp-title">Ready?</h2>
+        <p class="hint" id="ctp-text">Click to take command. Press <kbd>Esc</kbd> to pause.</p>
+        <div class="row">
+          <button class="btn" id="ctp-quit">Leave battle</button>
+          <button class="btn primary" id="ctp-play">Play</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="results" class="overlay" hidden>
+      <div class="dialog">
+        <h2 id="results-title">Victory!</h2>
+        <p class="hint" id="results-sub"></p>
+        <table class="results-table">
+          <thead><tr><th>Army</th><th>Survivors</th><th>Kills</th><th>Deaths</th><th>Commander down</th></tr></thead>
+          <tbody id="results-body"></tbody>
+        </table>
+        <div class="row">
+          <button class="btn" id="results-menu">Main menu</button>
+          <button class="btn primary" id="results-rematch">Rematch</button>
+        </div>
+      </div>
+    </section>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

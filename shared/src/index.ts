@@ -16,3 +16,4 @@ export * from './ai.ts';
 export * from './bot.ts';
 export * from './match.ts';
 export * from './input.ts';
+export * from './view.ts';

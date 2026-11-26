@@ -71,7 +71,7 @@ export const BODY = {
   horseRadius: 0.85,
   horseHeight: 2.3,
   /** Rider's feet sit this high above the horse's feet. */
-  saddleHeight: 1.55,
+  saddleHeight: 1.35,
   personMass: 1,
   horseMass: 4,
   personTurnRate: 14,

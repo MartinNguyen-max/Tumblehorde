@@ -83,19 +83,23 @@ export function bodyMass(unit: Unit): number {
   return isHorse(unit) ? BODY.horseMass : BODY.personMass;
 }
 
-export function meleeStatsFor(unit: Unit): MeleeStats | null {
-  switch (unit.kind) {
+export function meleeStatsForKind(kind: UnitKind, mounted: boolean): MeleeStats | null {
+  switch (kind) {
     case 'commander':
-      return isMounted(unit) ? COMMANDER.mountedMelee : COMMANDER.melee;
+      return mounted ? COMMANDER.mountedMelee : COMMANDER.melee;
     case 'swordsman':
       return SWORDSMAN.melee;
     case 'archer':
       return ARCHER.melee;
     case 'rider':
-      return isMounted(unit) ? RIDER.mountedMelee : RIDER.melee;
+      return mounted ? RIDER.mountedMelee : RIDER.melee;
     case 'horse':
       return null;
   }
+}
+
+export function meleeStatsFor(unit: Unit): MeleeStats | null {
+  return meleeStatsForKind(unit.kind, isMounted(unit));
 }
 
 export function rangedStatsFor(unit: Unit): RangedStats | null {
