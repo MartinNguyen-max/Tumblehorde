@@ -352,8 +352,7 @@ export const FORMATION = {
   holdLineAhead: 2.6,
   /** A wedge's ranks grow by this many soldiers from its tip backwards. */
   wedgeGrowth: 2,
-  /** A column is three soldiers wide: narrow enough for streets and the castle gate. */
-  columnWidth: 3,
+
   /** Advance moves a holding formation this far forward. */
   advanceStep: 4,
   /** The ring around the commander never gets smaller than this. */
@@ -405,6 +404,27 @@ export const PERCEPTION = {
   searchMinDistance: 20,
   /** The commander looks around every this many steps. */
   commanderLookEvery: 6,
+} as const;
+
+/**
+ * The pincer: a third of the army on each wing, the rest a shield line in the middle. With an
+ * enemy near, the wings swing round its flanks and close in on its back.
+ */
+export const PINCER = {
+  /** Without an enemy near, the wings wait this far ahead of the line, on its ends... */
+  wingAhead: 4,
+  /** ...this far out from it. */
+  wingGap: 3,
+  /** The wings go after enemies this close to where the pincer was ordered. */
+  range: 45,
+  /** Going round, a wing passes this far outside the enemy's flank... */
+  sideGap: 5,
+  /** ...then closes in this far behind the enemy's line. */
+  behindDepth: 6,
+  /** The flank point lies this share of `behindDepth` past the enemy's line. */
+  flankPast: 0.7,
+  /** In the city's fog only the sighting is known: assume a line this wide either side. */
+  assumedHalfWidth: 6,
 } as const;
 
 export const AI = {
@@ -566,4 +586,4 @@ export const NET = {
 export const WEAPONS = ['sword', 'spear', 'bow'] as const;
 /** What a commander carries. The bow is parked along with archers for now. */
 export const COMMANDER_WEAPONS = ['sword', 'spear'] as const;
-export const FORMATIONS = ['line', 'double', 'circle', 'wedge', 'column', 'square'] as const;
+export const FORMATIONS = ['line', 'double', 'circle', 'wedge', 'pincer', 'square'] as const;

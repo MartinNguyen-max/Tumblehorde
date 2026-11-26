@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ARMY, COMMANDER, FORMATION } from '../src/config.ts';
-import { rankSizes, ringRadius } from '../src/formation.ts';
+import { pincerGroups, rankSizes, ringRadius } from '../src/formation.ts';
 import { killUnit } from '../src/combat.ts';
 import { neutralInput } from '../src/input.ts';
 import { stepMatch } from '../src/match.ts';
@@ -114,12 +114,11 @@ describe('orders', () => {
     }
   });
 
-  it('a wedge has its tip in front, a column is three wide, a testudo is a square block', () => {
+  it('a wedge has its tip in front, a testudo is a square block', () => {
     expect(rankSizes('wedge', 15)).toEqual([1, 3, 5, 6]);
-    expect(rankSizes('column', 10)).toEqual([3, 3, 3, 1]);
     expect(rankSizes('square', 25)).toEqual([5, 5, 5, 5, 5]);
     expect(rankSizes('double', 25)).toEqual([13, 12]);
-    for (const formation of ['wedge', 'column', 'square'] as const) {
+    for (const formation of ['wedge', 'square', 'pincer'] as const) {
       const state = quietMatch(25);
       const me = place(commanderOf(state, 0), -70, 0, Math.PI / 2);
       applyCommand(state, 0, { type: 'formation', formation });
@@ -128,6 +127,26 @@ describe('orders', () => {
       // The whole formation stands in front of the commander.
       expect(Math.min(...ahead)).toBeGreaterThan(0.8);
     }
+  });
+
+  it('a pincer holds the middle and sends its wings round behind the enemy line', () => {
+    expect(pincerGroups(25)).toEqual([8, 9, 8]);
+    const state = quietMatch(25);
+    const me = place(commanderOf(state, 0), -40, 0, Math.PI / 2);
+    // The enemy stands in a holding line 20 m ahead, facing us.
+    const foes = soldiersOf(state, 1);
+    foes.forEach((f, i) => place(f, -16, (i - 12) * 0.9, -Math.PI / 2));
+    place(commanderOf(state, 1), -12, 0, -Math.PI / 2);
+    applyCommand(state, 1, { type: 'formation', formation: 'line' });
+    applyCommand(state, 0, { type: 'formation', formation: 'pincer' });
+    run(state, 25);
+    const enemyFront = centroid(livingSoldiers(state, state.armies[1]!))!.x;
+    const mine = livingSoldiers(state, state.armies[0]!);
+    const behind = mine.filter((u) => u.pos.x > enemyFront + 2);
+    const holdingMiddle = mine.filter((u) => u.pos.x < me.pos.x + 6);
+    expect(behind.length).toBeGreaterThanOrEqual(8);
+    expect(behind.some((u) => u.pos.z > 0) && behind.some((u) => u.pos.z < 0)).toBe(true);
+    expect(holdingMiddle.length).toBeGreaterThanOrEqual(6);
   });
 
   it('Advance moves a holding formation a few steps towards where the commander looks', () => {

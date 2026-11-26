@@ -23,7 +23,7 @@ Inspiration: Shieldwall (combat and shields), Bannerlord (army and commander), F
 | Right click (held) | Shield up |
 | 1 / 3 | Follow / Attack |
 | 2 (tap) | Hold in the current formation |
-| 2 (keep down) | Formation wheel: Long line, Two lines, Wedge, Circle around me, Testudo block, Column |
+| 2 (keep down) | Formation wheel: Long line, Two lines, Wedge, Circle around me, Testudo block, Pincer (the wings go round behind the enemy) |
 | F | Advance: holding soldiers step forward a few meters towards where you look |
 | 4 | Split the army in two; press again to pick which half hears you (A, B, whole army) |
 | 5 | Banquet (once per battle) |
@@ -52,7 +52,7 @@ See `DECISIONS.md` for how the controls evolved after playtesting.
 
 ### Legionaries
 
-For now every army is Roman legionaries (archers and cavalry are parked in the code, see `DECISIONS.md`). They march and hold with the spear behind big square shields that touch in a held line, and draw the sword to attack. Hold formations: long line, two lines, wedge, circle around the commander, testudo block and column. The army can be split in two halves.
+For now every army is Roman legionaries (archers and cavalry are parked in the code, see `DECISIONS.md`). They march and hold with the spear behind big square shields that touch in a held line, and draw the sword to attack. Hold formations: long line, two lines, wedge, circle around the commander, testudo block and pincer. The army can be split in two halves.
 
 After a **banquet** the whole army is drunk for the rest of the battle: they sway, stumble and cannot stand in a straight line, but they are very tough, hit hard and barge through enemy formations.
 

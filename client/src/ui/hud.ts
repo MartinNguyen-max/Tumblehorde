@@ -496,8 +496,10 @@ function formationIcon(formation: Formation): string {
     case 'wedge':
       rows([1, 3, 5], 8);
       break;
-    case 'column':
-      rows([3, 3, 3, 3], 3);
+    case 'pincer':
+      // A line in the middle, two wings curling forward round the enemy.
+      rows([5, 5], 22);
+      for (const side of [-1, 1]) for (const [x, y] of [[17, 18], [19, 12], [19, 6], [15, 3]] as const) dots.push([24 + side * x, y]);
       break;
     case 'square':
       rows([4, 4, 4, 4], 3);

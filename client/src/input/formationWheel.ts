@@ -18,7 +18,7 @@ export const WHEEL_OPTIONS: readonly WheelOption[] = [
   { formation: 'wedge', label: 'Wedge', dirX: SIN_60, dirY: -0.5 },
   { formation: 'circle', label: 'Circle around me', dirX: SIN_60, dirY: 0.5 },
   { formation: 'square', label: 'Testudo block', dirX: 0, dirY: 1 },
-  { formation: 'column', label: 'Column', dirX: -SIN_60, dirY: 0.5 },
+  { formation: 'pincer', label: 'Pincer: flank them', dirX: -SIN_60, dirY: 0.5 },
 ];
 
 export const FORMATION_LABEL: Record<Formation, string> = {
@@ -26,7 +26,7 @@ export const FORMATION_LABEL: Record<Formation, string> = {
   double: 'Two lines',
   circle: 'Circle',
   wedge: 'Wedge',
-  column: 'Column',
+  pincer: 'Pincer',
   square: 'Testudo',
 };
 

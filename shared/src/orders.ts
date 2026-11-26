@@ -1,12 +1,12 @@
 import { finishFeast } from './banquet.ts';
-import { ARMY, BANQUET, FORMATION, MOVEMENT, RALLY, VOLLEY } from './config.ts';
-import { assignHoldSlots, followCenter, formationSlots, holdSlots, supportSlots, type FormationSlot } from './formation.ts';
+import { ARMY, BANQUET, FORMATION, MOVEMENT, PINCER, RALLY, VOLLEY } from './config.ts';
+import { assignHoldSlots, blockSlots, followCenter, formationSlots, holdSlots, pincerGroups, supportSlots, type FormationSlot } from './formation.ts';
 import { localStep, navGrid, navigate, nearestWalkable } from './navigation.ts';
-import { attackGoal } from './perception.ts';
+import { attackGoal, fogOfWar } from './perception.ts';
 import { clamp, dirToYaw, distanceXZ, normalizeXZ, turnTowards, type Vec2, type Vec3 } from './math.ts';
 import { toggleMount } from './mounts.ts';
 import type { Army, Command, EntityId, Formation, GroupOrder, MatchState, Order, Unit, UnitKind } from './types.ts';
-import { armiesHostile, canBeTargeted, getUnit, setWeapon, sideArmyId } from './units.ts';
+import { armiesHostile, canBeTargeted, getUnit, isSoldier, setWeapon, sideArmyId } from './units.ts';
 import { nextRandom } from './random.ts';
 
 /**
@@ -324,7 +324,7 @@ export function formationTargets(state: MatchState, army: Army): Map<EntityId, F
     // Attacking blind in the city: head for the last sighting, or search the streets together.
     const goal = groupOrder.order === 'attack' ? attackGoal(state, army) : null;
     const effective = goal ? { ...groupOrder, anchor: goal } : groupOrder;
-    for (const [id, slot] of groupSlots(effective, g, army.groupCount, members)) targets.set(id, walkableSlot(state, slot));
+    for (const [id, slot] of groupSlots(state, army, effective, g, members)) targets.set(id, walkableSlot(state, slot));
   }
   return targets;
 }
@@ -336,13 +336,15 @@ function walkableSlot(state: MatchState, slot: FormationSlot): FormationSlot {
   return free === slot ? slot : { x: free.x, z: free.z, yaw: slot.yaw };
 }
 
-function groupSlots(groupOrder: GroupOrder, group: number, groupCount: number, members: readonly Unit[]): Map<EntityId, FormationSlot> {
+function groupSlots(state: MatchState, army: Army, groupOrder: GroupOrder, group: number, members: readonly Unit[]): Map<EntityId, FormationSlot> {
+  const groupCount = army.groupCount;
   const { anchor, anchorYaw: yaw } = groupOrder;
   const result = new Map<EntityId, FormationSlot>();
   // Swordsmen hold in the chosen formation, everyone in their own place.
   if (groupOrder.order === 'hold' && members.every((m) => m.kind === 'swordsman')) {
     const slots = holdSlots(groupOrder.formation, members.length, anchor, yaw, groupOrder.aroundCommander);
     const places = assignHoldSlots(groupOrder.formation, members.map((m) => m.pos), anchor, yaw);
+    if (groupOrder.formation === 'pincer') pincerFlanks(state, army, anchor, members, places, slots);
     members.forEach((m, i) => {
       const slot = slots[places[i] ?? i];
       if (slot) result.set(m.id, slot);
@@ -362,6 +364,74 @@ function groupSlots(groupOrder: GroupOrder, group: number, groupCount: number, m
     if (slot) result.set(m.id, { x: slot.x, z: slot.z, yaw });
   });
   return result;
+}
+
+/** Where the enemy facing a pincer stands: its middle, its front (towards us), and how wide it is. */
+interface EnemyLine {
+  center: Vec2;
+  front: Vec2;
+  side: Vec2;
+  halfWidth: number;
+}
+
+function enemyLineNear(state: MatchState, army: Army, anchor: Vec2): EnemyLine | null {
+  let center: Vec2 | null = null;
+  let spread: Unit[] = [];
+  if (fogOfWar(state)) {
+    // In the city all we know is the last sighting.
+    if (army.intel && distanceXZ(army.intel, anchor) <= PINCER.range) center = { x: army.intel.x, z: army.intel.z };
+  } else {
+    spread = state.units.filter(
+      (u) => u.alive && isSoldier(u) && armiesHostile(state, army.id, u.armyId) && distanceXZ(u.pos, anchor) <= PINCER.range,
+    );
+    center = centroid(spread);
+  }
+  if (!center) return null;
+  const front = normalizeXZ(anchor.x - center.x, anchor.z - center.z);
+  const side = { x: front.z, z: -front.x };
+  const reach = spread.map((u) => Math.abs((u.pos.x - center.x) * side.x + (u.pos.z - center.z) * side.z));
+  const halfWidth = reach.length > 0 ? Math.max(...reach) : PINCER.assumedHalfWidth;
+  return { center, front, side, halfWidth };
+}
+
+/**
+ * The pincer's wings go after the enemy: each swings wide past the enemy's flank, then closes
+ * in on its back, facing the enemy, while the middle holds the line. Rewrites the wing slots.
+ */
+function pincerFlanks(state: MatchState, army: Army, anchor: Vec2, members: readonly Unit[], places: readonly number[], slots: FormationSlot[]): void {
+  const enemy = enemyLineNear(state, army, anchor);
+  if (!enemy) return;
+  const [left, middle] = pincerGroups(members.length);
+  const wings: { sign: number; first: number; count: number }[] = [
+    { sign: -1, first: 0, count: left },
+    { sign: 1, first: left + middle, count: left },
+  ];
+  // Which side of the enemy is which, as seen from our side.
+  const ourRight = { x: -enemy.side.x, z: -enemy.side.z };
+  for (const wing of wings) {
+    const inWing = members.filter((_, i) => (places[i] ?? 0) >= wing.first && (places[i] ?? 0) < wing.first + wing.count);
+    const here = centroid(inWing);
+    if (!here || wing.count === 0) continue;
+    const out = enemy.halfWidth + PINCER.sideGap;
+    const sideways = { x: ourRight.x * wing.sign, z: ourRight.z * wing.sign };
+    const ahead = (here.x - enemy.center.x) * enemy.front.x + (here.z - enemy.center.z) * enemy.front.z;
+    // Still in front of the enemy: go round the flank first. Past it: close in behind.
+    const target =
+      ahead > -PINCER.behindDepth * 0.5
+        ? {
+            // Just past the enemy's line, so arriving there means the wing is round the flank.
+            x: enemy.center.x + sideways.x * out - enemy.front.x * PINCER.behindDepth * PINCER.flankPast,
+            z: enemy.center.z + sideways.z * out - enemy.front.z * PINCER.behindDepth * PINCER.flankPast,
+          }
+        : {
+            x: enemy.center.x - enemy.front.x * PINCER.behindDepth + sideways.x * enemy.halfWidth * 0.4,
+            z: enemy.center.z - enemy.front.z * PINCER.behindDepth + sideways.z * enemy.halfWidth * 0.4,
+          };
+    const facing = dirToYaw(enemy.center.x - target.x, enemy.center.z - target.z);
+    blockSlots(wing.count, target, facing).forEach((slot, k) => {
+      slots[wing.first + k] = slot;
+    });
+  }
 }
 
 export function orderOf(army: Army, unit: Unit): GroupOrder | null {

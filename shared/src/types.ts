@@ -12,7 +12,7 @@ export type Weapon = 'sword' | 'spear' | 'bow';
 export type GameMode = 'ffa' | 'teams';
 export type ArmySize = 15 | 25 | 40;
 /** How the player's army holds its ground: one long line, two lines, or a ring around the commander. */
-export type Formation = 'line' | 'double' | 'circle' | 'wedge' | 'column' | 'square';
+export type Formation = 'line' | 'double' | 'circle' | 'wedge' | 'pincer' | 'square';
 /** `legion` is swordsmen only. `mixed` (swordsmen, archers, cavalry) is parked for now but still works. */
 export type ArmyMix = 'legion' | 'mixed';
 /** The banquet: once per battle the army feasts around its commander and is drunk ever after. */
