@@ -77,7 +77,7 @@ export function createUnit(id: EntityId, kind: UnitKind, armyId: number, pos: Ve
     respawnTimer: 0,
     drunk: false,
     intent: emptyIntent(yaw),
-    ai: { targetId: null, thinkTimer: 0, shieldTimer: 0, chargePoint: null, horseTargetId: null },
+    ai: { targetId: null, thinkTimer: 0, shieldTimer: 0, chargePoint: null, horseTargetId: null, watchId: null, navGoal: null, navPoint: null, navTimer: 0 },
   };
 }
 

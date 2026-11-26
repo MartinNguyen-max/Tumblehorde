@@ -72,8 +72,13 @@ export function sanitizeCommand(raw: unknown): Command | null {
       if (typeof count !== 'number' || !Number.isInteger(count) || count < 1 || count > ARMY.maxGroups) return null;
       return { type: 'split', groupCount: count };
     }
-    case 'formation':
-      return isFormation(raw.formation) ? { type: 'formation', formation: raw.formation } : null;
+    case 'formation': {
+      if (!isFormation(raw.formation)) return null;
+      const group = raw.group;
+      if (group === undefined || group === null) return { type: 'formation', formation: raw.formation, group: null };
+      if (typeof group !== 'number' || !Number.isInteger(group) || group < 0 || group >= ARMY.maxGroups) return null;
+      return { type: 'formation', formation: raw.formation, group };
+    }
     case 'mount':
       return { type: 'mount' };
     case 'banquet':

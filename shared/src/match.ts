@@ -1,6 +1,7 @@
 import { runArmyAi } from './ai.ts';
 import { updateBanquets, updateStumbles } from './banquet.ts';
 import { beginNavigationStep } from './navigation.ts';
+import { updateIntel } from './perception.ts';
 import { fireArrow, stepArrows } from './arrows.ts';
 import { runBotArmy, runLeaderlessArmy } from './bot.ts';
 import { ARCHER, COMMANDER, MATCH, SIM } from './config.ts';
@@ -234,6 +235,7 @@ export function stepMatch(state: MatchState, inputs: ReadonlyMap<number, Command
   state.time += step;
   state.tick++;
   beginNavigationStep();
+  updateIntel(state, step);
 
   for (const army of state.armies) {
     if (army.eliminated) continue;

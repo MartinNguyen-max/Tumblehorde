@@ -2,6 +2,7 @@ import { findMeleeThreat, meleeIntent, nearestEnemy } from './ai.ts';
 import { AI, BOT, COMMANDER, FORMATION, MATCH } from './config.ts';
 import { dirToYaw, distanceXZ, normalizeXZ, type Vec2 } from './math.ts';
 import { advanceArmy, armyCenter, centroid, holdAt, issueOrder, livingSoldiers, splitArmy } from './orders.ts';
+import { fogOfWar } from './perception.ts';
 import { armySpawn, gatePost, isDefender } from './spawn.ts';
 import type { Army, MatchState, Order, Unit } from './types.ts';
 import { canBeTargeted, getUnit, setWeapon } from './units.ts';
@@ -38,7 +39,6 @@ export function stanceOrders(stance: Exclude<BotStance, 'form'>, hasMelee: boole
 }
 
 interface EnemyArmy {
-  army: Army;
   center: Vec2;
   soldiers: number;
 }
@@ -52,7 +52,7 @@ export function nearestEnemyArmy(state: MatchState, army: Army, from: Vec2): Ene
     if (!center) continue;
     const d = distanceXZ(from, center);
     if (d < bestDistance) {
-      best = { army: other, center, soldiers: livingSoldiers(state, other).length };
+      best = { center, soldiers: livingSoldiers(state, other).length };
       bestDistance = d;
     }
   }
@@ -166,6 +166,19 @@ function defendGate(state: MatchState, army: Army): void {
   if (!holding) holdAt(state, army, post.position, post.yaw);
 }
 
+/** In the city a bot only knows where the enemy was last seen; it guesses they are as many as itself. */
+function knownEnemy(state: MatchState, army: Army, own: Vec2): EnemyArmy | null {
+  if (!fogOfWar(state)) return nearestEnemyArmy(state, army, own);
+  if (!army.intel) return null;
+  return { center: { x: army.intel.x, z: army.intel.z }, soldiers: livingSoldiers(state, army).length };
+}
+
+/** Nobody in sight: attack blind, which in the city means going from corner to corner looking. */
+function searchTheStreets(state: MatchState, army: Army, leaderless: boolean): void {
+  if (army.groupOrders.every((g) => g.order === 'attack')) return;
+  issueOrder(state, army, 'attack', null, leaderless);
+}
+
 /** Picks a stance and, at most every few seconds, turns it into orders. */
 function planArmy(state: MatchState, army: Army, dt: number, leaderless: boolean): { stance: BotStance; enemy: EnemyArmy } | null {
   army.bot.orderTimer -= dt;
@@ -176,8 +189,11 @@ function planArmy(state: MatchState, army: Army, dt: number, leaderless: boolean
   const commander = getUnit(state, army.commanderId);
   const own = armyCenter(state, army) ?? commander?.pos;
   if (!own) return null;
-  const enemy = nearestEnemyArmy(state, army, own);
-  if (!enemy) return null;
+  const enemy = knownEnemy(state, army, own);
+  if (!enemy) {
+    if (fogOfWar(state) && state.time >= MATCH.prepareTime) searchTheStreets(state, army, leaderless);
+    return null;
+  }
   const distance = distanceXZ(own, enemy.center);
   const stance = chooseStance(state, army, distance, livingSoldiers(state, army).length, enemy.soldiers);
   army.bot.standoffTimer = stance === 'standoff' ? army.bot.standoffTimer + dt : stance === 'march' ? 0 : army.bot.standoffTimer;

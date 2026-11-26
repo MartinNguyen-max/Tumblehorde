@@ -1,4 +1,4 @@
-import { BODY } from './config.ts';
+import { BODY, MAP } from './config.ts';
 import { MAPS, type MapId, type Structure } from './maps.ts';
 import { type Vec2, type Vec3 } from './math.ts';
 import type { Unit } from './types.ts';
@@ -6,6 +6,45 @@ import { bodyRadius } from './units.ts';
 
 export function mapStructures(map: MapId): readonly Structure[] {
   return MAPS[map].structures;
+}
+
+/** Structures bucketed by area, so a body only checks the buildings around it. */
+const BUCKET_SIZE = 8;
+const BUCKETS_PER_SIDE = Math.ceil((MAP.size + BUCKET_SIZE * 4) / BUCKET_SIZE);
+const BUCKET_ORIGIN = MAP.halfSize + BUCKET_SIZE * 2;
+const buckets = new Map<MapId, Structure[][]>();
+const NONE: readonly Structure[] = [];
+
+function bucketIndex(x: number, z: number): number {
+  const i = Math.floor((x + BUCKET_ORIGIN) / BUCKET_SIZE);
+  const j = Math.floor((z + BUCKET_ORIGIN) / BUCKET_SIZE);
+  if (i < 0 || j < 0 || i >= BUCKETS_PER_SIDE || j >= BUCKETS_PER_SIDE) return -1;
+  return j * BUCKETS_PER_SIDE + i;
+}
+
+function structureBuckets(map: MapId): Structure[][] {
+  const cached = buckets.get(map);
+  if (cached) return cached;
+  const grid: Structure[][] = Array.from({ length: BUCKETS_PER_SIDE * BUCKETS_PER_SIDE }, () => []);
+  // Each structure goes into every bucket its bounding circle (plus a horse's width) touches.
+  const reach = BODY.horseRadius + PROBE_DISTANCE + PROBE_MARGIN;
+  for (const s of mapStructures(map)) {
+    const r = boundingRadius(s) + reach;
+    for (let x = s.x - r; x <= s.x + r + BUCKET_SIZE; x += BUCKET_SIZE) {
+      for (let z = s.z - r; z <= s.z + r + BUCKET_SIZE; z += BUCKET_SIZE) {
+        const index = bucketIndex(Math.min(x, s.x + r), Math.min(z, s.z + r));
+        const bucket = grid[index];
+        if (bucket && !bucket.includes(s)) bucket.push(s);
+      }
+    }
+  }
+  buckets.set(map, grid);
+  return grid;
+}
+
+/** The structures that could touch a body (or a probe ahead of it) at this point. */
+export function structuresNear(map: MapId, x: number, z: number): readonly Structure[] {
+  return structureBuckets(map)[bucketIndex(x, z)] ?? NONE;
 }
 
 /** Point in the structure's own frame (x along its width, z along its depth). */
@@ -36,7 +75,7 @@ function boundingRadius(s: Structure): number {
 /** Pushes a body out of every structure it overlaps and stops it moving into the wall. */
 export function resolveStructures(unit: Unit, map: MapId): void {
   const radius = bodyRadius(unit);
-  for (const s of mapStructures(map)) {
+  for (const s of structuresNear(map, unit.pos.x, unit.pos.z)) {
     if (Math.hypot(unit.pos.x - s.x, unit.pos.z - s.z) > boundingRadius(s) + radius) continue;
     const p = toLocal(s, unit.pos.x, unit.pos.z);
     const hx = s.width / 2 + radius;
@@ -73,7 +112,7 @@ export function steerAroundStructures(unit: Unit, map: MapId): void {
   const probeX = unit.pos.x + dir.x * PROBE_DISTANCE;
   const probeZ = unit.pos.z + dir.z * PROBE_DISTANCE;
   const margin = bodyRadius(unit) + PROBE_MARGIN;
-  for (const s of mapStructures(map)) {
+  for (const s of structuresNear(map, unit.pos.x, unit.pos.z)) {
     if (!insideStructure(s, probeX, probeZ, margin)) continue;
     const p = toLocal(s, unit.pos.x, unit.pos.z);
     // Slide along the face we are approaching: along local x if we hit a long side, else local z.

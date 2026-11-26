@@ -22,6 +22,9 @@ function bots(count: number, mode: MatchSettings['mode'], teams: number[] = []):
   );
 }
 
+/** Whole battles are simulated second by second; they need more than the default 5 s. */
+const BATTLE_TIMEOUT = 20_000;
+
 describe('a full battle', () => {
   it('two bot armies fight until one side wins', () => {
     const state = bots(2, 'ffa');
@@ -31,14 +34,14 @@ describe('a full battle', () => {
     expect(standing.length).toBeLessThanOrEqual(1);
     const totalKills = state.armies.reduce((sum, a) => sum + a.stats.kills, 0);
     expect(totalKills).toBeGreaterThan(5);
-  });
+  }, BATTLE_TIMEOUT);
 
   it('a four-army free-for-all ends with one survivor', () => {
     const state = bots(4, 'ffa');
     playOut(state, 600);
     expect(state.phase).toBe('over');
     expect(state.armies.filter((a) => !a.eliminated).length).toBeLessThanOrEqual(1);
-  });
+  }, BATTLE_TIMEOUT);
 
   it('in team mode allies never fight each other and one team wins', () => {
     const state = bots(4, 'teams', [0, 1, 0, 1]);
@@ -47,7 +50,7 @@ describe('a full battle', () => {
     const winners = new Set(state.armies.filter((a) => !a.eliminated).map((a) => a.team));
     expect(winners.size).toBeLessThanOrEqual(1);
     if (state.winnerTeam !== null) expect(winners.has(state.winnerTeam)).toBe(true);
-  });
+  }, BATTLE_TIMEOUT);
 
   it('bot commanders give orders at most every 5 seconds', () => {
     const state = bots(2, 'ffa');

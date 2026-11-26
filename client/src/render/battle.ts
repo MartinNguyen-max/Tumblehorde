@@ -11,6 +11,7 @@ import {
   createPersonRig,
   reactToHit,
   type Rig,
+  showMarker,
   standUp,
   startCheer,
   startSpeech,
@@ -33,11 +34,19 @@ export class BattleRenderer {
   readonly ragdolls: Ragdolls;
   readonly effects: Effects;
   private lastView: MatchView | null = null;
+  private highlightArmy: number | null = null;
+  private highlightGroup: number | null = null;
 
   constructor(world: World) {
     this.world = world;
     this.ragdolls = new Ragdolls(world.scene);
     this.effects = new Effects(world.scene, world.parts);
+  }
+
+  /** Marks the soldiers of `group` in `armyId`; none when group is null (the whole army listens). */
+  highlight(armyId: number | null, group: number | null): void {
+    this.highlightArmy = armyId;
+    this.highlightGroup = group;
   }
 
   setMap(map: MapId): void {
@@ -171,6 +180,8 @@ export class BattleRenderer {
         animateHorse(rig, unit, ctx);
       } else {
         animatePerson(rig, unit, ctx);
+        const selected = this.highlightGroup !== null && unit.armyId === this.highlightArmy && unit.kind !== 'commander' && unit.group === this.highlightGroup;
+        showMarker(rig, selected, now);
       }
     }
     this.effects.syncArrows(view.arrows);

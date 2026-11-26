@@ -2,6 +2,7 @@ import { Vector3 } from '../render/babylon.ts';
 import {
   type CommanderInput,
   COMMANDER_WEAPONS,
+  HALVES,
   distanceToEdge,
   MAP,
   type MatchView,
@@ -45,6 +46,8 @@ export class GameController {
   private lastFocus = { x: 0, y: 0, z: 0 };
   private cameraSnapped = false;
   private readonly wheel = new FormationWheel();
+  /** After a split: which half listens to orders (0 or 1), or null for the whole army. */
+  private selectedGroup: number | null = null;
   /** A click that picked a formation must not also swing the sword. */
   private swallowClick = false;
   readonly session: Session;
@@ -87,9 +90,30 @@ export class GameController {
     return commanderId === null ? undefined : view.units[commanderId];
   }
 
-  /** Orders always go to the whole army. */
+  /** The army is split in halves right now (by this player, and not merged since). */
+  private isSplit(): boolean {
+    const id = this.session.myArmyId;
+    const army = id === null ? undefined : this.session.view()?.armies[id];
+    return army?.groupCount === HALVES;
+  }
+
+  /** Orders go to the selected half, or to the whole army (which joins the halves again). */
+  private listening(): number | null {
+    return this.isSplit() ? this.selectedGroup : null;
+  }
+
   private order(order: Order): void {
-    this.session.command({ type: 'order', order, group: null });
+    this.session.command({ type: 'order', order, group: this.listening() });
+  }
+
+  /** `4`: split the army in two; pressed again, it switches between half A, half B and the whole army. */
+  private splitOrCycle(): void {
+    if (!this.isSplit()) {
+      this.session.command({ type: 'split', groupCount: HALVES });
+      this.selectedGroup = 0;
+      return;
+    }
+    this.selectedGroup = this.selectedGroup === null ? 0 : this.selectedGroup === 0 ? 1 : null;
   }
 
   private handleKeys(dt: number): void {
@@ -100,8 +124,10 @@ export class GameController {
       } else if (code === HOLD_KEY) {
         this.wheel.press();
       } else if (code === 'Digit4') {
-        this.session.command({ type: 'banquet' });
+        this.splitOrCycle();
       } else if (code === 'Digit5') {
+        this.session.command({ type: 'banquet' });
+      } else if (code === 'Digit6') {
         this.session.command({ type: 'rally' });
       } else if (code === 'KeyE') {
         this.session.command({ type: 'mount' });
@@ -125,7 +151,7 @@ export class GameController {
   /** A picked formation holds in that shape; otherwise Hold uses the last one picked. */
   private closeWheel(): void {
     const formation = this.wheel.release();
-    if (formation) this.session.command({ type: 'formation', formation });
+    if (formation) this.session.command({ type: 'formation', formation, group: this.listening() });
     else this.order('hold');
   }
 
@@ -196,11 +222,13 @@ export class GameController {
 
     const view = this.session.view();
     if (!view) return;
+    if (!this.isSplit()) this.selectedGroup = null;
+    this.renderer.highlight(this.session.myArmyId, this.listening());
     this.renderer.sync(view, active ? dt : 0, now);
     this.updateCamera(view, dt);
     this.updateEdgeWalls(view);
     if (this.session.myArmyId !== null) {
-      this.hud.update({ view, myArmyId: this.session.myArmyId, wheel: this.wheel, scene: this.world.scene, dt });
+      this.hud.update({ view, myArmyId: this.session.myArmyId, wheel: this.wheel, selectedGroup: this.listening(), scene: this.world.scene, dt });
     }
     if (view.phase === 'over' && !this.finished) {
       this.finished = true;

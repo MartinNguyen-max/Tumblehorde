@@ -2,6 +2,7 @@ import { Matrix, type Scene, Vector3 } from '../render/babylon.ts';
 import {
   distanceXZ,
   type Formation,
+  HALVES,
   wrapAngle,
   HORSE,
   MATCH,
@@ -29,6 +30,7 @@ const SOLDIER_CHEERS = ['ROMA!', 'HUZZAH!', 'AVE!', 'RAAAH!', 'HOO-RAH!', '!!!',
 const CHEER_POPUPS = 6;
 const SHOUT_HEIGHT = 2.6;
 const HIC_CHANCE = 0.5;
+const GROUP_LABELS = ['A', 'B'] as const;
 const HP_LABEL_HEIGHT = 2.75;
 const FOE_LABEL_HEIGHT = 3.4;
 const POPUP_RISE = 40;
@@ -46,6 +48,8 @@ export interface HudContext {
   view: MatchView;
   myArmyId: number;
   wheel: Pick<FormationWheel, 'isOpen' | 'x' | 'y' | 'choice'>;
+  /** After a split: the half that hears orders, or null for the whole army. */
+  selectedGroup: number | null;
   scene: Scene;
   dt: number;
 }
@@ -69,6 +73,7 @@ export class Hud {
   private readonly centerMsg = byId('center-msg');
   private readonly flash = byId('damage-flash');
   private readonly cmds = byId('hud-cmds');
+  private readonly splitLabel = byId('hud-split-label');
   private readonly banquetCmd = byId('hud-banquet');
   private readonly banquetLabel = byId('hud-banquet-label');
   private readonly rallyCmd = byId('hud-rally');
@@ -206,11 +211,15 @@ export class Hud {
           break;
         case 'order':
           if (event.armyId === myArmyId) {
-            this.showBanner(event.order === 'hold' ? `Hold: ${FORMATION_LABEL[event.formation]}!` : `${ORDER_LABEL[event.order]}!`);
+            const who = event.group === null ? '' : `Group ${GROUP_LABELS[event.group] ?? ''} · `;
+            this.showBanner(`${who}${event.order === 'hold' ? `Hold: ${FORMATION_LABEL[event.formation]}!` : `${ORDER_LABEL[event.order]}!`}`);
           }
           break;
         case 'rally':
           this.showRally(view, event.armyId, event.commanderId);
+          break;
+        case 'split':
+          if (event.armyId === myArmyId) this.showBanner(event.groupCount === HALVES ? 'Split in two! Press 4 to pick a half' : 'Together again!');
           break;
         case 'banquet':
           if (event.armyId === myArmyId) this.showBanner('Banquet! Wine for everyone! 🍷');
@@ -248,7 +257,7 @@ export class Hud {
     this.updateDisconnectNotice(view);
     this.updatePrepare(view);
 
-    this.updateOrders(view, me);
+    this.updateOrders(view, me, ctx.selectedGroup);
     this.updateWheel(ctx);
     this.updateKit(view, me);
     this.updateCenterMessage(army.eliminated, me);
@@ -273,11 +282,16 @@ export class Hud {
     if (this.flashTimer > 0 && (this.flashTimer -= dt) <= 0) this.flash.classList.remove('on');
   }
 
-  private updateOrders(view: MatchView, me: UnitView | undefined): void {
+  private updateOrders(view: MatchView, me: UnitView | undefined, selected: number | null): void {
     const army = view.armies[this.myArmyId];
     if (!army) return;
     const canOrder = me?.alive === true && army.soldiersAlive > 0 && view.phase === 'playing';
-    const active = army.orders[0];
+    const split = army.groupCount === HALVES;
+    const active = army.orders[selected ?? 0];
+    const splitText = !split
+      ? 'Split in two'
+      : `${GROUP_LABELS.map((name, i) => `${selected === i ? '▸' : ''}${name}: ${ORDER_LABEL[army.orders[i] ?? 'hold']}`).join(' · ')}${selected === null ? ' · ▸Whole army' : ''}`;
+    if (this.splitLabel.textContent !== splitText) this.splitLabel.textContent = splitText;
     for (const cmd of this.cmds.querySelectorAll<HTMLElement>('.cmd[data-order]')) {
       cmd.classList.toggle('off', !canOrder);
       cmd.classList.toggle('active', canOrder && cmd.dataset.order === active);

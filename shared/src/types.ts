@@ -41,6 +41,12 @@ export interface AiMemory {
   /** Rider charge point, so cavalry rides through its target instead of stopping. */
   chargePoint: Vec2 | null;
   horseTargetId: EntityId | null;
+  /** The enemy this soldier keeps an eye on between thinks (nearest in sight). */
+  watchId: EntityId | null;
+  /** Cached route step: where to walk next on the way to `navGoal`, refreshed every `navTimer` seconds. */
+  navGoal: Vec2 | null;
+  navPoint: Vec2 | null;
+  navTimer: number;
 }
 
 export interface Unit {
@@ -116,6 +122,11 @@ export interface Army {
   /** The formation the next Hold uses. */
   formation: Formation;
   banquet: BanquetState;
+  /** Where the army last saw an enemy (fog of war), shared by everyone in it. */
+  intel: { x: number; z: number; time: number } | null;
+  /** Where the army goes looking when it must attack but has not seen anyone. */
+  searchPoint: Vec2 | null;
+  searchTimer: number;
   /** Seconds of feasting left. */
   feastTimer: number;
   /** Seconds until the commander can give another rousing speech. */
@@ -217,8 +228,8 @@ export interface CommanderInput {
 export type Command =
   | { type: 'order'; order: Order; group: number | null }
   | { type: 'split'; groupCount: number }
-  /** Picks the formation and holds in it right away. */
-  | { type: 'formation'; formation: Formation }
+  /** Picks the formation and holds in it right away (one group, or the whole army when null). */
+  | { type: 'formation'; formation: Formation; group?: number | null }
   | { type: 'mount' }
   | { type: 'weapon'; weapon: Weapon }
   | { type: 'banquet' }

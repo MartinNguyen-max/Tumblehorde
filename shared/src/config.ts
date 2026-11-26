@@ -361,6 +361,26 @@ export const NAV = {
   cachedFields: 96,
   /** Cells to look ahead along the flow, so paths cut corners smoothly. */
   lookahead: 8,
+  /** A soldier re-plans its next step this often, or when its goal moves this far. */
+  replanInterval: 0.25,
+  replanGoalShift: 1.5,
+} as const;
+
+/** Fog of war in the city: soldiers only know about enemies someone in the army has seen. */
+export const PERCEPTION = {
+  sightRange: 60,
+  /** Line-of-sight checks per look, nearest enemies first. */
+  maxSightChecks: 4,
+  /** A sighting is forgotten after this long... */
+  intelMemory: 25,
+  /** ...or once the army reaches the spot and finds nobody. */
+  intelClearRadius: 6,
+  /** Searching soldiers pick a new street corner this often, or on arriving. */
+  searchRetarget: 25,
+  searchArriveRadius: 8,
+  searchMinDistance: 20,
+  /** The commander looks around every this many steps. */
+  commanderLookEvery: 6,
 } as const;
 
 export const AI = {
@@ -385,6 +405,8 @@ export const AI = {
   remountSearchRadius: 18,
   /** Idle soldiers turn to look at enemies this close. */
   lookAtEnemyRadius: 45,
+  /** At each think a soldier picks the nearest enemy in sight within this distance to keep an eye on. */
+  watchRadius: 45,
   /** Swordsmen on Hold lock shields when an enemy is this close. */
   shieldWallRadius: 30,
   /** Mounted riders on Attack go for enemy archers within this distance first. */

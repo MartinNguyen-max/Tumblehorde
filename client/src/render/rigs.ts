@@ -40,6 +40,7 @@ const BROW_SCOWL = 0.4;
 const SPEECH_TIME = 2.4;
 const CHEER_TIME = 2.6;
 const BUBBLE_COUNT = 3;
+const MARKER_HEIGHT = 2.75;
 /** Sword held straight up: the total pitch of the blade. */
 const BLADE_UP = -3.1;
 
@@ -58,6 +59,8 @@ export interface PersonRig extends PersonBody {
   stars: TransformNode;
   /** Tipsy bubbles floating over a drunk's head. */
   bubbles: InstancedMesh[];
+  /** A bobbing arrow over the soldiers that will hear the next order, after a split. */
+  marker: InstancedMesh;
   pupilRest: { x: number; y: number }[];
   /** Seconds into the commander's rousing speech, or null. */
   speechAge: number | null;
@@ -128,7 +131,10 @@ export function createPersonRig(scene: Scene, parts: PartFactory, kind: UnitKind
   const built = roman ? buildRoman(parts, body, palette, kind === 'commander') : buildBean(parts, body, kind, palette);
   const stars = addStars(parts, built.head);
   const bubbles = addBubbles(parts, built.head);
-  const animated = [...built.pupils, ...built.brows, built.mouth, built.mouthOpen, built.drool, ...bubbles];
+  const marker = parts.part('cone', COLORS.toast, root, [0.22, 0.4, 0.22], [0, MARKER_HEIGHT * scale, 0], NO_SHADOW_GLOSS);
+  marker.rotation.x = Math.PI;
+  marker.setEnabled(false);
+  const animated = [...built.pupils, ...built.brows, built.mouth, built.mouthOpen, built.drool, ...bubbles, marker];
   const pupilRest = built.pupils.map((p) => ({ x: p.position.x, y: p.position.y }));
   parts.bake(root, `${kind}:${palette.body}`, new Set(animated.filter((m): m is InstancedMesh => m !== null)));
   return {
@@ -140,6 +146,7 @@ export function createPersonRig(scene: Scene, parts: PartFactory, kind: UnitKind
     body,
     stars,
     bubbles,
+    marker,
     pupilRest,
     speechAge: null,
     cheerAge: null,
@@ -535,6 +542,13 @@ function animateDrunk(rig: PersonRig, view: UnitView, now: number): boolean {
     b.scaling.setAll(0.07 * (1 - phase) + 0.025);
   });
   return Math.sin(now * 0.8 + id) > 0.3;
+}
+
+export function showMarker(rig: PersonRig, on: boolean, now: number): void {
+  rig.marker.setEnabled(on);
+  if (!on) return;
+  rig.marker.position.y = MARKER_HEIGHT * rig.scale + Math.sin(now * 5) * 0.12;
+  rig.marker.rotation.y = now * 2;
 }
 
 /** The commander starts a rousing speech. */

@@ -1,8 +1,9 @@
-import { AI, ARCHER, FORMATION, HORSE } from './config.ts';
+import { AI, ARCHER, FORMATION, HORSE, NAV, PERCEPTION } from './config.ts';
 import { dirToYaw, distanceXZ, normalizeXZ, wrapAngle, yawToDir, type Vec2 } from './math.ts';
 import { feastSlots, staggerIntent } from './banquet.ts';
 import type { FormationSlot } from './formation.ts';
 import { mount, nearestFreeHorse } from './mounts.ts';
+import { fogOfWar, lookAround, nearestVisibleEnemy } from './perception.ts';
 import { nextRandom } from './random.ts';
 import { navigate } from './navigation.ts';
 import { formationTargets, orderOf } from './orders.ts';
@@ -37,9 +38,23 @@ function setMove(intent: Intent, x: number, z: number, amount = 1): void {
   intent.moveZ = dir.z * amount;
 }
 
+/** The next point to walk to on the way to `goal`. Planning is cached and refreshed a few times a second. */
+function routeStep(state: MatchState, unit: Unit, goal: Vec2): Vec2 {
+  const ai = unit.ai;
+  const moved = !ai.navGoal || distanceXZ(ai.navGoal, goal) > NAV.replanGoalShift;
+  if (moved || !ai.navPoint || state.time >= ai.navTimer || distanceXZ(unit.pos, ai.navPoint) < NAV.cellSize) {
+    ai.navGoal = { x: goal.x, z: goal.z };
+    ai.navPoint = navigate(state.settings.map, unit.pos, goal);
+    ai.navTimer = state.time + NAV.replanInterval;
+  }
+  const planned = ai.navPoint;
+  // Heading straight for the goal: follow it exactly, even as it moves a little.
+  return ai.navGoal && distanceXZ(planned, ai.navGoal) < 1e-6 ? goal : planned;
+}
+
 /** Walks towards a point, along the streets when buildings are in the way. */
 function walkTowards(state: MatchState, unit: Unit, point: Vec2, amount = 1): void {
-  const waypoint = navigate(state.settings.map, unit.pos, point);
+  const waypoint = routeStep(state, unit, point);
   setMove(unit.intent, waypoint.x - unit.pos.x, waypoint.z - unit.pos.z, amount);
 }
 
@@ -60,6 +75,18 @@ function faceTowards(unit: Unit, point: Vec2): void {
 function isFacing(unit: Unit, point: Vec2): boolean {
   const wanted = dirToYaw(point.x - unit.pos.x, point.z - unit.pos.z);
   return Math.abs(wrapAngle(wanted - unit.yaw)) < SWING_FACING_TOLERANCE;
+}
+
+/** The enemy picked at the last think, if still standing and within `radius`. Cheap enough to ask every step. */
+function watched(state: MatchState, unit: Unit, radius: number): Unit | null {
+  const enemy = getUnit(state, unit.ai.watchId);
+  if (!enemy || !canBeTargeted(enemy)) return null;
+  return distanceXZ(unit.pos, enemy.pos) <= radius ? enemy : null;
+}
+
+/** In the city only what is in sight counts; elsewhere everyone sees everyone. */
+function enemyInSight(state: MatchState, unit: Unit, maxDistance: number, from: Vec2 = unit.pos): Unit | null {
+  return fogOfWar(state) ? nearestVisibleEnemy(state, unit, maxDistance, from) : nearestEnemy(state, unit, maxDistance, from);
 }
 
 /** Medium bots: raise the shield against an enemy within reach who is winding up a strike. */
@@ -102,8 +129,10 @@ function nearestEnemyArcherWithin(state: MatchState, unit: Unit, radius: number)
   return best;
 }
 
-function chooseTarget(state: MatchState, unit: Unit, order: GroupOrder, slot: Vec2): Unit | null {
+/** `seen` is the nearest enemy in sight (looked up once per think); null if there is none. */
+function chooseTarget(state: MatchState, unit: Unit, order: GroupOrder, slot: Vec2, seen: Unit | null): Unit | null {
   const isArcher = unit.kind === 'archer';
+  const seenWithin = (radius: number): Unit | null => (seen && distanceXZ(unit.pos, seen.pos) <= radius ? seen : null);
   switch (order.order) {
     case 'attack':
       // Cavalry rides around the melee to cut down the archers behind it.
@@ -111,22 +140,26 @@ function chooseTarget(state: MatchState, unit: Unit, order: GroupOrder, slot: Ve
         const archer = nearestEnemyArcherWithin(state, unit, AI.riderFlankRadius);
         if (archer) return archer;
       }
-      return nearestEnemy(state, unit, AI.reactionRadius) ?? nearestEnemy(state, unit, Infinity);
+      if (fogOfWar(state)) return seen;
+      return seen ?? nearestEnemy(state, unit, Infinity);
     case 'follow': {
       const radius = isArcher ? ARCHER.ranged.range : AI.reactionRadius;
-      const enemy = nearestEnemy(state, unit, radius);
+      const enemy = seenWithin(radius);
       return enemy && distanceXZ(enemy.pos, slot) < AI.followLeash ? enemy : null;
     }
     case 'hold':
       return isArcher
-        ? nearestEnemy(state, unit, ARCHER.ranged.range)
-        : nearestEnemy(state, unit, AI.holdEngageRadius, slot);
+        ? enemyInSight(state, unit, ARCHER.ranged.range)
+        : enemyInSight(state, unit, AI.holdEngageRadius, slot);
   }
 }
 
 /** Periodic decision making: pick a target, decide on shields, look for a horse. */
 export function thinkSoldier(state: MatchState, unit: Unit, order: GroupOrder, slot: Vec2): void {
-  const target = chooseTarget(state, unit, order, slot);
+  // One look around per think: report it, keep an eye on it, and pick a target from it.
+  const seen = fogOfWar(state) ? lookAround(state, unit) : nearestEnemy(state, unit, PERCEPTION.sightRange);
+  unit.ai.watchId = seen && distanceXZ(unit.pos, seen.pos) <= AI.watchRadius ? seen.id : null;
+  const target = chooseTarget(state, unit, order, slot, seen);
   unit.ai.targetId = target?.id ?? null;
   updateShieldDecision(state, unit, order, target);
   if (unit.kind === 'rider' && !isMounted(unit)) {
@@ -183,7 +216,7 @@ function archerIntent(state: MatchState, unit: Unit, target: Unit, order: GroupO
     unit.intent.attack = isFacing(unit, target.pos);
     return;
   }
-  const closest = nearestEnemy(state, unit, AI.archerMinDistance) ?? target;
+  const closest = enemyInSight(state, unit, AI.archerMinDistance) ?? target;
   const closestDistance = distanceXZ(unit.pos, closest.pos);
   const mayRetreat = order.order !== 'hold' && unit.action === 'none';
   const wantsDistance = closestDistance < AI.archerPanicDistance || (closestDistance < AI.archerMinDistance && unit.cooldownTimer > 0);
@@ -201,7 +234,7 @@ function archerIntent(state: MatchState, unit: Unit, target: Unit, order: GroupO
 
 /** Where a soldier standing in formation looks: holding soldiers keep their side, others watch the nearest enemy. */
 function idleFacing(state: MatchState, unit: Unit, slot: FormationSlot, order: GroupOrder): number {
-  const enemy = nearestEnemy(state, unit, AI.lookAtEnemyRadius);
+  const enemy = watched(state, unit, AI.lookAtEnemyRadius);
   if (!enemy) return slot.yaw;
   if (order.order === 'hold' && !withinHoldArc(unit, slot, enemy)) return slot.yaw;
   return dirToYaw(enemy.pos.x - unit.pos.x, enemy.pos.z - unit.pos.z);
@@ -217,7 +250,7 @@ function withinHoldArc(unit: Unit, slot: FormationSlot, enemy: Unit): boolean {
  * the way (they have right of way, so pushing into them would leave the soldier stuck).
  */
 function walkToSlot(state: MatchState, unit: Unit, slot: Vec2, distance: number): void {
-  const waypoint = navigate(state.settings.map, unit.pos, slot);
+  const waypoint = routeStep(state, unit, slot);
   const dir = normalizeXZ(waypoint.x - unit.pos.x, waypoint.z - unit.pos.z);
   const leader = leaderBody(state, unit);
   const amount = Math.min(1, distance / ARRIVE_SLOWDOWN_DISTANCE);
@@ -262,7 +295,7 @@ function moveToSlot(state: MatchState, unit: Unit, slot: FormationSlot, order: G
 
 function shieldIntent(state: MatchState, unit: Unit): void {
   unit.intent.shield = true;
-  const threat = findMeleeThreat(state, unit) ?? nearestEnemy(state, unit, AI.shieldWallArcherRadius);
+  const threat = findMeleeThreat(state, unit) ?? watched(state, unit, AI.shieldWallArcherRadius);
   if (threat) faceTowards(unit, threat.pos);
 }
 
@@ -319,7 +352,7 @@ export function soldierIntent(state: MatchState, unit: Unit, order: GroupOrder, 
  * ring keeps facing outwards. Returns false when no enemy is near: then they just stand in place.
  */
 function holdLineIntent(state: MatchState, unit: Unit, slot: FormationSlot, target: Unit | null): boolean {
-  const enemy = target ?? nearestEnemy(state, unit, AI.shieldWallRadius);
+  const enemy = target ?? watched(state, unit, AI.shieldWallRadius);
   if (!enemy) return false;
   const stats = meleeStatsFor(unit);
   const toSlot = distanceXZ(unit.pos, slot);

@@ -13,25 +13,30 @@ Inspiration: Shieldwall (combat and shields), Bannerlord (army and commander), F
 3. The army fights on its own. You strike with your own sword.
 4. Win by wiping out all enemies.
 
-## 3. Controls (proposal, to be tested)
+## 3. Controls
 
 | Input | Action |
 |---|---|
 | WASD | Move |
-| Space | Jump |
+| Space | Jump (the horse jumps too) |
 | Left click | Strike |
 | Right click (held) | Shield up |
-| Keys 1–3 | Orders (Follow, Hold, Attack) |
-| Keys 6–9 | Who hears orders: whole army, swordsmen, archers, cavalry |
-| Q / E | Switch weapon (sword, spear, bow) / mount or dismount |
+| 1 / 3 | Follow / Attack |
+| 2 (tap) | Hold in the current formation |
+| 2 (keep down) | Formation wheel: point the mouse at Long line, Two lines or Circle around me |
+| 4 | Split the army in two; press again to pick which half hears you (A, B, whole army) |
+| 5 | Banquet (once per battle) |
+| 6 | Rally speech |
+| Q / E | Sword or spear / mount or dismount |
+| V | Overview camera |
 
-The orders are `Follow`, `Hold` (form up around the commander) and `Attack`. Armies are always split into swordsmen, archers and cavalry. See `DECISIONS.md` for how the controls evolved after playtesting.
+See `DECISIONS.md` for how the controls evolved after playtesting.
 
 ## 4. Character and commander
 
-- The player is the commander and has 100 HP.
+- The player is the commander (300 HP), as tall as their soldiers, and starts on a stocky war horse. A charge on horseback breaks a shield wall.
 - Has a health bar above their own character.
-- Has a sword in v1.
+- Carries sword and spear (`Q`) and a shield. Can give a rousing speech and call a banquet.
 - If the commander dies, they respawn after about 10 seconds. They patch themselves up.
 
 ## 5. Army
@@ -41,15 +46,11 @@ The orders are `Follow`, `Hold` (form up around the commander) and `Attack`. Arm
 - Each unit has 100 HP.
 - There is no health bar for the whole army. You see the enemy's numbers by looking at them.
 
-### Unit types in v1
+### Legionaries
 
-| Type | Equipment | Description |
-|---|---|---|
-| Swordsman | Sword + shield | Blocks with the shield, strikes with the sword |
-| Archer | Bow and arrow | Shoots from a distance |
-| Rider | Horse + spear | Can mount and dismount the horse. The horse has its own HP and can die. If the horse dies, the rider falls off |
+For now every army is Roman legionaries (archers and cavalry are parked in the code, see `DECISIONS.md`). They march and hold with the spear behind big square shields that touch in a held line, and draw the sword to attack. Hold formations: long line, two lines, circle around the commander. The army can be split in two halves.
 
-All unit types are in v1.
+After a **banquet** the whole army is drunk for the rest of the battle: they sway, stumble and cannot stand in a straight line, but they are very tough, hit hard and barge through enemy formations.
 
 ## 6. Physics and tone
 
@@ -86,9 +87,8 @@ Locally there are at most 4 armies in total. Bots follow the same rules as the p
 
 ## 11. Map
 
-- Three battlefields in v1 (Meadow, Desert, Rocky Highlands with a walled village), 220 × 220 meters, picked or random. (Originally one map of about 150 × 150 m; see `DECISIONS.md`.)
-- Open terrain, no castles and no villages.
-- More maps come later.
+- Three battlefields, 220 × 220 m: **Green Meadow** (open field with a farmstead), **Castle Siege** (one army holds the only gate, everyone else attacks) and **The City** (Roman street grid with avenues, alleys and a forum; houses block sight, so soldiers only fight what they see and search the streets when attacking blind).
+- Bot armies have no commander; they form up, advance in formation, hold a spear wall and then charge.
 
 ## 12. HUD
 

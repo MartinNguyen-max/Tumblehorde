@@ -2,6 +2,7 @@ import { finishFeast } from './banquet.ts';
 import { ARMY, BANQUET, MOVEMENT, RALLY } from './config.ts';
 import { assignHoldSlots, followCenter, formationSlots, holdSlots, supportSlots, type FormationSlot } from './formation.ts';
 import { navGrid, navigate, nearestWalkable } from './navigation.ts';
+import { attackGoal } from './perception.ts';
 import { clamp, dirToYaw, distanceXZ, normalizeXZ, turnTowards, type Vec2 } from './math.ts';
 import { toggleMount } from './mounts.ts';
 import type { Army, Command, EntityId, Formation, GroupOrder, MatchState, Order, Unit, UnitKind } from './types.ts';
@@ -97,6 +98,8 @@ export function issueOrder(state: MatchState, army: Army, order: Order, group: n
   if (group !== null && (group < 0 || group >= army.groupCount)) return false;
   // An order breaks up the party; the wine has done its work by then.
   finishFeast(state, army);
+  // An order to the whole army brings split halves back together.
+  if (group === null && isSplitInHalves(state, army)) mergeHalves(state, army);
   for (let g = 0; g < army.groupCount; g++) {
     if (group === null || group === g) army.groupOrders[g] = orderFor(state, army, order, g, leaderless);
   }
@@ -145,11 +148,57 @@ export function rally(state: MatchState, army: Army): boolean {
   return true;
 }
 
-/** Picks the formation for Hold and forms it up at once. */
-export function setFormation(state: MatchState, army: Army, formation: Formation): boolean {
+/** Picks the formation for Hold and forms it up at once, for one group or the whole army. */
+export function setFormation(state: MatchState, army: Army, formation: Formation, group: number | null = null): boolean {
   if (!canGiveOrders(state, army)) return false;
   army.formation = formation;
-  return issueOrder(state, army, 'hold', null);
+  return issueOrder(state, army, 'hold', group);
+}
+
+/** All swordsmen: the army can be split into two halves to come at the enemy from two sides. */
+function isLegion(state: MatchState, army: Army): boolean {
+  return livingSoldiers(state, army).every((s) => s.kind === 'swordsman');
+}
+
+export const HALVES = 2;
+
+export function isSplitInHalves(state: MatchState, army: Army): boolean {
+  return army.groupCount === HALVES && isLegion(state, army);
+}
+
+/**
+ * Splits the army into a left and a right half, as seen from the commander. Both halves keep
+ * the current order until told otherwise.
+ */
+export function splitInHalves(state: MatchState, army: Army): boolean {
+  if (!canGiveOrders(state, army) || !isLegion(state, army)) return false;
+  const commander = getUnit(state, army.commanderId);
+  if (!commander) return false;
+  const forward = { x: Math.sin(commander.yaw), z: Math.cos(commander.yaw) };
+  const side = (u: Unit): number => (u.pos.x - commander.pos.x) * forward.z - (u.pos.z - commander.pos.z) * forward.x;
+  const soldiers = livingSoldiers(state, army).sort((a, b) => side(a) - side(b) || a.id - b.id);
+  const half = Math.ceil(soldiers.length / HALVES);
+  soldiers.forEach((s, i) => (s.group = i < half ? 0 : 1));
+  for (const id of army.soldierIds) {
+    const unit = state.units[id];
+    if (unit && !unit.alive) unit.group = 0;
+  }
+  const current = army.groupOrders[0] ?? orderFor(state, army, 'hold', 0, false);
+  army.groupCount = HALVES;
+  army.groupOrders = [{ ...current, anchor: { ...current.anchor } }, { ...current, anchor: { ...current.anchor } }];
+  state.events.push({ type: 'split', armyId: army.id, groupCount: HALVES });
+  return true;
+}
+
+function mergeHalves(state: MatchState, army: Army): void {
+  const current = army.groupOrders[0];
+  army.groupCount = ARMY.maxGroups;
+  for (const id of army.soldierIds) {
+    const unit = state.units[id];
+    if (unit) unit.group = groupForKind(unit.kind, ARMY.maxGroups);
+  }
+  army.groupOrders = Array.from({ length: ARMY.maxGroups }, () => (current ? { ...current, anchor: { ...current.anchor } } : orderFor(state, army, 'hold', 0, false)));
+  state.events.push({ type: 'split', armyId: army.id, groupCount: 1 });
 }
 
 function canActLeaderless(state: MatchState, army: Army): boolean {
@@ -178,9 +227,10 @@ export function applyCommand(state: MatchState, armyId: number, command: Command
     case 'order':
       return issueOrder(state, army, command.order, command.group);
     case 'split':
+      if (command.groupCount === HALVES && isLegion(state, army)) return splitInHalves(state, army);
       return splitArmy(state, army, command.groupCount);
     case 'formation':
-      return setFormation(state, army, command.formation);
+      return setFormation(state, army, command.formation, command.group ?? null);
     case 'banquet':
       return startBanquet(state, army);
     case 'rally':
@@ -221,7 +271,10 @@ export function formationTargets(state: MatchState, army: Army): Map<EntityId, F
     if (!groupOrder) continue;
     const members = groupMembers(state, army, g);
     if (members.length === 0) continue;
-    for (const [id, slot] of groupSlots(groupOrder, g, army.groupCount, members)) targets.set(id, walkableSlot(state, slot));
+    // Attacking blind in the city: head for the last sighting, or search the streets together.
+    const goal = groupOrder.order === 'attack' ? attackGoal(state, army) : null;
+    const effective = goal ? { ...groupOrder, anchor: goal } : groupOrder;
+    for (const [id, slot] of groupSlots(effective, g, army.groupCount, members)) targets.set(id, walkableSlot(state, slot));
   }
   return targets;
 }
@@ -236,8 +289,8 @@ function walkableSlot(state: MatchState, slot: FormationSlot): FormationSlot {
 function groupSlots(groupOrder: GroupOrder, group: number, groupCount: number, members: readonly Unit[]): Map<EntityId, FormationSlot> {
   const { anchor, anchorYaw: yaw } = groupOrder;
   const result = new Map<EntityId, FormationSlot>();
-  // The main group (all swordsmen) holds in the chosen formation, everyone in their own place.
-  if (groupOrder.order === 'hold' && group === 0) {
+  // Swordsmen hold in the chosen formation, everyone in their own place.
+  if (groupOrder.order === 'hold' && members.every((m) => m.kind === 'swordsman')) {
     const slots = holdSlots(groupOrder.formation, members.length, anchor, yaw, groupOrder.aroundCommander);
     const places = assignHoldSlots(groupOrder.formation, members.map((m) => m.pos), anchor, yaw);
     members.forEach((m, i) => {

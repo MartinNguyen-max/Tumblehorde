@@ -27,6 +27,11 @@ horseback), Hold forms up around the commander, `6`–`9` select who hears order
 (form up → march → shield wall standoff → engage → regroup), leaderless armies run themselves,
 much longer battles. See `DECISIONS.md` and `BALANCE.md` for details.
 
+After the second round of playtests (2026-11-26): Roman legion only (archers, cavalry and the
+bow parked), formations from a wheel on `2`, spear on hold and sword on attack, splitting the army
+in two, banquet and rally speech, chunky box soldiers with a stocky horse, bot armies without a
+commander, castle siege and city maps with grid navigation and fog of war in the city.
+
 Next up after v1: playtesting and balance tuning, sound, more maps, more bot
 difficulty levels (see "Out of scope for v1").
 
