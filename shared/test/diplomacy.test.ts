@@ -99,6 +99,30 @@ describe('the spear volley', () => {
     expect(mine.every((s) => s.weapon === 'sword')).toBe(true);
   });
 
+  it('punches through raised shields and sticks in whoever it hits', () => {
+    const state = twoPlayers();
+    place(commanderOf(state, 0), -10, 0, Math.PI / 2);
+    soldiersOf(state, 0).forEach((s, i) => place(s, -8, -5 + i * 0.9, Math.PI / 2));
+    const foes = soldiersOf(state, 1).slice(0, 6);
+    foes.forEach((f, i) => {
+      place(f, 10, i * 0.9, -Math.PI / 2);
+      f.shieldUp = true;
+      f.intent.shield = true;
+    });
+    applyCommand(state, 0, { type: 'volley', at: { x: 10, y: 0, z: 2 }, group: null });
+    let stuck = 0;
+    let blockedDamage = 0;
+    for (let t = 0; t < 3; t += DT) {
+      stepMatch(state, new Map([[0, neutralInput(Math.PI / 2)]]), DT);
+      for (const e of state.events) {
+        if (e.type === 'pilumStuck') stuck++;
+        if (e.type === 'hit' && e.blocked) blockedDamage += e.damage;
+      }
+    }
+    expect(stuck).toBeGreaterThan(0);
+    expect(blockedDamage).toBeGreaterThan(VOLLEY.damage * VOLLEY.shieldPierce);
+  });
+
   it('only throws at what is in range', () => {
     const state = twoPlayers();
     place(commanderOf(state, 0), -60, 0);

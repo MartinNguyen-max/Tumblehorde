@@ -104,6 +104,8 @@ export interface MeleeStats {
   arcHalfAngle: number;
   maxTargets: number;
   knockback: KnockbackStats;
+  /** The shove lands even on a raised shield (spear thrusts keep attackers off the line). */
+  shovesThroughShield?: boolean;
 }
 
 export interface RangedStats {
@@ -192,16 +194,19 @@ export const SWORDSMAN = {
     maxTargets: 1,
     knockback: SWORD_KNOCKBACK,
   } satisfies MeleeStats,
-  /** Follow and Hold: the spear, thrust over the shield. Longer reach, keeps attackers off the line. */
+  /**
+   * Follow and Hold: the spear, thrust over the shield. Longer reach and little damage, but a
+   * big shove that lands even on a raised shield: a held spear line keeps attackers off it.
+   */
   spear: {
-    damage: 20,
+    damage: 14,
     range: 2.7,
-    cooldown: 1.2,
+    cooldown: 1.1,
     windup: 0.3,
     arcHalfAngle: 35 * DEG,
     maxTargets: 1,
-    // A held spear line shoves attackers back hard: very defensive.
-    knockback: { strength: 6.5, stun: 0.6 },
+    knockback: { strength: 9, stun: 0.7 },
+    shovesThroughShield: true,
   } satisfies MeleeStats,
   /** Time to swap spear and sword when the order changes. */
   weaponSwapTime: 0.5,
@@ -285,6 +290,8 @@ export const SHIELD = {
   /** Roman shield wall: a raised shield next to another raised shield blocks even more and does not budge. */
   wallBlockFraction: 0.97,
   wallNeighborDistance: 1.8,
+  /** Someone braced behind a raised shield weighs this much in a crowd: hard to push into. */
+  bracedMass: 3,
 } as const;
 
 export const MELEE = {
@@ -477,6 +484,16 @@ export const BOT = {
   engageDistance: 14,
   /** How long a bot waits in a standoff before it charges anyway. */
   standoffPatience: 12,
+  /** Phalanx bots step their formation forward this far at a time... */
+  phalanxStep: 3,
+  /** ...until their middle is this close to the enemy's: then they hold and thrust... */
+  phalanxContact: 4,
+  /** ...and if the enemy line still stands after this long, they draw swords and go in. */
+  phalanxGrind: 15,
+  /** Patient bots only leave their shield wall when the enemy is this close... */
+  patientEngageDistance: 9,
+  /** ...or after waiting this long. */
+  patientMaxWait: 50,
   /** A bot army without a commander marches by holding a spot this far ahead... */
   advanceStep: 10,
   /** ...and moving it on this often, so the formation keeps walking. */
@@ -552,6 +569,8 @@ export const VOLLEY = {
   speed: 22,
   damage: 50,
   knockback: { strength: 7, stun: 1 } satisfies KnockbackStats,
+  /** A pilum punches through a raised shield: this share of its damage still lands. */
+  shieldPierce: 0.6,
   windup: 0.45,
   /** Soldiers throw one after another within this many seconds. */
   maxDelay: 0.6,

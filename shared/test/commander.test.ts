@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BOT, COMMANDER, HORSE, MATCH, SHIELD, SWORDSMAN } from '../src/config.ts';
 import { applyHit, killUnit, startMelee } from '../src/combat.ts';
-import { chooseStance } from '../src/bot.ts';
+import { chooseStance, styledStance } from '../src/bot.ts';
 import { neutralInput } from '../src/input.ts';
 import { progressActions, stepMatch } from '../src/match.ts';
 import { distanceXZ } from '../src/math.ts';
@@ -117,6 +117,23 @@ describe('bot strategy', () => {
     expect(army.groupOrders[0]?.order).toBe('hold');
     expect(soldiersOf(state, 1).every((u) => u.weapon === 'spear')).toBe(true);
     expect(enemyStart).toHaveLength(army.soldierIds.length);
+  });
+
+  it('fights in its own style: chargers skip the standoff, a phalanx pushes in formation, the patient wait', () => {
+    const state = newMatch();
+    const army = state.armies[1]!;
+    state.time = MATCH.prepareTime + 1;
+    const near = BOT.marchDistance - 5;
+    army.bot.style = 'charge';
+    expect(styledStance(state, army, 'standoff', near)).toBe('engage');
+    army.bot.style = 'phalanx';
+    expect(styledStance(state, army, 'engage', near)).toBe('push');
+    army.bot.contactTimer = BOT.phalanxGrind + 1;
+    expect(styledStance(state, army, 'engage', near)).toBe('engage');
+    army.bot.style = 'patient';
+    expect(styledStance(state, army, 'engage', near)).toBe('wait');
+    expect(styledStance(state, army, 'engage', BOT.patientEngageDistance - 1)).toBe('engage');
+    expect(styledStance(state, army, 'regroup', near)).toBe('regroup');
   });
 
   it('does not rush in at the start', () => {

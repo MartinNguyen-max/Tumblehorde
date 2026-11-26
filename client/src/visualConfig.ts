@@ -258,6 +258,8 @@ export const EFFECTS = {
   corpseSinkAfter: 25,
   corpseSinkSeconds: 3,
   stuckArrowLifetime: 12,
+  /** How deep a pilum sinks into whatever it hits. */
+  pilumEmbedDepth: 0.35,
   maxStuckArrows: 300,
   particleCount: 240,
   deathSpinSpeed: 7,

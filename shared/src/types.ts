@@ -112,7 +112,19 @@ export interface ArmyStats {
   commanderDeaths: number;
 }
 
+/**
+ * How a bot army likes to fight, picked at random each battle (and again after it regroups):
+ * - steady: form up, stand off behind a spear wall, then charge with swords;
+ * - charge: no waiting, straight at you with swords;
+ * - phalanx: push forward in formation with spears and never break ranks;
+ * - patient: wait behind a shield wall for you to come, and only then fight.
+ */
+export type BotStyle = 'steady' | 'charge' | 'phalanx' | 'patient';
+
 export interface BotBrain {
+  style: BotStyle;
+  /** Seconds a phalanx has stood at the enemy's line. */
+  contactTimer: number;
   orderTimer: number;
   thinkTimer: number;
   /** Seconds spent facing the enemy without engaging. */
@@ -204,6 +216,8 @@ export type SimEvent =
   | { type: 'swing'; unitId: EntityId }
   | { type: 'arrowFired'; arrowId: EntityId; shooterId: EntityId }
   | { type: 'arrowLanded'; pos: Vec3; dir: Vec3; kind: ProjectileKind }
+  /** A thrown spear stuck in a unit (or its shield): it goes where they go. */
+  | { type: 'pilumStuck'; targetId: EntityId; pos: Vec3; dir: Vec3 }
   | { type: 'respawn'; unitId: EntityId }
   | { type: 'mount'; riderId: EntityId; horseId: EntityId }
   | { type: 'dismount'; riderId: EntityId; horseId: EntityId; thrown: boolean }

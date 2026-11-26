@@ -4,7 +4,8 @@ import { dirToYaw, distanceXZ, normalizeXZ, type Vec2 } from './math.ts';
 import { advanceArmy, armyCenter, centroid, holdAt, issueOrder, livingSoldiers, splitArmy } from './orders.ts';
 import { fogOfWar } from './perception.ts';
 import { armySpawn, gatePost, isDefender } from './spawn.ts';
-import type { Army, MatchState, Order, Unit } from './types.ts';
+import type { Army, BotStyle, MatchState, Order, Unit } from './types.ts';
+import { nextRandom } from './random.ts';
 import { armiesHostile, canBeTargeted, getUnit, setWeapon } from './units.ts';
 
 /**
@@ -14,7 +15,34 @@ import { armiesHostile, canBeTargeted, getUnit, setWeapon } from './units.ts';
  * - engage: close, or tired of waiting; swords charge, riders flank, archers keep shooting.
  * - regroup: badly outnumbered; fall back behind the commander.
  */
-export type BotStance = 'form' | 'march' | 'standoff' | 'engage' | 'regroup';
+export type BotStance = 'form' | 'march' | 'standoff' | 'engage' | 'regroup' | 'wait' | 'push';
+
+const BOT_STYLES: readonly BotStyle[] = ['steady', 'charge', 'phalanx', 'patient'];
+
+export function randomBotStyle(state: MatchState): BotStyle {
+  return BOT_STYLES[Math.floor(nextRandom(state.rng) * BOT_STYLES.length)] ?? 'steady';
+}
+
+/**
+ * The army's style bends the plain stance: chargers skip the standoff, a phalanx pushes forward
+ * in formation instead of breaking ranks, the patient wait behind their shields for the enemy.
+ */
+export function styledStance(state: MatchState, army: Army, stance: BotStance, distance: number): BotStance {
+  if (stance === 'form' || stance === 'regroup') return stance;
+  switch (army.bot.style) {
+    case 'steady':
+      return stance;
+    case 'charge':
+      return stance === 'standoff' ? 'engage' : stance;
+    case 'phalanx':
+      if (stance === 'march') return 'march';
+      return army.bot.contactTimer > BOT.phalanxGrind ? 'engage' : 'push';
+    case 'patient': {
+      const waitedLongEnough = state.time - MATCH.prepareTime > BOT.patientMaxWait;
+      return distance < BOT.patientEngageDistance || waitedLongEnough ? 'engage' : 'wait';
+    }
+  }
+}
 
 /** Swords, archers and riders each get their own orders (see `groupForKind`). */
 const BOT_GROUPS = 3;
@@ -29,6 +57,8 @@ export function stanceOrders(stance: Exclude<BotStance, 'form'>, hasMelee: boole
     case 'march':
       return leaderless ? ['hold', 'hold', 'hold'] : ['follow', 'follow', 'follow'];
     case 'standoff':
+    case 'wait':
+    case 'push':
       return ['hold', 'hold', 'hold'];
     case 'engage':
       // Archers keep shooting from behind the line, unless there is no line left to hide behind.
@@ -68,8 +98,15 @@ export function chooseStance(state: MatchState, army: Army, distance: number, ow
   return 'engage';
 }
 
-function applyStance(state: MatchState, army: Army, stance: BotStance, leaderless: boolean, enemyCenter: Vec2): boolean {
+/** A phalanx steps its formation towards the enemy, then stands its ground at spear's reach. */
+function pushForward(state: MatchState, army: Army, enemyCenter: Vec2, distance: number): boolean {
+  if (distance <= BOT.phalanxContact) return false;
+  return advanceArmy(state, army, enemyCenter, Math.min(BOT.phalanxStep, distance - BOT.phalanxContact));
+}
+
+function applyStance(state: MatchState, army: Army, stance: BotStance, leaderless: boolean, enemyCenter: Vec2, distance: number): boolean {
   if (stance === 'form') return false;
+  if (stance === 'push') return pushForward(state, army, enemyCenter, distance);
   if (leaderless && stance === 'march') return advanceArmy(state, army, enemyCenter, BOT.advanceStep);
   let changed = false;
   if (army.groupCount !== BOT_GROUPS) changed = splitArmy(state, army, BOT_GROUPS, leaderless) || changed;
@@ -95,7 +132,9 @@ function commanderGoal(state: MatchState, army: Army, commander: Unit, stance: B
       // Fall back to where the army started, then hold there.
       return armySpawn(state.settings, army.id).position;
     case 'standoff':
-    case 'engage': {
+    case 'engage':
+    case 'wait':
+    case 'push': {
       // Wait until the troops stop following; otherwise they chase the commander backwards.
       if (army.groupOrders.some((g) => g.order === 'follow')) return null;
       const front = centroid(livingSoldiers(state, army).filter((s) => s.kind === 'swordsman')) ?? armyCenter(state, army) ?? commander.pos;
@@ -196,10 +235,16 @@ function planArmy(state: MatchState, army: Army, dt: number, leaderless: boolean
     return null;
   }
   const distance = distanceXZ(own, enemy.center);
-  const stance = chooseStance(state, army, distance, livingSoldiers(state, army).length, enemy.soldiers);
-  army.bot.standoffTimer = stance === 'standoff' ? army.bot.standoffTimer + dt : stance === 'march' ? 0 : army.bot.standoffTimer;
-  if (army.bot.orderTimer <= 0 && applyStance(state, army, stance, leaderless, enemy.center)) {
-    army.bot.orderTimer = leaderless && stance === 'march' ? BOT.advanceInterval : BOT.orderInterval;
+  const plain = chooseStance(state, army, distance, livingSoldiers(state, army).length, enemy.soldiers);
+  army.bot.standoffTimer = plain === 'standoff' ? army.bot.standoffTimer + dt : plain === 'march' ? 0 : army.bot.standoffTimer;
+  // A beaten army that falls back may come back with a different idea.
+  if (plain === 'regroup' && army.isBot && army.bot.orderTimer <= 0) army.bot.style = randomBotStyle(state);
+  const atTheLine = army.bot.style === 'phalanx' && distance <= BOT.phalanxContact + 1;
+  army.bot.contactTimer = atTheLine ? army.bot.contactTimer + dt : 0;
+  const stance = styledStance(state, army, plain, distance);
+  if (army.bot.orderTimer <= 0 && applyStance(state, army, stance, leaderless, enemy.center, distance)) {
+    const walking = (leaderless && stance === 'march') || stance === 'push';
+    army.bot.orderTimer = walking ? BOT.advanceInterval : BOT.orderInterval;
   }
   return { stance, enemy };
 }

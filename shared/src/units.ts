@@ -6,6 +6,7 @@ import {
   COMMANDER_WEAPONS,
   HORSE,
   RIDER,
+  SHIELD,
   SWORDSMAN,
   type MeleeStats,
   type RangedStats,
@@ -106,7 +107,8 @@ export function bodyRadius(unit: Unit): number {
 
 export function bodyMass(unit: Unit): number {
   if (isHorse(unit)) return BODY.horseMass;
-  return unit.drunk ? BANQUET.mass : BODY.personMass;
+  if (unit.drunk) return BANQUET.mass;
+  return unit.shieldUp && !isMounted(unit) ? SHIELD.bracedMass : BODY.personMass;
 }
 
 export function meleeStatsForKind(kind: UnitKind, mounted: boolean, weapon: Weapon = defaultWeapon(kind)): MeleeStats | null {

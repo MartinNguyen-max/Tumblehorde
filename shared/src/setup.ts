@@ -3,6 +3,7 @@ import { ARMY, FORMATION, MAP, BODY } from './config.ts';
 import { formationSlots, holdSlots } from './formation.ts';
 import { centroid, groupForKind } from './orders.ts';
 import { yawToDir, type Vec2, type Vec3 } from './math.ts';
+import { randomBotStyle } from './bot.ts';
 import { createRandom } from './random.ts';
 import { nearestWalkable } from './navigation.ts';
 import { armySpawn } from './spawn.ts';
@@ -137,7 +138,7 @@ function createArmy(
     forfeited: false,
     disconnectTimer: null,
     stats: { kills: 0, deaths: 0, commanderDeaths: 0 },
-    bot: { orderTimer: 0, thinkTimer: 0, standoffTimer: 0 },
+    bot: { style: isBot ? randomBotStyle(state) : 'steady', contactTimer: 0, orderTimer: 0, thinkTimer: 0, standoffTimer: 0 },
     startingSoldiers: soldierIds.length,
   };
 }

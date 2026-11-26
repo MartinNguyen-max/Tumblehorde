@@ -4,6 +4,7 @@ import { applyHit, isBlockingFrom, resolveMelee, startMelee } from '../src/comba
 import { progressActions, stepMatch, updateWeapons } from '../src/match.ts';
 import { neutralInput } from '../src/input.ts';
 import type { MatchState, Unit } from '../src/types.ts';
+import { bodyMass } from '../src/units.ts';
 import { commanderOf, firstOfKind, newMatch, place } from './helpers.ts';
 
 function duel(): { state: MatchState; me: Unit; foe: Unit } {
@@ -112,5 +113,25 @@ describe('applyHit', () => {
     applyHit(state, foe, { attacker: me, armyId: 0, from: me.pos, pushDir: { x: 0, z: 1 } }, 1, SWORDSMAN.melee.knockback);
     expect(foe.action).toBe('none');
     resolveMelee(state, me);
+  });
+});
+
+describe('held spears', () => {
+  it('shove an attacker back even through his raised shield, but barely hurt', () => {
+    const state = newMatch();
+    const spearman = place(firstOfKind(state, 0, 'swordsman'), 0, 0, 0);
+    spearman.weapon = 'spear';
+    const foe = place(firstOfKind(state, 1, 'swordsman'), 0, 2, Math.PI);
+    foe.shieldUp = true;
+    resolveMelee(state, spearman);
+    expect(foe.maxHp - foe.hp).toBeLessThan(SWORDSMAN.spear.damage);
+    expect(foe.vel.z).toBeGreaterThan(SWORDSMAN.spear.knockback.strength * 0.9);
+  });
+
+  it('a braced shield is hard to push into', () => {
+    const state = newMatch();
+    const braced = place(firstOfKind(state, 0, 'swordsman'), 0, 0, 0);
+    braced.shieldUp = true;
+    expect(bodyMass(braced)).toBe(SHIELD.bracedMass);
   });
 });

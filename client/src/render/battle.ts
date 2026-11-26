@@ -111,6 +111,11 @@ export class BattleRenderer {
           }
           break;
         }
+        case 'pilumStuck': {
+          const rig = this.rigs.get(event.targetId);
+          if (rig) this.effects.stickInto(rig.root, event.pos, event.dir, now);
+          break;
+        }
         case 'splash': {
           const unit = units?.[event.unitId];
           if (unit) this.effects.burst('splash', unit.x, unit.y + 0.6, unit.z, 12);

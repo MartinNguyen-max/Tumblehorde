@@ -106,6 +106,20 @@ export class Effects {
     }
   }
 
+  /**
+   * A spear stuck in someone (or their shield): it is placed where it hit, then parented to them
+   * so it rides along, tumbles with the body if they fall, and is cleaned up after a while.
+   */
+  stickInto(holder: TransformNode, pos: Vec3, dir: Vec3, now: number): void {
+    const node = this.makeArrow('pilum');
+    const back = EFFECTS.pilumEmbedDepth - ARROW_TIP_OFFSET;
+    node.position.set(pos.x + dir.x * back, pos.y + dir.y * back, pos.z + dir.z * back);
+    node.rotation.set(arrowPitch(dir.x, dir.y, dir.z), arrowYaw(dir.x, dir.z), 0);
+    node.setParent(holder);
+    this.stuck.push({ node, bornAt: now });
+    if (this.stuck.length > EFFECTS.maxStuckArrows) this.stuck.shift()?.node.dispose();
+  }
+
   stickArrow(pos: Vec3, dir: Vec3, kind: ProjectileKind, now: number): void {
     const node = this.makeArrow(kind);
     // The tip sits ARROW_TIP_OFFSET ahead of the node; bury it a little below the surface.

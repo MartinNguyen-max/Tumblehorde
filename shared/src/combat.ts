@@ -24,6 +24,10 @@ export interface HitSource {
   pushDir: Vec2;
   /** Shields do not help against this, e.g. a commander's horse barging through the line. */
   breaksGuard?: boolean;
+  /** Share of the damage that gets through a raised shield anyway (a pilum punches through it). */
+  pierce?: number;
+  /** The shove still lands on a raised shield, even in a locked wall (a spear thrust). */
+  shovesThroughShield?: boolean;
 }
 
 /** True if `target` has its shield raised towards the point `from`. */
@@ -71,8 +75,8 @@ export function applyHit(
   const wall = blocked && !drunkBlow && inShieldWall(state, target);
   const blockFraction = wall ? SHIELD.wallBlockFraction : SHIELD.blockFraction;
   const strength = damage * (drunkBlow ? BANQUET.damageDealtFactor : 1) * (target.drunk ? BANQUET.damageTakenFactor : 1);
-  const dealt = blocked ? strength * (1 - blockFraction) : strength;
-  let factor = wall ? 0 : blocked ? SHIELD.blockedKnockbackFactor : 1;
+  const dealt = blocked ? strength * Math.max(1 - blockFraction, source.pierce ?? 0) : strength;
+  let factor = source.shovesThroughShield ? 1 : wall ? 0 : blocked ? SHIELD.blockedKnockbackFactor : 1;
   if (drunkBlow) factor *= BANQUET.strikeKnockbackFactor;
   if (target.drunk) factor *= BANQUET.knockbackTakenFactor;
   if (isHorse(target)) factor *= HORSE.knockbackTaken;
@@ -204,7 +208,13 @@ export function resolveMelee(state: MatchState, attacker: Unit): void {
     applyHit(
       state,
       target,
-      { attacker, armyId: attacker.armyId, from: attacker.pos, pushDir: pushDir.x || pushDir.z ? pushDir : yawToDir(attacker.yaw) },
+      {
+        attacker,
+        armyId: attacker.armyId,
+        from: attacker.pos,
+        pushDir: pushDir.x || pushDir.z ? pushDir : yawToDir(attacker.yaw),
+        shovesThroughShield: stats.shovesThroughShield === true,
+      },
       stats.damage,
       stats.knockback,
     );

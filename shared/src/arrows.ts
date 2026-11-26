@@ -175,5 +175,16 @@ function hitWithArrow(state: MatchState, arrow: Arrow, victim: Unit): void {
   const pushDir = normalizeXZ(arrow.vel.x, arrow.vel.z);
   // A point back along the flight path, so shields facing the shooter block it.
   const from = { x: arrow.pos.x - pushDir.x * ARROW_SOURCE_BACKTRACK, z: arrow.pos.z - pushDir.z * ARROW_SOURCE_BACKTRACK };
-  applyHit(state, victim, { attacker: shooter, armyId: arrow.armyId, from, pushDir }, arrow.damage, arrow.knockback);
+  const pierce = arrow.kind === 'pilum' ? VOLLEY.shieldPierce : 0;
+  applyHit(state, victim, { attacker: shooter, armyId: arrow.armyId, from, pushDir, pierce }, arrow.damage, arrow.knockback);
+  // A pilum stays stuck in whoever (or whatever shield) it hit.
+  if (arrow.kind === 'pilum') {
+    const speed = Math.hypot(arrow.vel.x, arrow.vel.y, arrow.vel.z) || 1;
+    state.events.push({
+      type: 'pilumStuck',
+      targetId: victim.id,
+      pos: { ...arrow.pos },
+      dir: { x: arrow.vel.x / speed, y: arrow.vel.y / speed, z: arrow.vel.z / speed },
+    });
+  }
 }
