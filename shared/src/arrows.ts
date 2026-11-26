@@ -8,6 +8,7 @@ import { bodyRadius, isHorse, isMounted } from './units.ts';
 
 const SHOULDER_HEIGHT = 1.4;
 const CHEST_HEIGHT = 1.1;
+const ARROW_SOURCE_BACKTRACK = 5;
 
 /**
  * Lowest launch angle that lands an arrow at horizontal distance `dx` and height
@@ -52,7 +53,7 @@ function launchVelocity(yaw: number, pitch: number): Vec3 {
 }
 
 export function fireArrow(state: MatchState, shooter: Unit, target: Unit | null): Arrow {
-  const vel = target ? aimArrow(state, shooter, target) : launchVelocity(shooter.yaw, Math.PI / 8);
+  const vel = target ? aimArrow(state, shooter, target) : launchVelocity(shooter.yaw, ARROW.blindPitch);
   const forward = yawToDir(shooter.yaw);
   const arrow: Arrow = {
     id: state.nextArrowId++,
@@ -139,6 +140,7 @@ export function stepArrows(state: MatchState, dt: number): void {
 function hitWithArrow(state: MatchState, arrow: Arrow, victim: Unit): void {
   const shooter = state.units[arrow.shooterId] ?? null;
   const pushDir = normalizeXZ(arrow.vel.x, arrow.vel.z);
-  const from = { x: arrow.pos.x - pushDir.x * 5, z: arrow.pos.z - pushDir.z * 5 };
+  // A point back along the flight path, so shields facing the shooter block it.
+  const from = { x: arrow.pos.x - pushDir.x * ARROW_SOURCE_BACKTRACK, z: arrow.pos.z - pushDir.z * ARROW_SOURCE_BACKTRACK };
   applyHit(state, victim, { attacker: shooter, armyId: arrow.armyId, from, pushDir }, ARCHER.ranged.damage, ARCHER.ranged.knockback);
 }

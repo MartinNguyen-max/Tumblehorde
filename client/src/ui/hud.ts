@@ -1,6 +1,7 @@
 import { Matrix, type Scene, Vector3 } from '../render/babylon.ts';
 import {
   distanceXZ,
+  wrapAngle,
   HORSE,
   type MatchView,
   type Order,
@@ -305,7 +306,9 @@ export class Hud {
     const camera = scene.activeCamera;
     const myTeam = view.armies[this.myArmyId]?.team;
     if (!camera) return;
+    // Compare headings only: the camera looks down at the commander, so pitch would hide far armies.
     const forward = camera.getDirection(Vector3.Forward());
+    const heading = Math.atan2(forward.x, forward.z);
     const origin = camera.position;
     let best: { angle: number; x: number; y: number; z: number; count: number; armyId: number } | null = null;
     for (const army of view.armies) {
@@ -325,10 +328,9 @@ export class Hud {
       x /= count;
       y /= count;
       z /= count;
-      const to = new Vector3(x - origin.x, y - origin.y, z - origin.z);
-      const distance = to.length();
+      const distance = Math.hypot(x - origin.x, z - origin.z);
       if (distance > HUD.enemyLookMaxDistance) continue;
-      const angle = Math.acos(Math.min(1, Vector3.Dot(to.normalize(), forward)));
+      const angle = Math.abs(wrapAngle(Math.atan2(x - origin.x, z - origin.z) - heading));
       if (angle < HUD.enemyLookAngle && (!best || angle < best.angle)) best = { angle, x, y, z, count, armyId: army.id };
     }
     if (!best) {

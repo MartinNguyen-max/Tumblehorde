@@ -1,4 +1,4 @@
-import { COMMANDER, HORSE, KNOCKBACK, SHIELD, type KnockbackStats } from './config.ts';
+import { COMMANDER, HORSE, KNOCKBACK, MELEE, SHIELD, type KnockbackStats } from './config.ts';
 import { normalizeXZ, yawToDir, type Vec2, type Vec3 } from './math.ts';
 import { throwRider } from './mounts.ts';
 import { nextRandom } from './random.ts';
@@ -158,7 +158,7 @@ export function meleeTargets(state: MatchState, attacker: Unit, range: number, a
     const centerDistance = Math.hypot(dx, dz);
     const distance = centerDistance - bodyRadius(other);
     if (distance > range) continue;
-    if (Math.abs(other.pos.y - attacker.pos.y) > 2.5) continue;
+    if (Math.abs(other.pos.y - attacker.pos.y) > MELEE.verticalReach) continue;
     if (centerDistance > 1e-3 && (facing.x * dx + facing.z * dz) / centerDistance < minDot) continue;
     found.push({ unit: other, distance });
   }

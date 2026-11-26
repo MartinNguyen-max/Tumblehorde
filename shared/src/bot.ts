@@ -53,12 +53,12 @@ function botCommanderThink(state: MatchState, army: Army, commander: Unit, own: 
   commander.ai.chargePoint = null;
   if (findMeleeThreat(state, commander)) commander.ai.shieldTimer = AI.shieldMinHold;
 
-  if (enemy && lowHp && distanceXZ(enemy.pos, commander.pos) < AI.holdEngageRadius * 1.5) {
+  if (enemy && lowHp && distanceXZ(enemy.pos, commander.pos) < BOT.retreatTriggerDistance) {
     const away = normalizeXZ(commander.pos.x - enemy.pos.x, commander.pos.z - enemy.pos.z);
-    commander.ai.chargePoint = { x: commander.pos.x + away.x * 8, z: commander.pos.z + away.z * 8 };
+    commander.ai.chargePoint = { x: commander.pos.x + away.x * BOT.retreatDistance, z: commander.pos.z + away.z * BOT.retreatDistance };
     return;
   }
-  if (enemy && (mainOrder === 'attack' || distanceXZ(enemy.pos, commander.pos) < AI.holdEngageRadius * 2)) {
+  if (enemy && (mainOrder === 'attack' || distanceXZ(enemy.pos, commander.pos) < BOT.selfDefenseDistance)) {
     commander.ai.targetId = enemy.id;
     return;
   }

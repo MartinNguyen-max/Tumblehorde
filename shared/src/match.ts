@@ -119,7 +119,12 @@ export function forfeitArmy(state: MatchState, army: Army): void {
   for (const id of ids) {
     const unit = state.units[id];
     if (!unit?.alive) continue;
-    const pop = { x: randomRange(state.rng, -2, 2), y: randomRange(state.rng, 3, 6), z: randomRange(state.rng, -2, 2) };
+    const side = MATCH.forfeitPopSideways;
+    const pop = {
+      x: randomRange(state.rng, -side, side),
+      y: randomRange(state.rng, MATCH.forfeitPopUpMin, MATCH.forfeitPopUpMax),
+      z: randomRange(state.rng, -side, side),
+    };
     killUnit(state, unit, null, pop);
   }
 }

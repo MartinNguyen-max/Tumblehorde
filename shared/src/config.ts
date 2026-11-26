@@ -220,6 +220,11 @@ export const SHIELD = {
   blockedKnockbackFactor: 0.5,
 } as const;
 
+export const MELEE = {
+  /** Height difference within which a strike can land (rider vs. foot soldier fits). */
+  verticalReach: 2.5,
+} as const;
+
 export const KNOCKBACK = {
   /** Upward pop as a fraction of horizontal strength. It is what makes hits goofy. */
   lift: 0.35,
@@ -233,6 +238,8 @@ export const ARROW = {
   maxLifetime: 4,
   /** Collision radius added to the target's body radius. */
   radius: 0.08,
+  /** Launch angle when an arrow is fired without a target. */
+  blindPitch: Math.PI / 8,
 } as const;
 
 export const ARMY = {
@@ -278,6 +285,10 @@ export const AI = {
   aimLeadIterations: 2,
   remountSearchRadius: 18,
   riderOvershoot: 6,
+  /** Archers this close to an enemy back off even while ready to shoot. */
+  archerPanicDistance: 8,
+  /** A soldier this far from its slot looks where it walks instead of the formation's way. */
+  faceWalkingDistance: 3,
 } as const;
 
 export const BOT = {
@@ -287,11 +298,21 @@ export const BOT = {
   engageDistance: 45,
   marchStopDistance: 22,
   retreatHpFraction: 0.3,
+  /** A wounded bot commander backs off from enemies this close... */
+  retreatTriggerDistance: 9,
+  /** ...by this much. */
+  retreatDistance: 8,
+  /** Bot commanders fight anyone this close, whatever their army's order. */
+  selfDefenseDistance: 12,
   firstOrderDelay: 1.5,
 } as const;
 
 export const MATCH = {
   disconnectTimeout: 30,
+  /** Bodies of a forfeited army pop up with this much random velocity. */
+  forfeitPopSideways: 2,
+  forfeitPopUpMin: 3,
+  forfeitPopUpMax: 6,
   /** Seconds after victory before the battle is marked as finished. */
   endDelay: 2.5,
 } as const;

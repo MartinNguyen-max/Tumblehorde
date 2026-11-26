@@ -9,7 +9,6 @@ import { areEnemies, bodyRadius, canBeTargeted, canUseShield, getUnit, isMounted
 const SWING_FACING_TOLERANCE = 0.45;
 /** Archers in melee switch to their knife inside this distance. */
 const ARCHER_MELEE_DISTANCE = ARCHER.melee.range + 0.6;
-const ARCHER_PANIC_DISTANCE = 8;
 const ARRIVE_SLOWDOWN_DISTANCE = 1.5;
 
 export function nearestEnemy(state: MatchState, unit: Unit, maxDistance: number, from: Vec2 = unit.pos): Unit | null {
@@ -157,7 +156,7 @@ function archerIntent(state: MatchState, unit: Unit, target: Unit, order: GroupO
   const closest = nearestEnemy(state, unit, AI.archerMinDistance) ?? target;
   const closestDistance = distanceXZ(unit.pos, closest.pos);
   const mayRetreat = order.order !== 'hold' && unit.action === 'none';
-  const wantsDistance = closestDistance < ARCHER_PANIC_DISTANCE || (closestDistance < AI.archerMinDistance && unit.cooldownTimer > 0);
+  const wantsDistance = closestDistance < AI.archerPanicDistance || (closestDistance < AI.archerMinDistance && unit.cooldownTimer > 0);
   if (mayRetreat && wantsDistance) {
     setMove(unit.intent, unit.pos.x - closest.pos.x, unit.pos.z - closest.pos.z);
     return;
@@ -177,7 +176,7 @@ function moveToSlot(unit: Unit, slot: Vec2, order: GroupOrder): void {
     return;
   }
   setMove(unit.intent, slot.x - unit.pos.x, slot.z - unit.pos.z, Math.min(1, d / ARRIVE_SLOWDOWN_DISTANCE));
-  unit.intent.faceYaw = isMounted(unit) || d > 3 ? dirToYaw(slot.x - unit.pos.x, slot.z - unit.pos.z) : order.anchorYaw;
+  unit.intent.faceYaw = isMounted(unit) || d > AI.faceWalkingDistance ? dirToYaw(slot.x - unit.pos.x, slot.z - unit.pos.z) : order.anchorYaw;
 }
 
 function shieldIntent(state: MatchState, unit: Unit): void {
