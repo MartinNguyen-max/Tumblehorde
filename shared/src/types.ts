@@ -125,6 +125,8 @@ export interface BotBrain {
   style: BotStyle;
   /** Seconds a phalanx has stood at the enemy's line. */
   contactTimer: number;
+  /** Seconds spent falling back to regroup; after a while the army makes a last stand instead. */
+  regroupTimer: number;
   orderTimer: number;
   thinkTimer: number;
   /** Seconds spent facing the enemy without engaging. */
@@ -170,6 +172,8 @@ export interface Army {
 }
 
 export type ProjectileKind = 'arrow' | 'pilum';
+
+export type RefusedReason = 'spearsSpent' | 'noTargetInRange' | 'banquetSpent' | 'notHolding';
 
 export interface Arrow {
   id: EntityId;
@@ -229,6 +233,8 @@ export type SimEvent =
   | { type: 'allyOffer'; from: number; to: number }
   | { type: 'alliance'; a: number; b: number }
   | { type: 'volley'; armyId: number }
+  /** An order that could not be carried out, so the player can be told why. */
+  | { type: 'refused'; armyId: number; reason: RefusedReason }
   | { type: 'banquet'; armyId: number }
   | { type: 'drunk'; armyId: number }
   | { type: 'rally'; armyId: number; commanderId: EntityId }

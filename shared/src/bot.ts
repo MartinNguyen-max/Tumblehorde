@@ -198,6 +198,15 @@ function botCommanderIntent(state: MatchState, commander: Unit): void {
   if (commander.ai.chargePoint) moveTowards(commander, commander.ai.chargePoint);
 }
 
+/** Defenders far stronger than everyone outside come out to finish them. */
+function strongEnoughToSally(state: MatchState, army: Army): boolean {
+  const ours = livingSoldiers(state, army).length;
+  const theirs = state.armies
+    .filter((other) => !other.eliminated && armiesHostile(state, army.id, other.id))
+    .reduce((sum, other) => sum + livingSoldiers(state, other).length, 0);
+  return ours >= theirs * BOT.sallyRatio;
+}
+
 /** A castle's defenders hold the gate: the one place the attackers have to come through. */
 function defendGate(state: MatchState, army: Army): void {
   const post = gatePost();
@@ -222,7 +231,7 @@ function searchTheStreets(state: MatchState, army: Army, leaderless: boolean): v
 /** Picks a stance and, at most every few seconds, turns it into orders. */
 function planArmy(state: MatchState, army: Army, dt: number, leaderless: boolean): { stance: BotStance; enemy: EnemyArmy } | null {
   army.bot.orderTimer -= dt;
-  if (isDefender(state.settings, army.id) && state.time >= MATCH.prepareTime) {
+  if (isDefender(state.settings, army.id) && state.time >= MATCH.prepareTime && !strongEnoughToSally(state, army)) {
     defendGate(state, army);
     return null;
   }
@@ -235,7 +244,10 @@ function planArmy(state: MatchState, army: Army, dt: number, leaderless: boolean
     return null;
   }
   const distance = distanceXZ(own, enemy.center);
-  const plain = chooseStance(state, army, distance, livingSoldiers(state, army).length, enemy.soldiers);
+  const beaten = chooseStance(state, army, distance, livingSoldiers(state, army).length, enemy.soldiers);
+  army.bot.regroupTimer = beaten === 'regroup' ? army.bot.regroupTimer + dt : army.bot.regroupTimer;
+  // Nobody falls back forever: after a while it is a last stand.
+  const plain = beaten === 'regroup' && army.bot.regroupTimer > BOT.maxRegroup ? 'engage' : beaten;
   army.bot.standoffTimer = plain === 'standoff' ? army.bot.standoffTimer + dt : plain === 'march' ? 0 : army.bot.standoffTimer;
   // A beaten army that falls back may come back with a different idea.
   if (plain === 'regroup' && army.isBot && army.bot.orderTimer <= 0) army.bot.style = randomBotStyle(state);

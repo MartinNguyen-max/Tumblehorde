@@ -5,7 +5,7 @@ import { localStep, navGrid, navigate, nearestWalkable } from './navigation.ts';
 import { attackGoal, fogOfWar } from './perception.ts';
 import { clamp, dirToYaw, distanceXZ, normalizeXZ, turnTowards, type Vec2, type Vec3 } from './math.ts';
 import { toggleMount } from './mounts.ts';
-import type { Army, Command, EntityId, Formation, GroupOrder, MatchState, Order, Unit, UnitKind } from './types.ts';
+import type { Army, Command, EntityId, Formation, GroupOrder, MatchState, Order, RefusedReason, Unit, UnitKind } from './types.ts';
 import { armiesHostile, canBeTargeted, getUnit, isSoldier, setWeapon, sideArmyId } from './units.ts';
 import { nextRandom } from './random.ts';
 
@@ -137,7 +137,8 @@ export function holdAt(state: MatchState, army: Army, anchor: Vec2, yaw: number)
  * enemy near the spot `at` the commander looked at, if one is in range; one after another.
  */
 export function throwSpears(state: MatchState, army: Army, at: Vec3, group: number | null): boolean {
-  if (army.spearsThrown || !canGiveOrders(state, army)) return false;
+  if (!canGiveOrders(state, army)) return false;
+  if (army.spearsThrown) return refuse(state, army, 'spearsSpent');
   const targets = state.units.filter(
     (u) => canBeTargeted(u) && armiesHostile(state, army.id, sideArmyId(state, u)) && distanceXZ(u.pos, at) <= VOLLEY.targetRadius,
   );
@@ -155,7 +156,7 @@ export function throwSpears(state: MatchState, army: Army, at: Vec3, group: numb
     soldier.ai.throwAt = { ...at };
     throwers++;
   }
-  if (throwers === 0) return false;
+  if (throwers === 0) return refuse(state, army, 'noTargetInRange');
   army.spearsThrown = true;
   state.events.push({ type: 'volley', armyId: army.id });
   return true;
@@ -173,13 +174,21 @@ export function advanceFormation(state: MatchState, army: Army, group: number | 
     order.anchorYaw = commander.yaw;
     moved = true;
   });
-  if (moved) state.events.push({ type: 'advance', armyId: army.id, group });
-  return moved;
+  if (!moved) return refuse(state, army, 'notHolding');
+  state.events.push({ type: 'advance', armyId: army.id, group });
+  return true;
+}
+
+/** Tells the player an order could not be carried out. Always false, for `return refuse(...)`. */
+function refuse(state: MatchState, army: Army, reason: RefusedReason): false {
+  state.events.push({ type: 'refused', armyId: army.id, reason });
+  return false;
 }
 
 /** Once per battle: the army gathers round the commander, drinks, and is drunk for good. */
 export function startBanquet(state: MatchState, army: Army): boolean {
-  if (army.banquet !== 'ready' || !canGiveOrders(state, army)) return false;
+  if (!canGiveOrders(state, army)) return false;
+  if (army.banquet !== 'ready') return refuse(state, army, 'banquetSpent');
   army.banquet = 'feasting';
   army.feastTimer = BANQUET.feastTime;
   state.events.push({ type: 'banquet', armyId: army.id });

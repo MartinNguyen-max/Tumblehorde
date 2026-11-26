@@ -484,6 +484,10 @@ export const BOT = {
   engageDistance: 14,
   /** How long a bot waits in a standoff before it charges anyway. */
   standoffPatience: 12,
+  /** After falling back this long, a beaten bot army makes its last stand and attacks again. */
+  maxRegroup: 25,
+  /** A castle's bot defenders sally out once they outnumber every attacker together this much. */
+  sallyRatio: 2,
   /** Phalanx bots step their formation forward this far at a time... */
   phalanxStep: 3,
   /** ...until their middle is this close to the enemy's: then they hold and thrust... */

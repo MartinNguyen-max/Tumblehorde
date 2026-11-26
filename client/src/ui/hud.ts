@@ -3,6 +3,7 @@ import {
   distanceXZ,
   type Formation,
   HALVES,
+  type RefusedReason,
   wrapAngle,
   HORSE,
   MATCH,
@@ -33,6 +34,13 @@ const HIC_CHANCE = 0.5;
 const GROUP_LABELS = ['A', 'B'] as const;
 const BANNER_SECONDS = 1.2;
 const ALLY_BANNER_SECONDS = 3.5;
+const REFUSED_BANNER_SECONDS = 1.8;
+const REFUSED_TEXT: Record<RefusedReason, string> = {
+  spearsSpent: 'The spears are already thrown',
+  noTargetInRange: 'No enemy in throwing range: look at one closer',
+  banquetSpent: 'The wine is all gone',
+  notHolding: 'Advance moves a holding formation: hold first (2)',
+};
 const HP_LABEL_HEIGHT = 2.75;
 const FOE_LABEL_HEIGHT = 3.4;
 const POPUP_RISE = 40;
@@ -238,6 +246,9 @@ export class Hud {
           this.pushFeed(`🤝 ${this.armyName(view, event.a)} and ${this.armyName(view, event.b)} made an alliance`);
           break;
         }
+        case 'refused':
+          if (event.armyId === myArmyId) this.showBanner(REFUSED_TEXT[event.reason], REFUSED_BANNER_SECONDS);
+          break;
         case 'volley':
           if (event.armyId === myArmyId) this.showBanner('Spears away!');
           break;

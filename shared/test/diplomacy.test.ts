@@ -129,5 +129,7 @@ describe('the spear volley', () => {
     for (const s of soldiersOf(state, 0)) place(s, -60, 0);
     expect(applyCommand(state, 0, { type: 'volley', at: { x: -60 + VOLLEY.range + 20, y: 0, z: 0 }, group: null })).toBe(false);
     expect(state.armies[0]?.spearsThrown).toBe(false);
+    // The player is told why nothing happened.
+    expect(state.events).toContainEqual({ type: 'refused', armyId: 0, reason: 'noTargetInRange' });
   });
 });
