@@ -1,4 +1,4 @@
-import { FreeCamera, type Scene, Vector3 } from '@babylonjs/core';
+import { FreeCamera, type Scene, Vector3 } from './babylon.ts';
 import { clamp, terrainHeightAt, wrapAngle, type Vec3 } from '@tumblehorde/shared';
 import { CAMERA } from '../visualConfig.ts';
 

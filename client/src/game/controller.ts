@@ -1,4 +1,4 @@
-import { Vector3 } from '@babylonjs/core';
+import { Vector3 } from '../render/babylon.ts';
 import {
   ARMY,
   type CommanderInput,

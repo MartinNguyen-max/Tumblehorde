@@ -16,7 +16,7 @@ import {
   TransformNode,
   Vector3,
   VertexData,
-} from '@babylonjs/core';
+} from './babylon.ts';
 import HavokPhysics from '@babylonjs/havok';
 import havokWasmUrl from '@babylonjs/havok/lib/esm/HavokPhysics.wasm?url';
 import {

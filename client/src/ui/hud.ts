@@ -1,4 +1,4 @@
-import { Matrix, type Scene, Vector3 } from '@babylonjs/core';
+import { Matrix, type Scene, Vector3 } from '../render/babylon.ts';
 import {
   distanceXZ,
   HORSE,
@@ -305,7 +305,7 @@ export class Hud {
     const camera = scene.activeCamera;
     const myTeam = view.armies[this.myArmyId]?.team;
     if (!camera) return;
-    const forward = camera.getForwardRay(1).direction;
+    const forward = camera.getDirection(Vector3.Forward());
     const origin = camera.position;
     let best: { angle: number; x: number; y: number; z: number; count: number; armyId: number } | null = null;
     for (const army of view.armies) {

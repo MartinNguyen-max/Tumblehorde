@@ -7,7 +7,7 @@ import {
   type Scene,
   TransformNode,
   Vector3,
-} from '@babylonjs/core';
+} from './babylon.ts';
 import type { Vec3 } from '@tumblehorde/shared';
 import { EFFECTS } from '../visualConfig.ts';
 import type { Rig } from './rigs.ts';

@@ -50,3 +50,4 @@ Decisions made while building v1. None of them replace an earlier line.
 - **Room code = room id.** Five letters without I and O, shareable as `?room=CODE`.
 - **Lobby rules:** the first player is host and picks army size and mode; only the host can start; 2 teams needs players on both sides. Rooms are locked during a battle and return to the lobby afterwards ("Back to lobby" on the results screen).
 - **Leaving mid-battle counts as disconnecting.** The army fights on with its last orders and falls after 30 s unless the player reconnects (the SDK retries automatically; a page reload rejoins via a stored reconnection token).
+- **Server tick changed from 30 Hz to 20 Hz** (replaces the 30 Hz in "Fixed simulation rates" above). It matches the 20 Hz proposal in `TECH.md`, a snapshot goes out every tick, and clients send input at the same rate so each tick consumes exactly one input.

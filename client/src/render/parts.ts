@@ -7,7 +7,7 @@ import {
   type Scene,
   type ShadowGenerator,
   StandardMaterial,
-} from '@babylonjs/core';
+} from './babylon.ts';
 
 export type PartShape = 'box' | 'cone' | 'cylinder' | 'rock' | 'bush';
 
@@ -44,7 +44,6 @@ export class PartFactory {
     mesh.material = this.material(color);
     mesh.isVisible = false;
     mesh.receiveShadows = true;
-    this.shadows.addShadowCaster(mesh);
     this.sources.set(key, mesh);
     return mesh;
   }
@@ -64,18 +63,27 @@ export class PartFactory {
     }
   }
 
-  /** A new instance of `shape` in `color`, scaled and placed relative to `parent`. */
+  /**
+   * A new instance of `shape` in `color`, scaled and placed relative to `parent`.
+   * The shadow pass only draws what is in its render list, so each instance that should
+   * cast a shadow registers itself (the hidden source mesh never draws).
+   */
   part(
     shape: PartShape,
     color: string,
     parent: Node | null,
     size: readonly [number, number, number],
     position: readonly [number, number, number],
+    castShadow = true,
   ): InstancedMesh {
     const instance = this.source(shape, color).createInstance(`${shape}-part`);
     instance.parent = parent;
     instance.scaling.set(size[0], size[1], size[2]);
     instance.position.set(position[0], position[1], position[2]);
+    if (castShadow) {
+      this.shadows.addShadowCaster(instance, false);
+      instance.onDisposeObservable.addOnce(() => this.shadows.removeShadowCaster(instance, false));
+    }
     return instance;
   }
 }

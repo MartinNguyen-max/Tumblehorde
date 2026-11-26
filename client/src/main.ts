@@ -1,4 +1,4 @@
-import { Vector3 } from '@babylonjs/core';
+import { Vector3 } from './render/babylon.ts';
 import { defaultSettings, type MatchSettings, type MatchView } from '@tumblehorde/shared';
 import { GameController } from './game/controller.ts';
 import { LocalSession, type Session } from './game/session.ts';
@@ -203,6 +203,8 @@ async function boot(): Promise<void> {
           for (let t = 0; t < seconds; t += 1 / 60) controller?.session.update(1 / 60);
         },
         fps: () => world.engine.getFps(),
+        scene: world.scene,
+        shadows: world.shadows,
         createRoom: (name: string) => enterOnline(() => onlineLobby.create(name)),
         joinRoom: (name: string, code: string) => enterOnline(() => onlineLobby.join(name, code)),
         lobby: () => onlineLobby.current,

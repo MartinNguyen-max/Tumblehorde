@@ -1,4 +1,4 @@
-import { type InstancedMesh, TransformNode, type Scene } from '@babylonjs/core';
+import { type InstancedMesh, TransformNode, type Scene } from './babylon.ts';
 import { approach, lerp, meleeStatsForKind, type UnitKind, type UnitView } from '@tumblehorde/shared';
 import { ANIMATION, type ArmyPalette, COLORS } from '../visualConfig.ts';
 import type { PartFactory } from './parts.ts';
