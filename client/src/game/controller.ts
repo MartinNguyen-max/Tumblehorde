@@ -244,7 +244,7 @@ export class GameController {
     this.audio.update(view, active ? dt : 0);
     this.updateEdgeWalls(view);
     if (this.session.myArmyId !== null) {
-      this.hud.update({ view, myArmyId: this.session.myArmyId, wheel: this.wheel, selectedGroup: this.listening(), scene: this.world.scene, dt });
+      this.hud.update({ view, myArmyId: this.session.myArmyId, wheel: this.wheel, selectedGroup: this.listening(), lookYaw: this.camera.yaw, scene: this.world.scene, dt });
     }
     if (view.phase === 'over' && !this.finished) {
       this.finished = true;

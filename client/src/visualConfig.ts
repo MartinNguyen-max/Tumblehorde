@@ -318,6 +318,19 @@ export const SOUND = {
   glugs: 5,
 } as const;
 
+/** The minimap in the top left corner. */
+export const MINIMAP = {
+  /** On-screen size (CSS px). */
+  size: 170,
+  ground: 'rgba(40, 60, 40, 0.55)',
+  building: 'rgba(225, 215, 195, 0.85)',
+  dot: 2.6,
+  arrow: 6,
+  redrawEvery: 0.1,
+  /** In the city, sight lines are checked this often. */
+  sightEvery: 0.4,
+} as const;
+
 export const HUD = {
   enemyLookAngle: 0.22,
   enemyLookMaxDistance: 90,

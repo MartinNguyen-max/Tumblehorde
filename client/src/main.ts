@@ -50,6 +50,7 @@ async function boot(): Promise<void> {
     renderer.setMap(map);
     camera.map = map;
     hud.setMapName(MAP_NAMES[map]);
+    hud.setMap(map);
   };
 
   const startDemo = (settings?: MatchSettings): void => {

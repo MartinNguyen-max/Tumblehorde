@@ -3,6 +3,7 @@ import {
   distanceXZ,
   type Formation,
   HALVES,
+  type MapId,
   type RefusedReason,
   wrapAngle,
   HORSE,
@@ -15,6 +16,7 @@ import {
 } from '@tumblehorde/shared';
 import { FORMATION_LABEL, type FormationWheel, WHEEL_OPTIONS } from '../input/formationWheel.ts';
 import { paletteForArmy } from '../palettes.ts';
+import { Minimap } from './minimap.ts';
 import { EFFECTS, FORMATION_WHEEL, HUD } from '../visualConfig.ts';
 import { byId, escapeHtml, formatTime } from './dom.ts';
 
@@ -60,6 +62,8 @@ export interface HudContext {
   wheel: Pick<FormationWheel, 'isOpen' | 'x' | 'y' | 'choice'>;
   /** After a split: the half that hears orders, or null for the whole army. */
   selectedGroup: number | null;
+  /** Where the camera looks, for the arrow on the minimap. */
+  lookYaw: number;
   scene: Scene;
   dt: number;
 }
@@ -97,6 +101,7 @@ export class Hud {
   private readonly kitWeapon = byId('kit-weapon');
   private readonly kitHorse = byId('kit-horse');
   private readonly feed = byId('kill-feed');
+  private readonly minimap = new Minimap(byId('minimap', HTMLCanvasElement));
   private readonly popupLayer = byId('popups');
   private toastTimer = 0;
   private bannerTimer = 0;
@@ -125,6 +130,10 @@ export class Hud {
 
   setMapName(name: string): void {
     this.mapName.textContent = name;
+  }
+
+  setMap(map: MapId): void {
+    this.minimap.setMap(map);
   }
 
   reset(): void {
@@ -301,6 +310,7 @@ export class Hud {
     this.updateHpLabel(ctx, me);
     this.updateFoeLabel(ctx);
     this.updatePopups(ctx);
+    this.minimap.update(view, myArmyId, ctx.lookYaw, dt);
 
     this.tickTimers(dt);
   }
