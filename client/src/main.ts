@@ -1,18 +1,21 @@
+import { Vector3 } from '@babylonjs/core';
 import { defaultSettings, type MatchSettings, type MatchView } from '@tumblehorde/shared';
 import { GameController } from './game/controller.ts';
 import { LocalSession, type Session } from './game/session.ts';
 import { InputState } from './input/input.ts';
+import { OnlineLobby, roomCodeFromUrl } from './online/lobby.ts';
+import { OnlineSession } from './online/onlineSession.ts';
 import { BattleRenderer } from './render/battle.ts';
 import { FollowCamera } from './render/camera.ts';
 import { createWorld, setShadowArea } from './render/world.ts';
 import { byId } from './ui/dom.ts';
 import { Hud } from './ui/hud.ts';
-import { Landing } from './ui/landing.ts';
+import { Landing, readStoredName } from './ui/landing.ts';
 import { Results } from './ui/results.ts';
-import { Vector3 } from '@babylonjs/core';
 
 const DEMO_ARMY_SIZE = 20;
 const DEMO_CAMERA = { distance: 34, pitch: 0.42, height: 1 } as const;
+const PLAY_CAMERA = { distance: 9, pitch: 0.32 } as const;
 const MAX_FRAME_TIME = 0.1;
 
 async function boot(): Promise<void> {
@@ -24,6 +27,8 @@ async function boot(): Promise<void> {
   input.attach(canvas);
   const hud = new Hud();
   const clickToPlay = byId('click-to-play');
+  const ctpTitle = byId('ctp-title');
+  const ctpText = byId('ctp-text');
 
   let controller: GameController | null = null;
   let demo: Session | null = null;
@@ -46,43 +51,77 @@ async function boot(): Promise<void> {
     camera.pitch = DEMO_CAMERA.pitch;
   };
 
-  const showLanding = (): void => {
+  const stopBattle = (): void => {
     controller?.dispose();
     controller = null;
     input.exitLock();
     hud.setVisible(false);
     results.hide();
     clickToPlay.hidden = true;
+  };
+
+  const showLanding = (message?: string): void => {
+    stopBattle();
+    onlineLobby.hide();
     landing.setVisible(true);
+    if (message) landing.onlineHint.textContent = message;
     startDemo();
+  };
+
+  const showPausePrompt = (paused: boolean, online: boolean, first: boolean): void => {
+    clickToPlay.hidden = !paused;
+    ctpTitle.textContent = first ? 'Ready?' : 'Paused';
+    ctpText.innerHTML = online
+      ? 'Click to take command. <b>The battle keeps going</b> while you are here!'
+      : 'Click to take command. Press <kbd>Esc</kbd> to pause.';
   };
 
   const startSession = (session: Session, again: () => void): void => {
     demo = null;
+    stopBattle();
     renderer.clear();
     hud.reset();
-    results.hide();
     landing.setVisible(false);
     hud.setVisible(true);
     rematch = again;
-    camera.distance = 9;
-    camera.pitch = 0.32;
+    camera.distance = PLAY_CAMERA.distance;
+    camera.pitch = PLAY_CAMERA.pitch;
     controller = new GameController(session, { world, renderer, camera, input, hud }, {
       onFinished: (view: MatchView) => {
         clickToPlay.hidden = true;
-        results.show(view, session.myArmyId);
+        results.show(view, session.myArmyId, session.online ? 'Back to lobby' : 'Rematch');
       },
-      onPauseChange: (paused) => {
-        clickToPlay.hidden = !paused;
-        byId('ctp-title').textContent = 'Paused';
-      },
+      onPauseChange: (paused) => showPausePrompt(paused, session.online, false),
     });
-    byId('ctp-title').textContent = 'Ready?';
-    clickToPlay.hidden = false;
+    showPausePrompt(true, session.online, true);
   };
 
   const startLocal = (settings: MatchSettings): void => {
     startSession(new LocalSession(settings, 0), () => startLocal({ ...settings, seed: (settings.seed + 1) | 0 }));
+  };
+
+  const onlineLobby = new OnlineLobby({
+    onStart: (room, start) => {
+      landing.setVisible(false);
+      startSession(new OnlineSession(room, start), () => {
+        stopBattle();
+        onlineLobby.show();
+        startDemo();
+      });
+    },
+    onClosed: (reason) => showLanding(reason),
+  });
+
+  const enterOnline = async (action: () => Promise<void>): Promise<void> => {
+    landing.onlineHint.textContent = 'Connecting…';
+    try {
+      await action();
+      landing.setVisible(false);
+      landing.onlineHint.textContent = 'Battle 1–3 friends. Share the room code or link.';
+      onlineLobby.show();
+    } catch (error) {
+      landing.onlineHint.textContent = error instanceof Error ? error.message : 'Could not connect.';
+    }
   };
 
   const landing = new Landing({
@@ -90,24 +129,26 @@ async function boot(): Promise<void> {
       startLocal(settings);
       input.requestLock();
     },
-    onCreateRoom: () => {
-      landing.onlineHint.textContent = 'Online play is coming soon.';
-    },
-    onJoinRoom: () => {
-      landing.onlineHint.textContent = 'Online play is coming soon.';
-    },
+    onCreateRoom: (name) => void enterOnline(() => onlineLobby.create(name)),
+    onJoinRoom: (name, code) => void enterOnline(() => onlineLobby.join(name, code)),
   });
 
   const results = new Results({
     onRematch: () => {
       rematch?.();
-      input.requestLock();
+      if (!controller?.session.online) input.requestLock();
     },
-    onMenu: showLanding,
+    onMenu: () => {
+      if (onlineLobby.inRoom) void onlineLobby.leave();
+      else showLanding();
+    },
   });
 
   byId('ctp-play').addEventListener('click', () => input.requestLock());
-  byId('ctp-quit').addEventListener('click', showLanding);
+  byId('ctp-quit').addEventListener('click', () => {
+    if (controller?.session.online) void onlineLobby.leave();
+    else showLanding();
+  });
   canvas.addEventListener('click', () => {
     if (controller?.isPaused && results.isHidden()) input.requestLock();
   });
@@ -136,6 +177,16 @@ async function boot(): Promise<void> {
   byId('loading').hidden = true;
   showLanding();
 
+  const linkedCode = roomCodeFromUrl();
+  if (await onlineLobby.tryReconnect()) {
+    landing.setVisible(false);
+    onlineLobby.show();
+  } else if (linkedCode) {
+    byId('room-code', HTMLInputElement).value = linkedCode;
+    if (readStoredName()) void enterOnline(() => onlineLobby.join(landing.playerName(), linkedCode));
+    else landing.onlineHint.textContent = `Enter your name and press Join to enter room ${linkedCode}.`;
+  }
+
   // Automated smoke tests drive the game without pointer lock through this hook.
   if (new URLSearchParams(location.search).has('debug')) {
     Object.assign(window, {
@@ -152,6 +203,9 @@ async function boot(): Promise<void> {
           for (let t = 0; t < seconds; t += 1 / 60) controller?.session.update(1 / 60);
         },
         fps: () => world.engine.getFps(),
+        createRoom: (name: string) => enterOnline(() => onlineLobby.create(name)),
+        joinRoom: (name: string, code: string) => enterOnline(() => onlineLobby.join(name, code)),
+        lobby: () => onlineLobby.current,
       },
     });
   }

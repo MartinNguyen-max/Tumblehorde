@@ -9,7 +9,7 @@ import {
   type UnitView,
 } from '@tumblehorde/shared';
 import { paletteForArmy } from '../palettes.ts';
-import { HUD } from '../visualConfig.ts';
+import { EFFECTS, HUD } from '../visualConfig.ts';
 import { byId, escapeHtml, formatTime } from './dom.ts';
 
 const ORDER_LABEL: Record<Order, string> = { follow: 'Follow', hold: 'Hold', attack: 'Attack' };
@@ -51,6 +51,7 @@ export class Hud {
   private readonly root = byId('hud');
   private readonly army = byId('hud-army');
   private readonly time = byId('hud-time');
+  private readonly notice = byId('hud-notice');
   private readonly hpLabel = byId('hp-label');
   private readonly hpFill = byId('hp-fill');
   private readonly hpText = byId('hp-text');
@@ -189,6 +190,7 @@ export class Hud {
 
     this.army.textContent = `Your army: ${army.soldiersAlive}/${army.startingSoldiers}`;
     this.time.textContent = formatTime(view.duration);
+    this.updateDisconnectNotice(view);
 
     this.updateOrders(view, ctx.selectedGroup, me);
     this.updateKit(view, me);
@@ -198,6 +200,14 @@ export class Hud {
     this.updatePopups(ctx);
 
     this.tickTimers(dt);
+  }
+
+  /** Online: a disconnected player's army falls when their timer runs out. */
+  private updateDisconnectNotice(view: MatchView): void {
+    const waiting = view.armies.filter((a) => a.disconnectTimer !== null && !a.eliminated);
+    const text = waiting.map((a) => `${a.name} disconnected · army falls in ${Math.ceil(a.disconnectTimer ?? 0)} s`).join(' · ');
+    this.notice.hidden = text === '';
+    if (this.notice.textContent !== text) this.notice.textContent = text;
   }
 
   private tickTimers(dt: number): void {
@@ -334,7 +344,7 @@ export class Hud {
   private updatePopups(ctx: HudContext): void {
     this.popups = this.popups.filter((p) => {
       p.age += ctx.dt;
-      const life = p.age / 0.9;
+      const life = p.age / EFFECTS.popupLifetime;
       if (life >= 1) {
         p.el.remove();
         return false;

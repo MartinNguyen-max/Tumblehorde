@@ -423,6 +423,11 @@ kbd {
   border: 1.5px solid var(--line);
   backdrop-filter: blur(6px);
 }
+.pill.warn {
+  background: rgba(255, 209, 102, 0.92);
+  color: #6b3a05;
+  border-color: transparent;
+}
 .pill.subtle {
   font-variant-numeric: tabular-nums;
 }
