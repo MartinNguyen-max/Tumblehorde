@@ -99,7 +99,7 @@ export function respawnCommander(state: MatchState, army: Army, commander: Unit)
   commander.alive = true;
   commander.hp = commander.maxHp;
   commander.sinceHurt = 0;
-  commander.pos = { x: commander.pos.x, y: terrainHeightAt(commander.pos.x, commander.pos.z), z: commander.pos.z };
+  commander.pos = { x: commander.pos.x, y: terrainHeightAt(state.settings.map, commander.pos.x, commander.pos.z), z: commander.pos.z };
   commander.vel = { x: 0, y: 0, z: 0 };
   commander.onGround = true;
   commander.stunTimer = 0;

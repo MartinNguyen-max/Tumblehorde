@@ -3,6 +3,7 @@ import { applyHit } from './combat.ts';
 import { dirToYaw, normalizeXZ, turnTowards, wrapAngle, yawToDir } from './math.ts';
 import { syncRiderToHorse } from './mounts.ts';
 import { mapObstacles, terrainHeightAt } from './terrain.ts';
+import type { MapId } from './maps.ts';
 import type { MatchState, Unit } from './types.ts';
 import { areEnemies, bodyMass, bodyRadius, footSpeed, getUnit, isHorse, isMounted } from './units.ts';
 
@@ -79,18 +80,18 @@ export function steerHorse(state: MatchState, horse: Unit, dt: number): void {
   accelerateTowards(horse, forward.x * speed, forward.z * speed, BODY.horseAccel * dt);
 }
 
-export function integrateBody(unit: Unit, dt: number): void {
+export function integrateBody(unit: Unit, dt: number, map: MapId): void {
   const startVelY = unit.vel.y;
   if (!unit.onGround) unit.vel.y -= SIM.gravity * dt;
   unit.pos.x += unit.vel.x * dt;
   // Average velocity keeps jump arcs exact regardless of the tick rate.
   unit.pos.y += ((startVelY + unit.vel.y) / 2) * dt;
   unit.pos.z += unit.vel.z * dt;
-  settleOnGround(unit);
+  settleOnGround(unit, map);
 }
 
-function settleOnGround(unit: Unit): void {
-  const ground = terrainHeightAt(unit.pos.x, unit.pos.z);
+function settleOnGround(unit: Unit, map: MapId): void {
+  const ground = terrainHeightAt(map, unit.pos.x, unit.pos.z);
   if (unit.pos.y <= ground) {
     unit.pos.y = ground;
     if (unit.vel.y < 0) unit.vel.y = 0;
@@ -136,9 +137,9 @@ export function distanceToEdge(x: number, z: number): number {
   return MAP.halfSize - Math.max(Math.abs(x), Math.abs(z));
 }
 
-export function resolveObstacles(unit: Unit): void {
+export function resolveObstacles(unit: Unit, map: MapId): void {
   const radius = bodyRadius(unit);
-  for (const obstacle of mapObstacles()) {
+  for (const obstacle of mapObstacles(map)) {
     if (obstacle.radius <= 0) continue;
     const dx = unit.pos.x - obstacle.x;
     const dz = unit.pos.z - obstacle.z;
@@ -235,7 +236,7 @@ export function stepMovement(state: MatchState, dt: number): void {
     if (!unit.alive || isMounted(unit)) continue;
     if (isHorse(unit)) steerHorse(state, unit, dt);
     else steerPerson(unit, dt);
-    integrateBody(unit, dt);
+    integrateBody(unit, dt, state.settings.map);
     if (applyMapEdge(unit) && unit.kind === 'commander') {
       state.events.push({ type: 'edgePush', unitId: unit.id });
     }
@@ -245,7 +246,7 @@ export function stepMovement(state: MatchState, dt: number): void {
         state.events.push({ type: 'edgePush', unitId: rider.id });
       }
     }
-    resolveObstacles(unit);
+    resolveObstacles(unit, state.settings.map);
   }
   separateBodies(state);
   for (const unit of state.units) {

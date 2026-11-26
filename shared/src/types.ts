@@ -1,3 +1,4 @@
+import type { MapId } from './maps.ts';
 import type { Vec2, Vec3 } from './math.ts';
 import type { RandomSource } from './random.ts';
 
@@ -131,6 +132,7 @@ export interface MatchSettings {
   armySize: ArmySize;
   armies: ArmySetup[];
   seed: number;
+  map: MapId;
 }
 
 export type MatchPhase = 'playing' | 'ending' | 'over';

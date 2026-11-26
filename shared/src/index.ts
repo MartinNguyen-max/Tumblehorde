@@ -2,6 +2,7 @@ export * from './config.ts';
 export * from './math.ts';
 export * from './random.ts';
 export * from './types.ts';
+export * from './maps.ts';
 export * from './terrain.ts';
 export * from './spawn.ts';
 export * from './units.ts';

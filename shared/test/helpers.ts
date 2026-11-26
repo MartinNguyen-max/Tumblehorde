@@ -15,14 +15,15 @@ export function newMatch(overrides: Partial<MatchSettings> = {}, options: { comm
     commander.mountId = null;
     horse.riderId = null;
     horse.alive = false;
-    commander.pos.y = terrainHeightAt(commander.pos.x, commander.pos.z);
+    commander.pos.y = terrainHeightAt(state.settings.map, commander.pos.x, commander.pos.z);
   }
   return state;
 }
 
 /** Moves a unit to a spot (on the ground) and clears its motion. */
+/** Places on the meadow map, which every test uses unless it says otherwise. */
 export function place(unit: Unit, x: number, z: number, yaw = 0): Unit {
-  unit.pos = { x, y: terrainHeightAt(x, z), z };
+  unit.pos = { x, y: terrainHeightAt('meadow', x, z), z };
   unit.vel = { x: 0, y: 0, z: 0 };
   unit.yaw = yaw;
   unit.intent.faceYaw = yaw;

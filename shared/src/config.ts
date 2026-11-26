@@ -45,20 +45,15 @@ export const TERRAIN = {
   /** Terrain extends past the playable map so the horizon is filled. */
   extent: 110,
   cellSize: 2.5,
-  flatRadius: 26,
   hillBlendDistance: 26,
-  hillAmplitude: 2.6,
-  rippleAmplitude: 0.9,
   /** Rim hills outside the map that frame the battlefield. */
   rimStart: 80,
   rimSlope: 0.22,
 } as const;
 
 export const OBSTACLES = {
-  treesInsideMap: 26,
-  treesOutsideMap: 90,
-  rocksInsideMap: 12,
   treeTrunkRadius: 0.4,
+  cactusRadius: 0.45,
   rockRadius: 0.9,
   keepClearOfSpawn: 14,
   keepClearOfCenter: 14,

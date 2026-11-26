@@ -1,37 +1,47 @@
 import { MAP, OBSTACLES, TERRAIN } from './config.ts';
+import { MAPS, type MapDefinition, type MapId, type ObstacleKind } from './maps.ts';
 import { clamp, distanceXZ, type Vec2 } from './math.ts';
 import { createRandom, randomRange, type RandomSource } from './random.ts';
 import { allPossibleSpawnPoints } from './spawn.ts';
+
+export type { ObstacleKind } from './maps.ts';
 
 /** Number of grid cells along one side of the terrain. */
 export const TERRAIN_CELLS = Math.round((TERRAIN.extent * 2) / TERRAIN.cellSize);
 export const TERRAIN_VERTS = TERRAIN_CELLS + 1;
 
-function hillHeight(x: number, z: number): number {
+function hillHeight(def: MapDefinition, x: number, z: number): number {
   const d = Math.hypot(x, z);
-  const blend = clamp((d - TERRAIN.flatRadius) / TERRAIN.hillBlendDistance, 0, 1);
-  const hills =
-    Math.sin(x * 0.07) * Math.cos(z * 0.06) * TERRAIN.hillAmplitude +
-    Math.sin(x * 0.17 + z * 0.13) * TERRAIN.rippleAmplitude;
+  const blend = clamp((d - def.flatRadius) / TERRAIN.hillBlendDistance, 0, 1);
+  const { hills, ripples } = def;
+  let h =
+    Math.sin(x * hills.frequencyX) * Math.cos(z * hills.frequencyZ) * hills.amplitude +
+    Math.sin(x * ripples.frequencyX + z * ripples.frequencyZ) * ripples.amplitude;
+  if (def.crags > 0) {
+    // Sharp ridges: the absolute value of a sine makes pointy crests.
+    h += (Math.abs(Math.sin(x * 0.11 - z * 0.07)) - 0.5) * def.crags * 2;
+  }
   const rimDistance = Math.max(Math.abs(x), Math.abs(z)) - TERRAIN.rimStart;
   const rim = rimDistance > 0 ? rimDistance * TERRAIN.rimSlope : 0;
-  return hills * blend + rim;
+  return h * blend + rim;
 }
 
-let heightGrid: Float32Array | null = null;
+const heightGrids = new Map<MapId, Float32Array>();
 
 /** Heights at grid vertices, row-major with z as the row. Shared with the client mesh. */
-export function terrainHeightGrid(): Float32Array {
-  if (heightGrid) return heightGrid;
+export function terrainHeightGrid(map: MapId): Float32Array {
+  const cached = heightGrids.get(map);
+  if (cached) return cached;
+  const def = MAPS[map];
   const grid = new Float32Array(TERRAIN_VERTS * TERRAIN_VERTS);
   for (let j = 0; j < TERRAIN_VERTS; j++) {
     for (let i = 0; i < TERRAIN_VERTS; i++) {
       const x = -TERRAIN.extent + i * TERRAIN.cellSize;
       const z = -TERRAIN.extent + j * TERRAIN.cellSize;
-      grid[j * TERRAIN_VERTS + i] = hillHeight(x, z);
+      grid[j * TERRAIN_VERTS + i] = hillHeight(def, x, z);
     }
   }
-  heightGrid = grid;
+  heightGrids.set(map, grid);
   return grid;
 }
 
@@ -44,8 +54,8 @@ function gridHeight(grid: Float32Array, i: number, j: number): number {
  * triangles (i,j)-(i+1,j)-(i+1,j+1) and (i,j)-(i+1,j+1)-(i,j+1), which the client
  * mesh uses too, so feet always touch the ground.
  */
-export function terrainHeightAt(x: number, z: number): number {
-  const grid = terrainHeightGrid();
+export function terrainHeightAt(map: MapId, x: number, z: number): number {
+  const grid = terrainHeightGrid(map);
   const gx = clamp((x + TERRAIN.extent) / TERRAIN.cellSize, 0, TERRAIN_CELLS - 1e-6);
   const gz = clamp((z + TERRAIN.extent) / TERRAIN.cellSize, 0, TERRAIN_CELLS - 1e-6);
   const i = Math.floor(gx);
@@ -60,12 +70,10 @@ export function terrainHeightAt(x: number, z: number): number {
   return h00 + v * (h01 - h00) + u * (h11 - h01);
 }
 
-/** The sandy path that winds across the map along the X axis. */
+/** The path (sand, dirt or packed earth depending on the map) that winds across along the X axis. */
 export function isOnPath(x: number, z: number): boolean {
   return Math.abs(z + Math.sin(x * 0.09) * 5) < 6.5;
 }
-
-export type ObstacleKind = 'tree' | 'rock';
 
 export interface Obstacle {
   kind: ObstacleKind;
@@ -78,17 +86,24 @@ export interface Obstacle {
   variant: number;
 }
 
-let layout: Obstacle[] | null = null;
+const OBSTACLE_RADIUS: Record<ObstacleKind, number> = {
+  tree: OBSTACLES.treeTrunkRadius,
+  rock: OBSTACLES.rockRadius,
+  cactus: OBSTACLES.cactusRadius,
+};
 
-export function mapObstacles(): Obstacle[] {
-  if (layout) return layout;
-  const rng = createRandom(MAP.seed);
+const layouts = new Map<MapId, Obstacle[]>();
+
+export function mapObstacles(map: MapId): Obstacle[] {
+  const cached = layouts.get(map);
+  if (cached) return cached;
+  const def = MAPS[map];
+  const rng = createRandom(MAP.seed + map.length * 7919);
   const spawns = allPossibleSpawnPoints();
   const obstacles: Obstacle[] = [];
-  placeInside(obstacles, rng, spawns, 'tree', OBSTACLES.treesInsideMap);
-  placeInside(obstacles, rng, spawns, 'rock', OBSTACLES.rocksInsideMap);
-  placeScenery(obstacles, rng, OBSTACLES.treesOutsideMap);
-  layout = obstacles;
+  for (const group of def.inside) placeInside(obstacles, rng, spawns, group);
+  placeScenery(obstacles, rng, def);
+  layouts.set(map, obstacles);
   return obstacles;
 }
 
@@ -99,40 +114,27 @@ function isClearSpot(p: Vec2, spawns: Vec2[], placed: Obstacle[]): boolean {
   return !placed.some((o) => distanceXZ(o, p) < 4);
 }
 
-function placeInside(
-  out: Obstacle[],
-  rng: RandomSource,
-  spawns: Vec2[],
-  kind: ObstacleKind,
-  count: number,
-): void {
+function placeInside(out: Obstacle[], rng: RandomSource, spawns: Vec2[], group: MapDefinition['inside'][number]): void {
   const limit = MAP.halfSize - 6;
   let placed = 0;
-  for (let attempt = 0; attempt < count * 40 && placed < count; attempt++) {
+  for (let attempt = 0; attempt < group.count * 40 && placed < group.count; attempt++) {
     const p = { x: randomRange(rng, -limit, limit), z: randomRange(rng, -limit, limit) };
     if (!isClearSpot(p, spawns, out)) continue;
-    const scale = kind === 'tree' ? randomRange(rng, 0.85, 1.25) : randomRange(rng, 0.6, 1.3);
-    const baseRadius = kind === 'tree' ? OBSTACLES.treeTrunkRadius : OBSTACLES.rockRadius;
-    out.push({ kind, x: p.x, z: p.z, scale, radius: baseRadius * scale, variant: rng.seed >>> 0 });
+    const scale = randomRange(rng, group.scaleMin, group.scaleMax);
+    out.push({ kind: group.kind, x: p.x, z: p.z, scale, radius: OBSTACLE_RADIUS[group.kind] * scale, variant: rng.seed >>> 0 });
     placed++;
   }
 }
 
-function placeScenery(out: Obstacle[], rng: RandomSource, count: number): void {
+function placeScenery(out: Obstacle[], rng: RandomSource, def: MapDefinition): void {
   const inner = MAP.halfSize + 3;
   const outer = TERRAIN.extent - 4;
   let placed = 0;
-  for (let attempt = 0; attempt < count * 40 && placed < count; attempt++) {
+  for (let attempt = 0; attempt < def.sceneryCount * 40 && placed < def.sceneryCount; attempt++) {
     const p = { x: randomRange(rng, -outer, outer), z: randomRange(rng, -outer, outer) };
     if (Math.max(Math.abs(p.x), Math.abs(p.z)) < inner) continue;
-    out.push({
-      kind: 'tree',
-      x: p.x,
-      z: p.z,
-      scale: randomRange(rng, 0.9, 1.5),
-      radius: 0,
-      variant: rng.seed >>> 0,
-    });
+    const kind = def.scenery[placed % def.scenery.length] ?? 'tree';
+    out.push({ kind, x: p.x, z: p.z, scale: randomRange(rng, 0.9, 1.6), radius: 0, variant: rng.seed >>> 0 });
     placed++;
   }
 }

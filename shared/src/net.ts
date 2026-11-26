@@ -1,5 +1,7 @@
 import { ARMY, NET, WEAPONS } from './config.ts';
 import { sanitizeCommand, sanitizeInput } from './input.ts';
+import { mapFromRandom } from './maps.ts';
+import { createRandom, nextRandom } from './random.ts';
 import { createMatch } from './setup.ts';
 import type { ActionKind, ArmySize, Command, CommanderInput, GameMode, MatchPhase, MatchSettings, SimEvent } from './types.ts';
 import { unitView, type ArmyView, type ArrowView, type MatchView, type UnitView } from './view.ts';
@@ -106,6 +108,7 @@ export function battleSettings(lobby: LobbyMessage, seed: number): MatchSettings
     armySize: lobby.armySize,
     armies: lobby.players.map((p, i) => ({ name: p.name, team: lobby.mode === 'ffa' ? i : p.team, isBot: false })),
     seed,
+    map: mapFromRandom(nextRandom(createRandom(seed))),
   };
 }
 

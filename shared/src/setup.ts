@@ -50,8 +50,8 @@ function addUnit(state: MatchState, make: (id: number) => Unit): Unit {
   return unit;
 }
 
-function groundPos(x: number, z: number): { x: number; y: number; z: number } {
-  return { x, y: terrainHeightAt(x, z), z };
+function groundPos(settings: MatchSettings, x: number, z: number): { x: number; y: number; z: number } {
+  return { x, y: terrainHeightAt(settings.map, x, z), z };
 }
 
 function createArmy(
@@ -64,7 +64,7 @@ function createArmy(
 ): Army {
   const spawn = armySpawnPoint(armyId, settings.armies.length);
   const forward = yawToDir(spawn.yaw);
-  const commanderPos = groundPos(
+  const commanderPos = groundPos(settings,
     spawn.position.x + forward.x * FORMATION.commanderSpawnAhead,
     spawn.position.z + forward.z * FORMATION.commanderSpawnAhead,
   );
@@ -80,13 +80,13 @@ function createArmy(
   const soldiers: Unit[] = [];
   kinds.forEach((kind, i) => {
     const slot = slots[i] ?? spawn.position;
-    const soldier = addUnit(state, (id) => createUnit(id, kind, armyId, groundPos(slot.x, slot.z), spawn.yaw));
+    const soldier = addUnit(state, (id) => createUnit(id, kind, armyId, groundPos(settings, slot.x, slot.z), spawn.yaw));
     soldier.group = groupForKind(kind, ARMY_GROUPS);
     soldierIds.push(soldier.id);
     soldiers.push(soldier);
     if (kind === 'rider') {
       const horse = addUnit(state, (id) =>
-        createUnit(id, 'horse', armyId, groundPos(slot.x, slot.z), spawn.yaw),
+        createUnit(id, 'horse', armyId, groundPos(settings, slot.x, slot.z), spawn.yaw),
       );
       horse.riderId = soldier.id;
       soldier.mountId = horse.id;
@@ -125,6 +125,7 @@ export function defaultSettings(overrides: Partial<MatchSettings> = {}): MatchSe
       { name: 'Red Bot', team: 1, isBot: true },
     ],
     seed: MAP.seed,
+    map: 'meadow',
     ...overrides,
   };
 }

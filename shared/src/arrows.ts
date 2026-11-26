@@ -132,7 +132,7 @@ export function stepArrows(state: MatchState, dt: number): void {
       hitWithArrow(state, arrow, victim);
       continue;
     }
-    const ground = terrainHeightAt(arrow.pos.x, arrow.pos.z);
+    const ground = terrainHeightAt(state.settings.map, arrow.pos.x, arrow.pos.z);
     if (arrow.pos.y <= ground) {
       const speed = Math.hypot(arrow.vel.x, arrow.vel.y, arrow.vel.z) || 1;
       state.events.push({

@@ -2,6 +2,7 @@ import { BODY, HORSE } from './config.ts';
 import { distanceXZ, yawToDir } from './math.ts';
 import { randomRange } from './random.ts';
 import { terrainHeightAt } from './terrain.ts';
+import type { MapId } from './maps.ts';
 import type { MatchState, Unit } from './types.ts';
 import { getUnit, isHorse } from './units.ts';
 
@@ -47,7 +48,7 @@ export function mount(state: MatchState, rider: Unit, horse: Unit): boolean {
 export function dismount(state: MatchState, rider: Unit): boolean {
   const horse = getUnit(state, rider.mountId);
   if (!horse) return false;
-  placeBesideHorse(rider, horse);
+  placeBesideHorse(state.settings.map, rider, horse);
   rider.vel = { ...horse.vel, y: 0 };
   state.events.push({ type: 'dismount', riderId: rider.id, horseId: horse.id, thrown: false });
   return true;
@@ -55,7 +56,7 @@ export function dismount(state: MatchState, rider: Unit): boolean {
 
 /** The horse died: the rider is thrown off in a goofy arc and stunned. */
 export function throwRider(state: MatchState, rider: Unit, horse: Unit): void {
-  placeBesideHorse(rider, horse);
+  placeBesideHorse(state.settings.map, rider, horse);
   const side = randomRange(state.rng, -1, 1) >= 0 ? 1 : -1;
   const facing = yawToDir(horse.yaw);
   rider.vel = {
@@ -70,12 +71,12 @@ export function throwRider(state: MatchState, rider: Unit, horse: Unit): void {
   state.events.push({ type: 'dismount', riderId: rider.id, horseId: horse.id, thrown: true });
 }
 
-function placeBesideHorse(rider: Unit, horse: Unit): void {
+function placeBesideHorse(map: MapId, rider: Unit, horse: Unit): void {
   const facing = yawToDir(horse.yaw);
   const offset = BODY.horseRadius + BODY.personRadius + 0.1;
   rider.pos.x = horse.pos.x + facing.z * offset;
   rider.pos.z = horse.pos.z - facing.x * offset;
-  rider.pos.y = terrainHeightAt(rider.pos.x, rider.pos.z);
+  rider.pos.y = terrainHeightAt(map, rider.pos.x, rider.pos.z);
   rider.onGround = true;
   rider.mountId = null;
   horse.riderId = null;

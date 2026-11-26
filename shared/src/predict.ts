@@ -1,4 +1,5 @@
 import { applyMapEdge, integrateBody, resolveObstacles, steerPerson } from './physics.ts';
+import type { MapId } from './maps.ts';
 import type { CommanderInput, Unit } from './types.ts';
 import { canUseShield } from './units.ts';
 
@@ -7,7 +8,7 @@ import { canUseShield } from './units.ts';
  * show its own movement instantly. Collisions with other bodies and hits stay server-side;
  * reconciliation with server snapshots corrects any difference.
  */
-export function predictCommanderStep(unit: Unit, input: CommanderInput, dt: number): void {
+export function predictCommanderStep(unit: Unit, input: CommanderInput, dt: number, map: MapId): void {
   if (!unit.alive || unit.mountId !== null) return;
   if (unit.stunTimer > 0) unit.stunTimer = Math.max(0, unit.stunTimer - dt);
   unit.intent.moveX = input.moveX;
@@ -16,7 +17,7 @@ export function predictCommanderStep(unit: Unit, input: CommanderInput, dt: numb
   unit.intent.jump = input.jump;
   unit.shieldUp = input.shield && canUseShield(unit) && unit.stunTimer <= 0 && unit.action === 'none';
   steerPerson(unit, dt);
-  integrateBody(unit, dt);
+  integrateBody(unit, dt, map);
   applyMapEdge(unit);
-  resolveObstacles(unit);
+  resolveObstacles(unit, map);
 }

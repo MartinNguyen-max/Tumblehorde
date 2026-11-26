@@ -20,7 +20,7 @@ describe('client prediction', () => {
     for (let i = 0; i < 60; i++) {
       const input = inputs[Math.floor(i / 15)] ?? neutralInput();
       stepMatch(server, new Map([[0, input]]), DT);
-      predictCommanderStep(predicted, input, DT);
+      predictCommanderStep(predicted, input, DT, 'meadow');
     }
     expect(predicted.pos.x).toBeCloseTo(serverMe.pos.x, 5);
     expect(predicted.pos.y).toBeCloseTo(serverMe.pos.y, 5);
@@ -33,7 +33,7 @@ describe('client prediction', () => {
     const me = commanderOf(state, 0);
     me.alive = false;
     const before = { ...me.pos };
-    predictCommanderStep(me, { ...neutralInput(), moveX: 1 }, DT);
+    predictCommanderStep(me, { ...neutralInput(), moveX: 1 }, DT, 'meadow');
     expect(me.pos).toEqual(before);
   });
 });
