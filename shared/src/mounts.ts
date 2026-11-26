@@ -35,7 +35,6 @@ export function mount(state: MatchState, rider: Unit, horse: Unit): boolean {
   if (!canMount(rider, horse)) return false;
   rider.mountId = horse.id;
   horse.riderId = rider.id;
-  horse.armyId = rider.armyId;
   rider.shieldUp = false;
   rider.action = 'none';
   rider.actionTimer = 0;

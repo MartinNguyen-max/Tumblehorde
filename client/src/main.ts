@@ -58,6 +58,7 @@ async function boot(): Promise<void> {
     hud.setVisible(false);
     results.hide();
     clickToPlay.hidden = true;
+    world.edgeMaterial.alpha = 0;
   };
 
   const showLanding = (message?: string): void => {
@@ -135,8 +136,9 @@ async function boot(): Promise<void> {
 
   const results = new Results({
     onRematch: () => {
+      const online = controller?.session.online ?? false;
       rematch?.();
-      if (!controller?.session.online) input.requestLock();
+      if (!online) input.requestLock();
     },
     onMenu: () => {
       if (onlineLobby.inRoom) void onlineLobby.leave();

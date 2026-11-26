@@ -4,7 +4,7 @@ import { dirToYaw, normalizeXZ, segmentSegmentDistanceSq, yawToDir, type Vec3 } 
 import { randomRange } from './random.ts';
 import { terrainHeightAt } from './terrain.ts';
 import type { Arrow, MatchState, Unit } from './types.ts';
-import { bodyRadius, isHorse, isMounted } from './units.ts';
+import { bodyRadius, isHorse, isMounted, teamOf } from './units.ts';
 
 const SHOULDER_HEIGHT = 1.4;
 const CHEST_HEIGHT = 1.1;
@@ -92,7 +92,7 @@ function findArrowVictim(state: MatchState, arrow: Arrow, from: Vec3, to: Vec3):
   let bestDistance = Infinity;
   for (const unit of state.units) {
     if (!unit.alive || unit.invulnerableTimer > 0) continue;
-    if ((state.armies[unit.armyId]?.team ?? -2) === shooterTeam) continue;
+    if (teamOf(state, unit) === shooterTeam) continue;
     const capsule = hitCapsule(unit);
     const reach = capsule.radius + ARROW.radius;
     if (segmentSegmentDistanceSq(from, to, capsule.a, capsule.b) > reach * reach) continue;

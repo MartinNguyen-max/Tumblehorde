@@ -96,7 +96,10 @@ export class OnlineSession implements Session {
     });
     this.snapshots.push({ time: view.time, view });
     if (this.snapshots.length > SNAPSHOT_BUFFER) this.snapshots.shift();
-    if (message.events.length > 0) this.queuedEvents.push({ time: view.time, events: message.events });
+    // Release events as soon as the view starts blending towards this snapshot, so a death
+    // event (with its knockback) arrives before the unit is drawn as dead.
+    const releaseAt = previous?.time ?? view.time;
+    if (message.events.length > 0) this.queuedEvents.push({ time: releaseAt, events: message.events });
     this.reconcile(view, message.ack);
   }
 

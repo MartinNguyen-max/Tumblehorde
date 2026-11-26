@@ -9,7 +9,7 @@ import { stepMovement } from './physics.ts';
 import { randomRange } from './random.ts';
 import { terrainHeightAt } from './terrain.ts';
 import type { Army, CommanderInput, MatchState, Unit } from './types.ts';
-import { canUseShield, getUnit, isPerson, rangedStatsFor } from './units.ts';
+import { canBeTargeted, canUseShield, getUnit, isPerson, rangedStatsFor } from './units.ts';
 
 /** Archers switch from the bow to melee when the target is this close. */
 const ARCHER_BOW_MIN_DISTANCE = ARCHER.melee.range + 0.6;
@@ -70,7 +70,10 @@ export function progressActions(state: MatchState, dt: number): void {
     unit.action = 'none';
     unit.actionTimer = 0;
     if (action === 'melee') resolveMelee(state, unit);
-    else fireArrow(state, unit, getUnit(state, unit.ai.targetId));
+    else {
+      const target = getUnit(state, unit.ai.targetId);
+      fireArrow(state, unit, target && canBeTargeted(target) ? target : null);
+    }
   }
 }
 

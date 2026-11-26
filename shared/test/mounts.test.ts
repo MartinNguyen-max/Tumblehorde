@@ -3,7 +3,7 @@ import { BODY, HORSE, RIDER } from '../src/config.ts';
 import { killUnit, resolveMelee } from '../src/combat.ts';
 import { neutralInput } from '../src/input.ts';
 import { stepMatch } from '../src/match.ts';
-import { dismount, mount, toggleMount } from '../src/mounts.ts';
+import { dismount, mount, syncRiderToHorse, toggleMount } from '../src/mounts.ts';
 import { meleeStatsFor } from '../src/units.ts';
 import { commanderOf, firstOfKind, horseOf, newMatch, place } from './helpers.ts';
 
@@ -107,5 +107,27 @@ describe('cavalry', () => {
     resolveMelee(state, rider);
     expect(victim.hp).toBe(victim.maxHp - RIDER.mountedMelee.damage);
     expect(victim.stunTimer).toBeCloseTo(RIDER.mountedMelee.knockback.stun);
+  });
+});
+
+describe('stolen horses', () => {
+  it('keep their army but fight for their new rider', async () => {
+    const { teamOf } = await import('../src/units.ts');
+    const { fireArrow, stepArrows } = await import('../src/arrows.ts');
+    const state = newMatch();
+    const enemyRider = firstOfKind(state, 1, 'rider');
+    const horse = horseOf(state, enemyRider);
+    dismount(state, enemyRider);
+    enemyRider.alive = false;
+    const me = place(commanderOf(state, 0), horse.pos.x + 1, horse.pos.z);
+    expect(mount(state, me, horse)).toBe(true);
+    expect(horse.armyId).toBe(1);
+    expect(teamOf(state, horse)).toBe(state.armies[0]!.team);
+    place(horse, 0, 10, Math.PI / 2);
+    syncRiderToHorse(me, horse);
+    const enemyArcher = place(firstOfKind(state, 1, 'archer'), 0, 0, 0);
+    fireArrow(state, enemyArcher, me);
+    for (let i = 0; i < 200 && state.arrows.length > 0; i++) stepArrows(state, 1 / 60);
+    expect(horse.hp < horse.maxHp || me.hp < me.maxHp).toBe(true);
   });
 });

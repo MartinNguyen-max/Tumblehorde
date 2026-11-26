@@ -131,8 +131,14 @@ export function getUnit(state: MatchState, id: EntityId | null): Unit | null {
   return state.units[id] ?? null;
 }
 
+/** A ridden horse fights for its rider's side, even if it was taken from another army. */
+export function sideArmyId(state: MatchState, unit: Unit): number {
+  if (unit.riderId === null) return unit.armyId;
+  return state.units[unit.riderId]?.armyId ?? unit.armyId;
+}
+
 export function teamOf(state: MatchState, unit: Unit): number {
-  return state.armies[unit.armyId]?.team ?? -1;
+  return state.armies[sideArmyId(state, unit)]?.team ?? -1;
 }
 
 export function areEnemies(state: MatchState, a: Unit, b: Unit): boolean {

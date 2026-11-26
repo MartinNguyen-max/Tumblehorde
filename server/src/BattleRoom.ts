@@ -39,6 +39,8 @@ interface Player {
   queue: InputMessage[];
   lastInput: CommanderInput;
   ack: number;
+  /** Ticks in a row without fresh input; a silent client stops acting after a few. */
+  staleTicks: number;
   left: boolean;
 }
 
@@ -95,6 +97,7 @@ export class BattleRoom extends Room {
       queue: [],
       lastInput: neutralInput(),
       ack: -1,
+      staleTicks: 0,
       left: false,
     });
     if (!this.hostId) this.hostId = client.sessionId;
@@ -107,6 +110,9 @@ export class BattleRoom extends Room {
     player.connected = false;
     player.client = null;
     if (this.match && player.armyId !== null) setArmyConnected(this.match, player.armyId, false);
+    if (this.phase === 'lobby' && this.hostId === client.sessionId) {
+      this.hostId = this.players.find((p) => p.connected)?.sessionId ?? this.hostId;
+    }
     this.allowReconnection(client, MATCH.disconnectTimeout);
     this.broadcastLobby();
   }
@@ -116,7 +122,12 @@ export class BattleRoom extends Room {
     if (!player) return;
     player.connected = true;
     player.client = client;
+    // The rejoined client starts a fresh session whose input sequence restarts at 1.
     player.queue = [];
+    player.ack = -1;
+    player.staleTicks = 0;
+    player.lastInput = neutralInput();
+    if (!this.hostId) this.hostId = client.sessionId;
     if (this.match && player.armyId !== null) {
       setArmyConnected(this.match, player.armyId, true);
       client.send('start', this.startMessage());
@@ -206,7 +217,6 @@ export class BattleRoom extends Room {
 
   private startBattle(client: Client): void {
     if (client.sessionId !== this.hostId || this.phase !== 'lobby') return;
-    this.players = this.players.filter((p) => p.connected);
     const lobby = this.lobbyMessage();
     if (!canStartBattle(lobby)) return;
     const settings = battleSettings(lobby, (Date.now() & 0x7fffffff) | 0);
@@ -215,8 +225,11 @@ export class BattleRoom extends Room {
       p.queue = [];
       p.ack = -1;
       p.lastInput = neutralInput();
+      p.staleTicks = 0;
     });
     this.match = createMatch(settings);
+    // Players still reconnecting get an army too; it falls if they do not make it back in time.
+    for (const p of this.players) if (!p.connected && p.armyId !== null) setArmyConnected(this.match, p.armyId, false);
     this.pendingEvents = [];
     this.phase = 'battle';
     void this.lock();
@@ -231,6 +244,10 @@ export class BattleRoom extends Room {
     if (next) {
       player.lastInput = next.input;
       player.ack = next.seq;
+      player.staleTicks = 0;
+    } else if (++player.staleTicks > NET.maxQueuedInputs) {
+      // A hidden tab stops sending input: stand still instead of running on forever.
+      player.lastInput = neutralInput(player.lastInput.faceYaw);
     }
     return player.lastInput;
   }
