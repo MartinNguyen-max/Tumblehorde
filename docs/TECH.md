@@ -2,6 +2,10 @@
 
 Version numbers must be verified at setup, since they change quickly.
 
+Verified at setup (2026-11-26): Node 24.22 LTS, TypeScript 7.0, Vite 8.3, Vitest 5.1,
+`@babylonjs/core` 9.37, `@babylonjs/havok` 1.3.14, `@colyseus/core` 0.18.30,
+`@colyseus/ws-transport` 0.18.5, `@colyseus/sdk` 0.18.10.
+
 ## Stack
 
 | Part | Choice | Why |
@@ -33,6 +37,48 @@ Version numbers must be verified at setup, since they change quickly.
 - **Tick:** The server runs at a fixed tick (proposal: 20 Hz).
 - **Client display:** Remote players are interpolated between ticks so movement is smooth.
 - **Own character:** Prediction, so movement feels instant. Colyseus 0.18 has built-in support. This is verified at setup.
+  *Verified:* the SDK exports `Predict`/`Reconciler`, tied to schema state. We use our own replay-based prediction instead (see `DECISIONS.md`).
+
+## As built
+
+### Simulation (`/shared`)
+
+- `stepMatch(state, inputs, dt)` advances the battle one fixed step: bot commanders, unit AI,
+  weapons, movement (gravity, terrain, map edge, obstacles, crowding, trampling), arrows,
+  respawns, disconnect timers, elimination and victory.
+- All tunables are in `shared/src/config.ts`. The terrain is a heightfield in `terrain.ts`;
+  the client builds its mesh from the same grid, so feet always touch the ground.
+- Every step produces `SimEvent`s (hits with knockback vectors, deaths, swings, arrows landing,
+  orders...). The client turns them into animations, ragdolls, particles and HUD messages.
+- `MatchView` (`view.ts`) is the render model: built from the state locally, decoded from
+  snapshots online, blended with `interpolateViews`.
+
+### Client (`/client`)
+
+- `render/`: world (terrain, scenery, edge walls, lights, Havok), instanced box-part rigs with
+  procedural animation, Havok ragdolls for the dead, arrows and particles, follow camera.
+- `game/`: `LocalSession` (simulation in the browser at 60 Hz) and `GameController` (input →
+  commands, camera, renderer, HUD). `online/OnlineSession` implements the same `Session` interface.
+- `ui/`: landing page (with a live bot battle behind it), HUD, lobby, results.
+- `?debug` exposes `window.tumblehorde` for automated smoke tests (start, fast-forward, commands).
+
+### Network (`/server` + `shared/src/net.ts`)
+
+| Message | Direction | Content |
+|---|---|---|
+| `lobby` | server → all | code, host, phase, mode, army size, players |
+| `settings`, `team`, `start` | client → server | host settings, team switch, start (host only) |
+| `start` | server → all | match settings and the sessionId → army mapping |
+| `input` | client → server | sequence number + validated `CommanderInput`, 20 per second |
+| `command` | client → server | order, split or mount (validated) |
+| `snap` | server → each | binary snapshot, army status, events, last applied input `ack` |
+
+- The server ticks the simulation at 20 Hz and sends a snapshot every tick. Each tick consumes
+  one queued input per player (or repeats the last one); long queues are trimmed.
+- Clients rebuild the static roster (unit kinds, armies) from the match settings, so snapshots
+  only carry what changes.
+- Disconnect: `onDrop` starts the 30 s army timer and `allowReconnection(30)`; `onReconnect`
+  cancels it and resends `start` so the client can rebuild its session.
 
 ## Physics
 

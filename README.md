@@ -19,19 +19,53 @@ Read in this order:
 
 It is a **style reference, not code to be reused directly**. The game is built in Babylon.js, not Three.js. But the color values, the proportions of the figures and the terrain generation are worth looking at.
 
-## Setup
+## Running the game
 
-The project is not scaffolded yet. First step:
+Requires Node.js 24 or newer.
 
 ```bash
-# Client
-npm create vite@latest client -- --template vanilla-ts
-cd client && npm install @babylonjs/core @babylonjs/havok && cd ..
-
-# Server (only once M8 is reached)
-npm create colyseus-app@latest server
+npm install
+npm run dev          # client on http://localhost:5173 (play against bots)
+npm run dev:server   # game server on ws://localhost:2567 (needed for online play)
 ```
 
-Verify versions at setup. They change quickly.
+Online: one player clicks **Create room** and shares the code or the `?room=CODE` link;
+the others join, the host starts. Over a LAN, open the client via the host's IP address
+(Vite prints it); the client connects to port 2567 on the same host. Point the client at
+another server with `?server=wss://example.com` or `VITE_SERVER_URL` at build time.
 
-Then `/shared` is created as a separate TypeScript module that is imported by both client and server. See `docs/TECH.md`.
+## Checks
+
+```bash
+npm test             # Vitest for the shared simulation
+npm run typecheck    # TypeScript for shared, client and server
+npm run smoke -w server   # online end-to-end check (server must be running)
+npm run build        # production build of the client into client/dist
+```
+
+## Controls
+
+| Input | Action |
+|---|---|
+| WASD / Space | Move / jump |
+| Left click / right click (hold) | Strike / shield |
+| 1 / 2 / 3 | Follow / Hold / Attack |
+| 4, Tab | Split into groups (cycles 1–3), pick which group gets orders |
+| E | Mount or dismount a free horse |
+| V, mouse wheel | Overview camera, zoom |
+| Esc | Pause (local) / release the mouse |
+
+## Layout
+
+```
+/shared   pure game logic and network protocol (Vitest)
+/client   Babylon.js + Havok client, HUD, landing page
+/server   Colyseus room running the shared simulation
+/docs     design, balance, tech and decisions
+```
+
+## Deploying
+
+The client is static: `npm run build` and host `client/dist` on GitHub Pages or
+Cloudflare Pages. Run the server anywhere Node 24 runs (`npm start -w server`, `PORT`
+env var), and build the client with `VITE_SERVER_URL=wss://your-server`.

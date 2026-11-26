@@ -15,10 +15,14 @@ Updated as work progresses. ✅ done · 🚧 in progress · ⬜ not started.
 | M5 Archer | ✅ | Ballistic arrows with lead and spread, kiting, shield walls vs archers |
 | M6 Rider and horse | ✅ | Mount/dismount (E), trample, thrown off when the horse dies, spear |
 | M7 After the battle | ✅ | Results table, duration, kills/deaths, rematch |
-| M8 Online | 🚧 | |
+| M8 Online | ✅ | Colyseus room with code/link, lobby, 2–4 players FFA or teams, prediction + interpolation, 30 s disconnect rule |
 
 The simulation for all unit types lives in `/shared` and is covered by Vitest
-(`npm test`). Run the game with `npm run dev` (see `README.md`).
+(`npm test`). The online flow is covered by `npm run smoke -w server` against a
+running server. Run the game with `npm run dev` (see `README.md`).
+
+Next up after v1: playtesting and balance tuning, sound, more maps, more bot
+difficulty levels (see "Out of scope for v1").
 
 ## M1: Run around the map
 - 150 × 150 m map with invisible edges

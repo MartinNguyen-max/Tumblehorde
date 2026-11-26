@@ -45,3 +45,8 @@ Decisions made while building v1. None of them replace an earlier line.
 - **Team colors:** free-for-all uses blue/red/gold/purple; in 2 teams allies share a color family (blue/teal vs red/orange).
 - **Enemy count label:** shown above an enemy army when the camera looks within ~12° of its center.
 - **Landing page shows a live bot battle** behind the menu, so the game sells itself before you click.
+- **Online sync uses our own binary snapshots, not Colyseus schema state.** The server already runs the full shared simulation; sending a compact snapshot of what moves (~25 bytes per living unit, 20 per second) plus the tick's events is simpler than mirroring every unit into schema classes, and keeps one view model for local and online play. Colyseus provides rooms, matchmaking, messaging and reconnection.
+- **Own-commander prediction is our own, not Colyseus `Predict`.** Colyseus 0.18 does ship prediction helpers, but they are built around schema state and `defineInput`. We replay unacknowledged inputs through the same shared movement code instead (`predictCommanderStep`), which a test checks against the server step. On horseback the commander is not predicted.
+- **Room code = room id.** Five letters without I and O, shareable as `?room=CODE`.
+- **Lobby rules:** the first player is host and picks army size and mode; only the host can start; 2 teams needs players on both sides. Rooms are locked during a battle and return to the lobby afterwards ("Back to lobby" on the results screen).
+- **Leaving mid-battle counts as disconnecting.** The army fights on with its last orders and falls after 30 s unless the player reconnects (the SDK retries automatically; a page reload rejoins via a stored reconnection token).
