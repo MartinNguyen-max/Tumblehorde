@@ -200,7 +200,8 @@ export const SWORDSMAN = {
     windup: 0.3,
     arcHalfAngle: 35 * DEG,
     maxTargets: 1,
-    knockback: { strength: 4.5, stun: 0.5 },
+    // A held spear line shoves attackers back hard: very defensive.
+    knockback: { strength: 6.5, stun: 0.6 },
   } satisfies MeleeStats,
   /** Time to swap spear and sword when the order changes. */
   weaponSwapTime: 0.5,
@@ -324,8 +325,8 @@ export const ARMY = {
     },
   },
   defaultMix: 'legion' as const,
-  /** Bot armies fight without a commander, which makes the player's own commander stand out. */
-  botCommanders: false,
+  /** Bot armies are led by a commander on horseback, like the player's. */
+  botCommanders: true,
   maxArmies: 4,
   minArmies: 2,
   maxGroups: 3,
@@ -464,7 +465,8 @@ export const BOT = {
   regroupRatio: 0.5,
   /** The bot commander stays this far behind its own front line. */
   commanderBehindLine: 8,
-  marchStopDistance: 45,
+  /** A marching bot commander stops leading this far from the enemy: inside marchDistance, so the army then forms up. */
+  marchStopDistance: 22,
   retreatHpFraction: 0.3,
   /** A wounded bot commander backs off from enemies this close... */
   retreatTriggerDistance: 9,

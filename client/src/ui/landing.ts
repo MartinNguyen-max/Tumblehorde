@@ -122,17 +122,21 @@ export class Landing {
     const map = this.pickMap();
     const armySize = Number(this.size.get()) as ArmySize;
     const seed = (Date.now() ^ MAP.seed) | 0;
-    if (MAPS[map].layout === 'siege') return { mode: 'teams', armySize, armies: this.siegeSetups(), seed, map };
     const mode = this.mode.get() === 'teams' ? 'teams' : 'ffa';
+    if (MAPS[map].layout === 'siege') return { mode, armySize, armies: this.siegeSetups(mode), seed, map };
     return { mode, armySize, armies: this.armySetups(mode), seed, map };
   }
 
-  /** At the castle one army holds the gate: you, or the first bot while you and the rest attack. */
-  private siegeSetups(): ArmySetup[] {
+  /**
+   * At the castle one army holds the gate: you, or the first bot. In free-for-all every attacker
+   * fights for itself (the defender too); in 2 teams the attackers are allies.
+   */
+  private siegeSetups(mode: GameMode): ArmySetup[] {
     const defending = this.role.get() === 'defend';
-    return this.armySetups('ffa').map((army, i) => {
-      const defender = defending ? i === 0 : i === 1;
-      return { ...army, team: defender ? DEFENDER_TEAM : DEFENDER_TEAM + 1 };
+    return this.armySetups(mode).map((army, i) => {
+      const defends = defending ? i === 0 : i === 1;
+      if (mode === 'ffa') return { ...army, defends };
+      return { ...army, defends, team: defends ? DEFENDER_TEAM : DEFENDER_TEAM + 1 };
     });
   }
 

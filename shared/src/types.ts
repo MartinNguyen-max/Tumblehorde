@@ -158,6 +158,8 @@ export interface ArmySetup {
   name: string;
   team: number;
   isBot: boolean;
+  /** On the castle map: this army holds the castle. Without it, team 0 (or in free-for-all the first army) does. */
+  defends?: boolean;
 }
 
 export interface MatchSettings {

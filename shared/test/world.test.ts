@@ -90,5 +90,9 @@ describe('spawn points', () => {
     expect(armySpawn(settings, 0).position.x).toBeLessThan(CASTLE.west);
     expect(armySpawn(settings, 2).position.x).toBeLessThan(CASTLE.west);
     expect(isDefender({ ...settings, map: 'meadow' }, 1)).toBe(false);
+    // Free-for-all at the castle: whoever is marked holds it, everyone else fights for themselves.
+    const ffa = { map: 'castle' as const, mode: 'ffa' as const, armies: armies(3).map((a, i) => ({ ...a, defends: i === 2 })) };
+    expect([0, 1, 2].map((i) => isDefender(ffa, i))).toEqual([false, false, true]);
+    expect(new Set(ffa.armies.map((a) => a.team)).size).toBe(3);
   });
 });

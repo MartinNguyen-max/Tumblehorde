@@ -14,6 +14,7 @@ export const DEFENDER_TEAM = 0;
 
 export function isDefender(settings: Pick<MatchSettings, 'map' | 'mode' | 'armies'>, index: number): boolean {
   if (MAPS[settings.map].layout !== 'siege') return false;
+  if (settings.armies.some((a) => a.defends)) return settings.armies[index]?.defends === true;
   return settings.mode === 'teams' ? settings.armies[index]?.team === DEFENDER_TEAM : index === 0;
 }
 

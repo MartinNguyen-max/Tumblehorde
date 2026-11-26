@@ -104,10 +104,12 @@ describe('bot strategy', () => {
     expect(chooseStance(state, army, BOT.marchDistance - 5, 3, 10)).toBe('regroup');
   });
 
-  it('marches without a commander, in formation and with spears', () => {
+  it('marches on without its commander, in formation and with spears', () => {
     const state = newMatch();
     const army = state.armies[1]!;
-    expect(army.commanderId).toBeNull();
+    const botCommander = commanderOf(state, 1);
+    botCommander.alive = false;
+    botCommander.respawnTimer = Infinity;
     const enemyStart = soldiersOf(state, 1).map((u) => u.pos.x);
     const before = centroid(soldiersOf(state, 1))!;
     for (let t = 0; t < MATCH.prepareTime + 6; t += DT) stepMatch(state, new Map([[0, neutralInput()]]), DT);
