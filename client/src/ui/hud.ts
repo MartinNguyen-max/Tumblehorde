@@ -58,7 +58,12 @@ const VIKING_REFUSED_TEXT: Partial<Record<RefusedReason, string>> = {
 const FACTION_WORDS = {
   roman: { feast: 'Banquet 🍷', drunk: 'Drunk! 🍷', feastBanner: 'Banquet! Wine for everyone! 🍷', drunkBanner: 'Your legion is VERY drunk!', rally: 'Rally speech', throw: 'Throw spears', thrown: 'Spears thrown', away: 'Spears away!', main: 'Sword', army: 'legion' },
   viking: { feast: 'Mead feast 🍺', drunk: 'Drunk! 🍺', feastBanner: 'Mead! Horns up, everyone! 🍺', drunkBanner: 'Your warband is VERY drunk!', rally: 'War roar', throw: 'Throw axes', thrown: 'Axes thrown', away: 'Axes away!', main: 'Axe', army: 'warband' },
-} as const satisfies Record<Faction, Record<string, string>>;
+} as const satisfies Record<'roman' | 'viking', Record<string, string>>;
+
+/** Only Romans and Vikings are ever led by a player; anyone else speaks like the legion. */
+function wordsOf(faction: Faction): (typeof FACTION_WORDS)['roman' | 'viking'] {
+  return faction === 'viking' ? FACTION_WORDS.viking : FACTION_WORDS.roman;
+}
 const HP_LABEL_HEIGHT = 2.75;
 const FOE_LABEL_HEIGHT = 3.4;
 const POPUP_RISE = 40;
@@ -141,12 +146,12 @@ export class Hud {
     const main = this.kit.querySelector<HTMLElement>('.weapon');
     if (main) {
       main.dataset.weapon = faction === 'viking' ? 'axe' : 'sword';
-      main.textContent = FACTION_WORDS[faction].main;
+      main.textContent = wordsOf(faction).main;
     }
   }
 
-  private get words(): (typeof FACTION_WORDS)[Faction] {
-    return FACTION_WORDS[this.faction];
+  private get words(): ReturnType<typeof wordsOf> {
+    return wordsOf(this.faction);
   }
 
   private buildWheel(wheelOptions: readonly WheelOption[]): void {

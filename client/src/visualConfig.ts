@@ -150,7 +150,7 @@ export interface MapTheme {
   snow?: boolean;
 }
 
-export const MAP_THEMES: Record<MapId, MapTheme> = {
+const BATTLE_THEMES: Record<'meadow' | 'castle' | 'city' | 'north', MapTheme> = {
   meadow: {
     sky: '#8EC9EE',
     fog: '#9ED3F0',
@@ -256,11 +256,34 @@ export const MAP_THEMES: Record<MapId, MapTheme> = {
   },
 };
 
+/** The story's own places look like their battlefield cousins: woods darker, the fortress snowed in. */
+export const MAP_THEMES: Record<MapId, MapTheme> = {
+  ...BATTLE_THEMES,
+  forest: {
+    ...BATTLE_THEMES.meadow,
+    fog: '#8FB7A2',
+    hemiGround: '#3E6A33',
+    ground: { hue: 0.27, saturation: 0.42, lightMin: 0.3, lightMax: 0.38 },
+    path: { hue: 0.09, saturation: 0.3, lightMin: 0.45, lightMax: 0.52 },
+    leaves: '#2F6E34',
+    leavesTop: '#3E8A3E',
+    bushCount: 140,
+    tuftCount: 520,
+  },
+  village: { ...BATTLE_THEMES.meadow, plasters: ['#EDE4CF', '#E9CBA0', '#F3E6CF'], roofs: ['#B5533C', '#A3462F', '#C4643F'] },
+  river: { ...BATTLE_THEMES.meadow },
+  fortress: { ...BATTLE_THEMES.north, ice: undefined, plaster: '#D9D2C2', plasters: ['#D9D2C2'], stone: '#9AA0A3' },
+};
+
 export const MAP_NAMES: Record<MapId, string> = {
   meadow: 'Green Meadow',
   castle: 'Castle Siege',
   city: 'The City',
   north: 'The Frozen North',
+  forest: 'The Forest Road',
+  village: 'The Village',
+  river: 'The Bridge',
+  fortress: 'The Northern Fortress',
 };
 
 /** Falling snow: flakes in a box around the camera, drifting down and sideways. */

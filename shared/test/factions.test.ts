@@ -106,7 +106,7 @@ describe('the Viking faction', () => {
 
 describe('Romans against Vikings', () => {
   it('neither people always wins: equal bot armies trade victories', () => {
-    const wins: Record<Faction, number> = { roman: 0, viking: 0 };
+    const wins: Record<Faction, number> = { roman: 0, viking: 0, bandit: 0, zombie: 0 };
     for (let seed = 1; seed <= 6; seed++) {
       const factions: [Faction, Faction] = seed % 2 === 0 ? ['viking', 'roman'] : ['roman', 'viking'];
       const state = createMatch(

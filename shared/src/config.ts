@@ -72,6 +72,8 @@ export const OBSTACLES = {
   keepClearOfSpawn: 14,
   keepClearOfCenter: 14,
   keepClearOfMoat: 3,
+  /** Trees and rocks stand at least this far apart. */
+  minSpacing: 4,
 } as const;
 
 export const BODY = {
@@ -283,6 +285,49 @@ export const VIKING = {
   throwDamage: 42,
   throwPierce: 0.45,
   throwKnockback: { strength: 8, stun: 1.2 } satisfies KnockbackStats,
+} as const;
+
+/** Bandits: ragged men with swords and small shields, no spears and no discipline. */
+export const BANDIT = {
+  hp: 140,
+  speed: 5.1,
+  sword: {
+    damage: 22,
+    range: 1.9,
+    cooldown: 1.15,
+    windup: 0.4,
+    arcHalfAngle: 55 * DEG,
+    maxTargets: 1,
+    knockback: { strength: 3, stun: 0.4 },
+  } satisfies MeleeStats,
+  blockFraction: 0.85,
+  wallBlockFraction: 0.88,
+} as const;
+
+/**
+ * The dead that rise on the last night: no weapons and no shields, but fast, tough, and they hit
+ * hard with their bare hands. They never fall back and never stop coming.
+ */
+export const ZOMBIE = {
+  hp: 150,
+  speed: 6.4,
+  claw: {
+    damage: 24,
+    range: 1.7,
+    cooldown: 0.8,
+    windup: 0.28,
+    arcHalfAngle: 70 * DEG,
+    maxTargets: 1,
+    knockback: { strength: 5, stun: 0.6 },
+    pierce: 0.4,
+  } satisfies MeleeStats,
+} as const;
+
+/** The story's heroes are knocked down, never killed: they get back up after this long. */
+export const HERO = {
+  getUpTime: 9,
+  /** They come back with this share of their hit points. */
+  getUpHealth: 0.6,
 } as const;
 
 export const ARCHER = {
@@ -789,12 +834,12 @@ export const NET = {
 } as const;
 
 /** Every weapon in the game, in network order. */
-export const WEAPONS = ['sword', 'spear', 'bow', 'axe'] as const;
+export const WEAPONS = ['sword', 'spear', 'bow', 'axe', 'claw'] as const;
 /** What a commander carries. The bow is parked along with archers for now. */
 export const COMMANDER_WEAPONS = ['sword', 'spear'] as const;
 export const VIKING_COMMANDER_WEAPONS = ['axe', 'spear'] as const;
 export const FORMATIONS = ['line', 'double', 'circle', 'wedge', 'pincer', 'square', 'boar', 'swarm'] as const;
-export const FACTIONS = ['roman', 'viking'] as const;
+export const FACTIONS = ['roman', 'viking', 'bandit', 'zombie'] as const;
 /**
  * The formations each people knows. Vikings: the shield wall (skjaldborg, two tight ranks), the
  * boar's head (svinfylking, a deep narrow wedge), the shield ring, the horns (wings that go round
@@ -803,4 +848,6 @@ export const FACTIONS = ['roman', 'viking'] as const;
 export const FACTION_FORMATIONS = {
   roman: ['line', 'double', 'wedge', 'circle', 'square', 'pincer'],
   viking: ['double', 'boar', 'circle', 'pincer', 'swarm'],
+  bandit: ['double', 'line', 'circle', 'wedge'],
+  zombie: ['swarm'],
 } as const;

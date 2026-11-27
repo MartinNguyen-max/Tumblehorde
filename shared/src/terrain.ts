@@ -1,5 +1,5 @@
 import { MAP, OBSTACLES, TERRAIN, WATER } from './config.ts';
-import { CASTLE, CITY, type IceSheet, inMoat, MAPS, type MapDefinition, type MapId, NORTH, type ObstacleKind } from './maps.ts';
+import { CASTLE, CITY, type IceSheet, inMoat, inRiver, MAPS, type MapDefinition, type MapId, NORTH, type ObstacleKind } from './maps.ts';
 import { clamp, distanceXZ, type Vec2 } from './math.ts';
 import { createRandom, randomRange, type RandomSource } from './random.ts';
 import { allPossibleSpawnPoints } from './spawn.ts';
@@ -20,7 +20,7 @@ function hillHeight(def: MapDefinition, x: number, z: number): number {
     Math.sin(x * ripples.frequencyX + z * ripples.frequencyZ) * ripples.amplitude;
   const rimDistance = Math.max(Math.abs(x), Math.abs(z)) - TERRAIN.rimStart;
   const rim = rimDistance > 0 ? rimDistance * TERRAIN.rimSlope : 0;
-  const moat = def.layout === 'siege' && inMoat(x, z) ? WATER.depth : 0;
+  const moat = (def.layout === 'siege' && inMoat(x, z)) || (def.river && inRiver(def.river, x, z)) ? WATER.depth : 0;
   const ground = h * blend + rim - moat;
   // Frozen water lies flat, a little below the snow, with a gentle bank.
   const ice = iceDepth(def.ice ?? [], x, z);
@@ -45,9 +45,10 @@ export function onIce(map: MapId, x: number, z: number): boolean {
   return sheets.some((s) => Math.hypot((x - s.x) / s.radiusX, (z - s.z) / s.radiusZ) < 1);
 }
 
-/** Shallow water: only the castle moat. */
+/** Shallow water: the castle moat, or a river. */
 export function inWater(map: MapId, x: number, z: number): boolean {
-  return MAPS[map].layout === 'siege' && inMoat(x, z);
+  const def = MAPS[map];
+  return (def.layout === 'siege' && inMoat(x, z)) || (def.river !== undefined && inRiver(def.river, x, z));
 }
 
 const heightGrids = new Map<MapId, Float32Array>();
@@ -152,7 +153,10 @@ function isClearSpot(map: MapId, p: Vec2, spawns: Vec2[], placed: Obstacle[]): b
   // Nothing grows in the moat or inside the castle.
   if (MAPS[map].layout === 'siege' && Math.max(Math.abs(p.x - CASTLE.centerX), Math.abs(p.z)) < CASTLE.moatOuter + OBSTACLES.keepClearOfMoat) return false;
   if (spawns.some((s) => distanceXZ(s, p) < OBSTACLES.keepClearOfSpawn)) return false;
-  return !placed.some((o) => distanceXZ(o, p) < 4);
+  const def = MAPS[map];
+  if (def.river && Math.abs(p.x - def.river.x) < def.river.halfWidth + OBSTACLES.keepClearOfMoat) return false;
+  if (Object.values(def.points ?? {}).some((s) => distanceXZ(s, p) < OBSTACLES.keepClearOfSpawn)) return false;
+  return !placed.some((o) => distanceXZ(o, p) < OBSTACLES.minSpacing);
 }
 
 function placeInside(map: MapId, out: Obstacle[], rng: RandomSource, spawns: Vec2[], group: MapDefinition['inside'][number]): void {

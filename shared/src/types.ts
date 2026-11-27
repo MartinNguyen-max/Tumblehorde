@@ -9,9 +9,9 @@ export type SoldierKind = 'swordsman' | 'archer' | 'rider';
 
 export type Order = 'follow' | 'hold' | 'attack';
 /** Romans and Vikings: the same bodies, different looks, weapons, shields and formations. */
-export type Faction = 'roman' | 'viking';
+export type Faction = 'roman' | 'viking' | 'bandit' | 'zombie';
 
-export type Weapon = 'sword' | 'spear' | 'bow' | 'axe';
+export type Weapon = 'sword' | 'spear' | 'bow' | 'axe' | 'claw';
 export type GameMode = 'ffa' | 'teams';
 export type ArmySize = 15 | 25 | 40;
 /** How the player's army holds its ground: one long line, two lines, or a ring around the commander. */
@@ -75,6 +75,8 @@ export interface Unit {
   kind: UnitKind;
   armyId: number;
   faction: Faction;
+  /** A named hero of the story: knocked down, they get back up instead of dying. */
+  hero: string | null;
   hp: number;
   maxHp: number;
   alive: boolean;
@@ -197,6 +199,8 @@ export interface Army {
   forfeited: boolean;
   /** Seconds left before a disconnected army dies, or null if connected. */
   disconnectTimer: number | null;
+  /** Seconds until the next reinforcements arrive (only for armies that get them). */
+  reinforceTimer: number;
   stats: ArmyStats;
   bot: BotBrain;
   startingSoldiers: number;
@@ -226,6 +230,22 @@ export interface ArmySetup {
   defends?: boolean;
   /** Romans unless said otherwise. */
   faction?: Faction;
+  /** Story battles: exactly this many soldiers, instead of the battle's army size. */
+  soldiers?: number;
+  /** Story battles: where the army starts, instead of the map's usual spawn. */
+  spawn?: { x: number; z: number; yaw: number };
+  /** A bot army led by a commander of its own (an ally's general, an enemy warlord). */
+  commander?: boolean;
+  /** Story battles: the first soldiers are these named heroes, who get back up when knocked down. */
+  heroes?: readonly string[];
+  /** A bot army that waits where it stands until this many seconds into the battle. */
+  arriveAt?: number;
+  /** Fresh soldiers keep joining at the spawn: `count` every `every` seconds, without end. */
+  reinforce?: { every: number; count: number };
+  /** The commander's hit points, times this (a warlord is hard to bring down). */
+  commanderToughness?: number;
+  /** The bot's fighting style, instead of a random one. */
+  style?: BotStyle;
 }
 
 export interface MatchSettings {
@@ -236,6 +256,8 @@ export interface MatchSettings {
   map: MapId;
   /** Which unit types the armies have. Defaults to `legion`. */
   mix?: ArmyMix;
+  /** Seconds bots spend forming up before they march (story battles can start sooner). */
+  prepareTime?: number;
 }
 
 export type MatchPhase = 'playing' | 'ending' | 'over';

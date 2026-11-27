@@ -360,6 +360,7 @@ export function decodeSnapshot(bytes: Uint8Array, ctx: SnapshotContext): MatchVi
       invulnerable: (flags & FLAG_INVULNERABLE) !== 0,
       drunk: (flags & FLAG_DRUNK) !== 0,
       crouching: (flags & FLAG_CROUCH) !== 0,
+      hero: null,
       stunTimer,
       action,
       actionTimer,
@@ -423,5 +424,6 @@ function emptyUnit(info: Roster[number]): UnitView {
     weapon: 'sword',
     drunk: false,
     crouching: false,
+    hero: null,
   };
 }

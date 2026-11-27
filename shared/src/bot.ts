@@ -19,6 +19,16 @@ export type BotStance = 'form' | 'march' | 'standoff' | 'engage' | 'regroup' | '
 
 const BOT_STYLES: readonly BotStyle[] = ['steady', 'charge', 'phalanx', 'patient', 'flank'];
 
+/** Seconds the bots form up before they march: the battle's own, or the usual. */
+export function prepareTime(state: MatchState): number {
+  return state.settings.prepareTime ?? MATCH.prepareTime;
+}
+
+/** A bot army that has not arrived yet stands where it is (a second wave, or an ambush lying in wait). */
+function waiting(state: MatchState, army: Army): boolean {
+  return state.time < (state.settings.armies[army.id]?.arriveAt ?? 0);
+}
+
 export function randomBotStyle(state: MatchState): BotStyle {
   return BOT_STYLES[Math.floor(nextRandom(state.rng) * BOT_STYLES.length)] ?? 'steady';
 }
@@ -38,7 +48,7 @@ export function styledStance(state: MatchState, army: Army, stance: BotStance, d
       if (stance === 'march') return 'march';
       return army.bot.contactTimer > BOT.phalanxGrind ? 'engage' : 'push';
     case 'patient': {
-      const waitedLongEnough = state.time - MATCH.prepareTime > BOT.patientMaxWait;
+      const waitedLongEnough = state.time - prepareTime(state) > BOT.patientMaxWait;
       return distance < BOT.patientEngageDistance || waitedLongEnough ? 'engage' : 'wait';
     }
     case 'flank':
@@ -122,7 +132,7 @@ export function nearestEnemyArmy(state: MatchState, army: Army, from: Vec2): Ene
 }
 
 export function chooseStance(state: MatchState, army: Army, distance: number, ownSoldiers: number, enemySoldiers: number): BotStance {
-  if (state.time < MATCH.prepareTime) return 'form';
+  if (state.time < prepareTime(state)) return 'form';
   if (ownSoldiers === 0) return 'engage';
   if (ownSoldiers < enemySoldiers * BOT.regroupRatio && distance < BOT.marchDistance) return 'regroup';
   if (distance > BOT.marchDistance) return 'march';
@@ -141,6 +151,7 @@ function pushForward(state: MatchState, army: Army, enemyCenter: Vec2, distance:
  * when they mean to charge, or a swarm when they wait for you.
  */
 export function botFormation(army: Army): Formation {
+  if (army.faction === 'zombie') return 'swarm';
   if (army.faction !== 'viking') return FORMATION.defaultFormation;
   if (army.bot.style === 'charge') return 'boar';
   return army.bot.style === 'patient' ? 'swarm' : 'double';
@@ -253,7 +264,7 @@ function botCommanderIntent(state: MatchState, commander: Unit): void {
 
 /** The enemy is known, the battle is on, and nobody in this army has been hurt for a long while. */
 function stalemate(state: MatchState, army: Army): boolean {
-  if (state.time < MATCH.prepareTime + BOT.stalemateTime) return false;
+  if (state.time < prepareTime(state) + BOT.stalemateTime) return false;
   return livingSoldiers(state, army).every((s) => s.sinceHurt > BOT.stalemateTime);
 }
 
@@ -290,7 +301,8 @@ function searchTheStreets(state: MatchState, army: Army, leaderless: boolean): v
 /** Picks a stance and, at most every few seconds, turns it into orders. */
 function planArmy(state: MatchState, army: Army, dt: number, leaderless: boolean): { stance: BotStance; enemy: EnemyArmy } | null {
   army.bot.orderTimer -= dt;
-  if (isDefender(state.settings, army.id) && state.time >= MATCH.prepareTime && !strongEnoughToSally(state, army)) {
+  if (waiting(state, army)) return null;
+  if (isDefender(state.settings, army.id) && state.time >= prepareTime(state) && !strongEnoughToSally(state, army)) {
     defendGate(state, army);
     return null;
   }
@@ -299,11 +311,13 @@ function planArmy(state: MatchState, army: Army, dt: number, leaderless: boolean
   if (!own) return null;
   const enemy = knownEnemy(state, army, own);
   if (!enemy) {
-    if (fogOfWar(state) && state.time >= MATCH.prepareTime) searchTheStreets(state, army, leaderless);
+    if (fogOfWar(state) && state.time >= prepareTime(state)) searchTheStreets(state, army, leaderless);
     return null;
   }
   const distance = distanceXZ(own, enemy.center);
-  const beaten = chooseStance(state, army, distance, livingSoldiers(state, army).length, enemy.soldiers);
+  // The dead never fall back.
+  const fearless = army.faction === 'zombie';
+  const beaten = fearless ? 'engage' : chooseStance(state, army, distance, livingSoldiers(state, army).length, enemy.soldiers);
   army.bot.regroupTimer = beaten === 'regroup' ? army.bot.regroupTimer + dt : army.bot.regroupTimer;
   // Nobody falls back forever: after a while it is a last stand.
   const plain = beaten === 'regroup' && army.bot.regroupTimer > BOT.maxRegroup ? 'engage' : beaten;

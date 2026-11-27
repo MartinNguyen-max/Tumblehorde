@@ -14,7 +14,8 @@ export const DEFENDER_TEAM = 0;
 
 export function isDefender(settings: Pick<MatchSettings, 'map' | 'mode' | 'armies'>, index: number): boolean {
   if (MAPS[settings.map].layout !== 'siege') return false;
-  if (settings.armies.some((a) => a.defends)) return settings.armies[index]?.defends === true;
+  // Story battles place their armies themselves: only an army told to defend holds the gate.
+  if (settings.armies.some((a) => a.defends || a.spawn)) return settings.armies[index]?.defends === true;
   return settings.mode === 'teams' ? settings.armies[index]?.team === DEFENDER_TEAM : index === 0;
 }
 
@@ -84,6 +85,8 @@ function siegeSpawn(settings: Pick<MatchSettings, 'map' | 'mode' | 'armies'>, in
 
 /** Where army `index` starts. */
 export function armySpawn(settings: Pick<MatchSettings, 'map' | 'mode' | 'armies'>, index: number): SpawnPoint {
+  const fixed = settings.armies[index]?.spawn;
+  if (fixed) return { position: { x: fixed.x, z: fixed.z }, yaw: fixed.yaw };
   switch (MAPS[settings.map].layout) {
     case 'open':
       return circleSpawn(settings, index);
