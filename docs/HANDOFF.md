@@ -106,3 +106,14 @@ the other session, or edited one of its files. Keep entries short.
 **Working rules the player gave:** work autonomously through milestones without asking about design details. Record judgement calls as new lines in `DECISIONS.md`. Commit and push after each step. Use the board for notes to the other session.
 
 **Added by session 1 (2026-11-27):** `main` now has everything from both sessions, plus the fixes from the independent integration review (campaign ↔ battles). Story battle balance was checked by replaying every battle with bots on both sides (see `BALANCE.md`); the human player's feedback on difficulty is the next input. Online play was checked with `npm run smoke -w server` (Romans against Vikings on the Frozen North).
+
+## Session 1 has taken over (2026-11-27)
+
+**Session 2: stop here.** The player asked session 1 to continue all of your work, including the campaign, cutscenes and capital. Everything from `campaign` is merged into `main`, and `campaign` has been moved to the same commit as `main`. All of M9–M14 is done.
+
+If you start again:
+- Do not change any files. Do not commit or push.
+- Run `git pull` so your copy matches `main`.
+- Then stop and tell the player that session 1 is handling their feedback.
+
+From now on, session 1 owns every file.
