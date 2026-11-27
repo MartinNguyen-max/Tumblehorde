@@ -40,7 +40,7 @@ guest.send('start');
 await sleep(200);
 assert.equal(hostSeen.start, null, 'only the host can start');
 
-host.send('settings', { mode: 'teams', armySize: 15, map: 'city' });
+host.send('settings', { mode: 'teams', armySize: 15, map: 'north', peoples: 'versus' });
 await sleep(200);
 assert.equal(hostSeen.lobby?.mode, 'teams');
 host.send('start');
@@ -76,6 +76,8 @@ const commander = view.units[view.armies[0]!.commanderId!]!;
 const startX = -(MAP.armySpawnRadius - FORMATION.commanderSpawnAhead);
 assert.ok(commander.x > startX + 5, `host commander moved (x=${commander.x.toFixed(1)}, start ${startX})`);
 assert.deepEqual(view.armies[0]!.orders, ['attack', 'attack', 'attack'], 'order applied');
+assert.notEqual(view.armies[0]!.faction, view.armies[1]!.faction, 'Romans against Vikings');
+assert.ok(view.units.some((u) => u.weapon === 'axe' || u.weapon === 'spear'), 'Vikings carry their own weapons');
 assert.equal(view.armies[1]!.disconnectTimer, null);
 console.log(`snapshot bytes: ${last.bytes.byteLength}, events so far: ${hostSeen.snaps.reduce((n, s) => n + s.events.length, 0)}`);
 
