@@ -256,6 +256,13 @@ describe('team battles', () => {
     expect(distanceXZ(city(1), city(3))).toBeLessThan(distanceXZ(city(1), city(0)));
     expect(MAP.teamSpawnSpread).toBeGreaterThan(0);
   });
+
+  it('three team mates in the city each get their own avenue end', () => {
+    const three = [0, 0, 1, 0].map((team, i) => ({ name: `A${i}`, team, isBot: true }));
+    const ends = three.map((_, i) => armySpawn({ map: 'city', mode: 'teams', armies: three }, i).position);
+    const distinct = new Set(ends.map((p) => `${p.x},${p.z}`));
+    expect(distinct.size).toBe(4);
+  });
 });
 
 describe('after the battle', () => {

@@ -209,6 +209,21 @@ export interface IceSheet {
  * The frozen north: a Viking village of longhouses and huts behind a broken palisade, rune
  * stones, and a big frozen lake off to one side of the field (with a small pond on the other).
  */
+/** Where the story's battles in the north put their armies. */
+export const NORTH_POINTS = {
+  outpostApproach: { x: -62, z: -52, yaw: Math.PI / 4 },
+  outpost: { x: 47, z: 29, yaw: -Math.PI * 0.75 },
+  camp: { x: -30, z: -30, yaw: Math.PI / 4 },
+  raidNorth: { x: -10, z: 60, yaw: Math.PI },
+  raidEast: { x: 62, z: -20, yaw: -Math.PI / 2 },
+} satisfies Record<string, MapPoint>;
+
+/** The last night: Felix's and Rufus's armies in the fortress courtyard. */
+export const OLD_FRIENDS_POINTS = {
+  felix: { x: 45, z: 6, yaw: -Math.PI / 2 },
+  rufus: { x: 45, z: -6, yaw: -Math.PI / 2 },
+} satisfies Record<string, MapPoint>;
+
 export const NORTH = {
   ice: [
     { x: -26, z: 34, radiusX: 30, radiusZ: 17 },
@@ -382,6 +397,7 @@ export const MAPS: Record<MapId, MapDefinition> = {
     ripples: { amplitude: 1.0, frequencyX: 0.16, frequencyZ: 0.12 },
     flatRadius: 22,
     ice: NORTH.ice,
+    points: NORTH_POINTS,
     inside: [
       { kind: 'tree', count: 50, scaleMin: 0.9, scaleMax: 1.45 },
       { kind: 'rock', count: 26, scaleMin: 0.6, scaleMax: 1.6 },

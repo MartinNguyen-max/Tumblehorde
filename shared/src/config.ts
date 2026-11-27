@@ -483,8 +483,10 @@ export const FORMATION = {
   swarmSpacing: 1.5,
   swarmRankGap: 1.4,
   swarmRankSize: 6,
-  /** Each swarming warrior stands up to this far off their place, so it looks like a mob. */
+  /** Each swarming warrior stands up to this far off their place, so it looks like a mob... */
   swarmJitter: 0.45,
+  /** ...and faces up to this much off the swarm's way (radians). */
+  swarmYawJitter: 0.3,
 
   /** Advance moves a holding formation this far forward... */
   advanceStep: 4,
@@ -725,6 +727,17 @@ export const DUEL = {
   /** Fighting distance as a share of reach; closer than `tooClose` they step back. */
   idealReach: 0.8,
   tooClose: 0.55,
+  /** Farther than this share of reach the soldier walks there first (along the streets). */
+  closeInReach: 1.6,
+  /** Stepping into a blow, and closing in, at these shares of full speed... */
+  lungeSpeed: 0.6,
+  closeInSpeed: 0.6,
+  /** ...drifting this much sideways on the way in. */
+  approachDrift: 0.3,
+  /** A swing goes out once the target is within this angle (radians) of where the soldier faces. */
+  facingTolerance: 0.5,
+  /** An enemy whose facing points this much away from you (dot product below) has its back turned. */
+  backTurnedDot: -0.3,
   /** Circling between blows, as a share of full speed; wilder on Attack. */
   circleSpeed: 0.35,
   wildCircleSpeed: 0.65,
@@ -759,9 +772,13 @@ export const DUEL = {
 export const CELEBRATION = {
   /** Chance per second that a celebrating soldier jumps. */
   jumpPerSecond: 1.1,
-  /** Chance per second to start a happy spin. */
+  /** Chance per second to start a happy spin... */
   spinPerSecond: 0.25,
-  spinSpeed: 9,
+  /** ...which lasts this share of the cycle; soldiers are this far apart in the cycle by id. */
+  spinShare: 0.2,
+  spinStagger: 0.37,
+  /** Turning speed of a happy spin (radians per second). */
+  spinSpeed: 36,
 } as const;
 
 /** Alliances: crouch a few times at another commander; if they crouch back up close, you are allies. */

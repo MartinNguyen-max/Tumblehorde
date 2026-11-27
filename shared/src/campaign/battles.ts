@@ -1,4 +1,5 @@
-import { FOREST_POINTS, FORTRESS_POINTS, type MapPoint, RIVER_POINTS, VILLAGE_POINTS } from '../maps.ts';
+import { FOREST_POINTS, FORTRESS_POINTS, type MapPoint, NORTH_POINTS, OLD_FRIENDS_POINTS, RIVER_POINTS, VILLAGE_POINTS } from '../maps.ts';
+import { declareVictory } from '../match.ts';
 import type { ArmySetup, BotStyle, Faction, MatchSettings, MatchState } from '../types.ts';
 import type { ChapterId } from './chapters.ts';
 import { heroesIn, type HeroId, livingLegion } from './roster.ts';
@@ -66,15 +67,11 @@ export const STORY_BATTLE = {
   oldFriendsArmy: 15,
   /** The last night ends when Cassian first falls, or after this long at the latest. */
   lastStandMax: 240,
+  /** Seconds the dead keep coming after Cassian falls, before the story moves on. */
+  lastStandAftermath: 3,
   zombiesFirst: 40,
   zombieWave: { every: 6, count: 9 },
 } as const;
-
-/** Where Felix's and Rufus's armies stand in the courtyard on the last night. */
-const OLD_FRIENDS = {
-  felix: { x: 45, z: 6, yaw: -Math.PI / 2 },
-  rufus: { x: 45, z: -6, yaw: -Math.PI / 2 },
-} satisfies Record<string, MapPoint>;
 
 /** The line at the top of the screen in each story battle. */
 const BATTLE_OBJECTIVES: Partial<Record<ChapterId, string>> = {
@@ -175,14 +172,14 @@ export function campaignBattle(chapter: ChapterId, save: CampaignSave): Campaign
       return { ...base, time: 'night', settings: settings('forest', [me.setup, north, south]), legionNames: me.legionNames };
     }
     case 'outpost': {
-      const me = cassian(save, chapter, { x: -62, z: -52, yaw: Math.PI / 4 }, heroes, true);
-      const outpost = army({ name: 'The Outpost', team: 1, faction: 'viking', soldiers: STORY_BATTLE.outpost, spawn: { x: 47, z: 29, yaw: -Math.PI * 0.75 }, style: 'patient' });
+      const me = cassian(save, chapter, NORTH_POINTS.outpostApproach, heroes, true);
+      const outpost = army({ name: 'The Outpost', team: 1, faction: 'viking', soldiers: STORY_BATTLE.outpost, spawn: NORTH_POINTS.outpost, style: 'patient' });
       return { ...base, settings: settings('north', [me.setup, outpost]), legionNames: me.legionNames };
     }
     case 'night-raid': {
-      const me = cassian(save, chapter, { x: -30, z: -30, yaw: Math.PI / 4 }, heroes, true);
-      const first = army({ name: 'Raiders', team: 1, faction: 'viking', soldiers: STORY_BATTLE.nightRaidFirst, spawn: { x: -10, z: 60, yaw: Math.PI }, style: 'charge' });
-      const second = army({ name: 'Raiders', team: 1, faction: 'viking', soldiers: STORY_BATTLE.nightRaidSecond, spawn: { x: 62, z: -20, yaw: -Math.PI / 2 }, arriveAt: STORY_BATTLE.nightRaidSecondAt, style: 'charge' });
+      const me = cassian(save, chapter, NORTH_POINTS.camp, heroes, true);
+      const first = army({ name: 'Raiders', team: 1, faction: 'viking', soldiers: STORY_BATTLE.nightRaidFirst, spawn: NORTH_POINTS.raidNorth, style: 'charge' });
+      const second = army({ name: 'Raiders', team: 1, faction: 'viking', soldiers: STORY_BATTLE.nightRaidSecond, spawn: NORTH_POINTS.raidEast, arriveAt: STORY_BATTLE.nightRaidSecondAt, style: 'charge' });
       const goal: BattleGoal = { kind: 'hold', seconds: STORY_BATTLE.nightRaidHold, label: 'dawn in' };
       return { ...base, goal, time: 'night', settings: settings('north', [me.setup, first, second]), legionNames: me.legionNames };
     }
@@ -215,8 +212,8 @@ export function campaignBattle(chapter: ChapterId, save: CampaignSave): Campaign
       // Years later the legion is a new one, with Marcus at his father's side.
       const heroNames = ['Marcus', ...(old.setup.heroes ?? [])];
       const me: ArmySetup = { ...old.setup, soldiers: STORY_BATTLE.lastNightLegion + heroNames.length, heroes: heroNames };
-      const felix = army({ name: 'Felix', team: 0, faction: 'roman', soldiers: STORY_BATTLE.oldFriendsArmy, spawn: OLD_FRIENDS.felix, commander: true, style: 'steady' });
-      const rufus = army({ name: 'Rufus', team: 0, faction: 'roman', soldiers: STORY_BATTLE.oldFriendsArmy, spawn: OLD_FRIENDS.rufus, commander: true, style: 'steady' });
+      const felix = army({ name: 'Felix', team: 0, faction: 'roman', soldiers: STORY_BATTLE.oldFriendsArmy, spawn: OLD_FRIENDS_POINTS.felix, commander: true, style: 'steady' });
+      const rufus = army({ name: 'Rufus', team: 0, faction: 'roman', soldiers: STORY_BATTLE.oldFriendsArmy, spawn: OLD_FRIENDS_POINTS.rufus, commander: true, style: 'steady' });
       const dead = army({
         name: 'The Dead',
         team: 1,
@@ -257,4 +254,25 @@ export function battleResult(battle: CampaignBattle, state: MatchState): BattleR
 /** A hold battle is won once the clock runs out with the army still standing. */
 export function holdTimeLeft(battle: CampaignBattle, time: number): number | null {
   return battle.goal.kind === 'hold' ? Math.max(0, battle.goal.seconds - time) : null;
+}
+
+/**
+ * A story battle's own goal, checked after every step: holding out until the clock runs out wins,
+ * and the last night ends when Cassian first falls (or after `lastStandMax`). Returns what was
+ * decided this step, or null. Beating every enemy is decided by the simulation itself.
+ */
+export function checkStoryGoal(state: MatchState, battle: CampaignBattle): 'won' | 'lost' | null {
+  const mine = state.armies[0];
+  if (state.phase !== 'playing' || !mine) return null;
+  if (battle.goal.kind === 'hold' && !mine.eliminated && state.time >= battle.goal.seconds) {
+    declareVictory(state, mine.team);
+    return 'won';
+  }
+  if (battle.goal.kind === 'lastStand' && (mine.stats.commanderDeaths > 0 || state.time > STORY_BATTLE.lastStandMax)) {
+    const enemy = state.armies.find((a) => a.team !== mine.team);
+    declareVictory(state, enemy?.team ?? mine.team);
+    state.endTimer = STORY_BATTLE.lastStandAftermath;
+    return 'lost';
+  }
+  return null;
 }

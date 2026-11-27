@@ -2,11 +2,10 @@ import {
   battleResult,
   type BattleResult,
   type CampaignBattle,
-  declareVictory,
+  checkStoryGoal,
   holdTimeLeft,
   type MatchSettings,
   type MatchView,
-  STORY_BATTLE,
 } from '@tumblehorde/shared';
 import type { LocalSession } from '../game/session.ts';
 import type { World } from '../render/world.ts';
@@ -16,9 +15,6 @@ import { BattleSet } from './battleSet.ts';
 export interface StoryBattleHost {
   startBattle: (settings: MatchSettings, onEnd: (view: MatchView) => void, objective?: (view: MatchView) => string | null) => LocalSession;
 }
-
-/** Seconds the dead keep coming after Cassian falls, before the story moves on. */
-const LAST_STAND_AFTERMATH = 3;
 
 /** Torches round the night camp, and along the column in the dark forest. */
 const TORCHES: Partial<Record<CampaignBattle['chapter'], readonly { x: number; z: number }[]>> = {
@@ -43,6 +39,8 @@ export class StoryBattle {
   private readonly set: BattleSet;
   private readonly session: LocalSession;
   private ended = false;
+  /** The result at the moment a goal decided the battle: nobody who falls after the clock ran out counts. */
+  private decided: BattleResult | null = null;
 
   constructor(world: World, host: StoryBattleHost, battle: CampaignBattle, onEnd: (result: BattleResult) => void) {
     this.battle = battle;
@@ -51,7 +49,7 @@ export class StoryBattle {
       () => {
         if (this.ended) return;
         this.ended = true;
-        onEnd(battleResult(battle, this.session.match));
+        onEnd(this.decided ?? battleResult(battle, this.session.match));
       },
       (view) => this.objective(view),
     );
@@ -73,19 +71,13 @@ export class StoryBattle {
     this.checkGoal();
   }
 
-  /** Holding out wins; on the last night, Cassian's fall (or time) ends it. */
+  /** The goal itself is the simulation's (`checkStoryGoal`); here its result is kept as it was then. */
   private checkGoal(): void {
     const state = this.session.match;
-    if (state.phase !== 'playing') return;
-    const mine = state.armies[0];
-    if (!mine) return;
-    if (holdTimeLeft(this.battle, state.time) === 0 && !mine.eliminated) declareVictory(state, mine.team);
-    if (this.battle.goal.kind !== 'lastStand') return;
-    if (mine.stats.commanderDeaths > 0 || state.time > STORY_BATTLE.lastStandMax) {
-      const enemy = state.armies.find((a) => a.team !== mine.team);
-      declareVictory(state, enemy?.team ?? mine.team);
-      state.endTimer = LAST_STAND_AFTERMATH;
-    }
+    const outcome = checkStoryGoal(state, this.battle);
+    if (outcome === null) return;
+    const result = battleResult(this.battle, state);
+    this.decided = { ...result, won: outcome === 'won' };
   }
 
   /** Takes down the light, fire and torches; the battle screen is closed by the host. */

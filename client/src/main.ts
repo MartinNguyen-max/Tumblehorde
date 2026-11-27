@@ -44,14 +44,14 @@ async function boot(): Promise<void> {
     startBattle: (settings, onEnd, objective) => {
       const session = new LocalSession(settings, 0);
       startSession(session, () => undefined, (view) => {
-        stopBattle();
+        endStoryBattle();
         onEnd(view);
       });
       hud.setStory(objective ? { objective } : null, settings.prepareTime ?? MATCH.prepareTime);
       input.requestLock();
       return session;
     },
-    stopBattle: () => stopBattle(),
+    stopBattle: () => endStoryBattle(),
   });
   const campaignMenu = new CampaignMenu({
     onNew: () => {
@@ -100,6 +100,13 @@ async function boot(): Promise<void> {
     results.hide();
     clickToPlay.hidden = true;
     world.edgeMaterial.alpha = 0;
+  };
+
+  /** A story battle is over: its soldiers, bodies and stuck spears must not linger into the next scene. */
+  const endStoryBattle = (): void => {
+    stopBattle();
+    renderer.setFirstPerson(null);
+    renderer.clear();
   };
 
   /** The campaign takes over the screen: no battle, no menu, no demo behind it. */

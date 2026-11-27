@@ -52,7 +52,7 @@ export function engagedCount(state: MatchState, enemyId: EntityId): number {
 export function backTurnedTo(unit: Unit, enemy: Unit): boolean {
   const facing = yawToDir(enemy.yaw);
   const toUnit = normalizeXZ(unit.pos.x - enemy.pos.x, unit.pos.z - enemy.pos.z);
-  return facing.x * toUnit.x + facing.z * toUnit.z < -0.3;
+  return facing.x * toUnit.x + facing.z * toUnit.z < DUEL.backTurnedDot;
 }
 
 /** The enemy is fighting someone on `unit`'s side, not `unit` itself. */
@@ -170,7 +170,7 @@ export function duelIntent(state: MatchState, unit: Unit, target: Unit, wild: bo
     setMove(unit, unit.ai.dodgeX, unit.ai.dodgeZ, 1);
     return true;
   }
-  if (d > reach * 1.6) return false;
+  if (d > reach * DUEL.closeInReach) return false;
   const flank = flankSign(state, unit, target);
   const sign = flank !== 0 ? flank : circlingSense(unit, target);
   const tangent = { x: -toTarget.z * sign, z: toTarget.x * sign };
@@ -179,16 +179,16 @@ export function duelIntent(state: MatchState, unit: Unit, target: Unit, wild: bo
   if (ready && d <= reach && facing(unit, target.pos)) {
     // Step into the blow; on Attack sometimes with a leap.
     intent.attack = true;
-    setMove(unit, toTarget.x, toTarget.z, 0.6);
+    setMove(unit, toTarget.x, toTarget.z, DUEL.lungeSpeed);
     intent.jump = wild && unit.onGround && nextRandom(state.rng) < DUEL.jumpAttackChance;
     return true;
   }
   if (ready && flank === 0) {
-    setMove(unit, toTarget.x + tangent.x * 0.3, toTarget.z + tangent.z * 0.3, 1);
+    setMove(unit, toTarget.x + tangent.x * DUEL.approachDrift, toTarget.z + tangent.z * DUEL.approachDrift, 1);
     return true;
   }
   // Between blows (or on the way round to its back): circle at a sword's length.
-  const radial = d < reach * DUEL.tooClose ? -1 : d > reach * DUEL.idealReach ? 0.6 : 0;
+  const radial = d < reach * DUEL.tooClose ? -1 : d > reach * DUEL.idealReach ? DUEL.closeInSpeed : 0;
   setMove(unit, toTarget.x * radial + tangent.x, toTarget.z * radial + tangent.z, circle);
   return true;
 }
@@ -203,7 +203,5 @@ function circlingSense(unit: Unit, target: Unit): number {
 
 function facing(unit: Unit, point: Vec2): boolean {
   const wanted = dirToYaw(point.x - unit.pos.x, point.z - unit.pos.z);
-  return Math.abs(wrapAngle(wanted - unit.yaw)) < DUEL_FACING_TOLERANCE;
+  return Math.abs(wrapAngle(wanted - unit.yaw)) < DUEL.facingTolerance;
 }
-
-const DUEL_FACING_TOLERANCE = 0.5;

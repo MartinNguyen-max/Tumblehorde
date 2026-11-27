@@ -127,3 +127,41 @@ describe('the story maps', () => {
     }
   });
 });
+
+describe('review fixes for story battles', () => {
+  it('a story army that is wiped out loses, even with heroes on the ground', async () => {
+    const { campaignBattle: build } = await import('../src/campaign/battles.ts');
+    const battle = build('bridge', saveAt('bridge', true))!;
+    const state = createMatch(battle.settings);
+    for (let t = 0; t < 20 && state.phase === 'playing'; t += DT) {
+      for (const u of state.units) if (u.alive && state.armies[u.armyId]?.team === 0) killUnit(state, u, 1, { x: 0, y: 1, z: 0 });
+      stepMatch(state, new Map(), DT);
+    }
+    expect(state.phase).not.toBe('playing');
+    expect(state.winnerTeam).toBe(1);
+    expect(battleResult(battle, state).won).toBe(false);
+  });
+
+  it('holding out wins at the clock, and nobody cheers while enemies still stand', async () => {
+    const { checkStoryGoal } = await import('../src/campaign/battles.ts');
+    const { isCelebrating } = await import('../src/celebration.ts');
+    const battle = campaignBattle('bridge', saveAt('bridge'))!;
+    const state = createMatch(battle.settings);
+    state.time = STORY_BATTLE.bridgeHold - DT / 2;
+    expect(checkStoryGoal(state, battle)).toBeNull();
+    stepMatch(state, new Map(), DT);
+    expect(checkStoryGoal(state, battle)).toBe('won');
+    expect(state.winnerTeam).toBe(0);
+    expect(isCelebrating(state, state.armies[0]!)).toBe(false);
+  });
+
+  it('the last night ends when Cassian first falls', async () => {
+    const { checkStoryGoal } = await import('../src/campaign/battles.ts');
+    const battle = campaignBattle('last-night', saveAt('last-night'))!;
+    const state = createMatch(battle.settings);
+    expect(checkStoryGoal(state, battle)).toBeNull();
+    killUnit(state, state.units[state.armies[0]!.commanderId!]!, 3, { x: 0, y: 1, z: 0 });
+    expect(checkStoryGoal(state, battle)).toBe('lost');
+    expect(state.endTimer).toBe(STORY_BATTLE.lastStandAftermath);
+  });
+});

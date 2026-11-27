@@ -53,6 +53,24 @@ function circleSpawn(settings: SpawnSettings, index: number): SpawnPoint {
 }
 
 /**
+ * In a team battle in the city, which avenue end each army gets: the first team west then north,
+ * the second east then south; a team with more armies than its two ends takes whatever is left.
+ */
+function cityTeamEnds(settings: SpawnSettings): number[] {
+  const preferred = [[0, 2], [1, 3]];
+  const taken = new Set<number>();
+  const result: number[] = [];
+  settings.armies.forEach((_, i) => {
+    const { teamSlot, mate } = teamPlace(settings, i);
+    const wanted = preferred[teamSlot % 2]?.[mate];
+    const end = wanted !== undefined && !taken.has(wanted) ? wanted : [0, 1, 2, 3].find((e) => !taken.has(e)) ?? i;
+    taken.add(end);
+    result.push(end);
+  });
+  return result;
+}
+
+/**
  * City armies start in the squares at the ends of the avenues: west, east, north, south. In a team
  * battle the first team takes west and north, the second east and south: team mates side by side.
  */
@@ -60,11 +78,7 @@ function citySpawn(settings: SpawnSettings, index: number): SpawnPoint {
   const d = CITY.spawnDistance;
   const west = { x: -d, z: 0 };
   const ends: Vec2[] = [west, { x: d, z: 0 }, { x: 0, z: d }, { x: 0, z: -d }];
-  let end = index;
-  if (settings.mode === 'teams') {
-    const { teamSlot, mate } = teamPlace(settings, index);
-    end = teamSlot % 2 + mate * 2;
-  }
+  const end = settings.mode === 'teams' ? cityTeamEnds(settings)[index] ?? index : index;
   const position = ends[end % ends.length] ?? west;
   return { position, yaw: dirToYaw(-position.x, -position.z) };
 }

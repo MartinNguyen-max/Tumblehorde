@@ -3,12 +3,15 @@ import { dirToYaw } from './math.ts';
 import { armyCenter } from './orders.ts';
 import { nextRandom } from './random.ts';
 import type { Army, MatchState, Unit } from './types.ts';
+import { armiesHostile } from './units.ts';
 
 /** After the battle is won, everyone left standing on the winning side celebrates. */
 export function isCelebrating(state: MatchState, army: Army): boolean {
   // The dead do not cheer: they just keep coming.
   if (state.phase === 'playing' || army.eliminated || army.faction === 'zombie') return false;
-  return state.winnerTeam === null || army.team === state.winnerTeam;
+  if (state.winnerTeam !== null && army.team !== state.winnerTeam) return false;
+  // Won by holding out, with enemies still on the field: keep your guard up.
+  return !state.armies.some((other) => !other.eliminated && armiesHostile(state, army.id, other.id));
 }
 
 /** Hops, happy spins and turning to the others to cheer. Players keep control of their commander. */
@@ -26,7 +29,7 @@ export function celebrate(state: MatchState, army: Army, dt: number): void {
 
 /** Soldiers spin for a fifth of every few seconds, each at their own moment. */
 function spinning(state: MatchState, unit: Unit): boolean {
-  return (unit.id * 0.37 + state.time * CELEBRATION.spinPerSecond) % 1 < 0.2;
+  return (unit.id * CELEBRATION.spinStagger + state.time * CELEBRATION.spinPerSecond) % 1 < CELEBRATION.spinShare;
 }
 
 function celebrateUnit(state: MatchState, unit: Unit, center: { x: number; z: number } | null, dt: number): void {
@@ -38,7 +41,7 @@ function celebrateUnit(state: MatchState, unit: Unit, center: { x: number; z: nu
   intent.crouch = false;
   intent.jump = unit.onGround && nextRandom(state.rng) < CELEBRATION.jumpPerSecond * dt;
   if (spinning(state, unit)) {
-    intent.faceYaw = unit.yaw + CELEBRATION.spinSpeed * dt * 4;
+    intent.faceYaw = unit.yaw + CELEBRATION.spinSpeed * dt;
   } else if (center) {
     intent.faceYaw = dirToYaw(center.x - unit.pos.x, center.z - unit.pos.z);
   }
