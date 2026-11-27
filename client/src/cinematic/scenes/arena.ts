@@ -1,4 +1,3 @@
-import { Color3 } from '../../render/babylon.ts';
 import { HAIR, SKIN } from '../config.ts';
 import { sword, upright } from '../props.ts';
 import type { Beat, Cutscene } from '../script.ts';
@@ -34,10 +33,7 @@ function buildTunnel(stage: Stage): { gate: ReturnType<Stage['group']> } {
   }
   stage.box(TUNNEL.stone, [width + 2, 0.6, length + 2], [0, height + 0.3, -length / 2]);
   // Sunlight at the end of the tunnel: a glowing wall the gate rises in front of.
-  const light = stage.box(TUNNEL.daylight, [width, height, 0.2], [0, height / 2, -length - 0.4], 0, { castShadow: false });
-  const material = stage.world.parts.material(TUNNEL.daylight);
-  material.emissiveColor = Color3.FromHexString(TUNNEL.daylight);
-  light.isPickable = false;
+  stage.box(TUNNEL.daylight, [width, height, 0.2], [0, height / 2, -length - 0.4], 0, { castShadow: false, glow: true });
   const gate = stage.group('gate', 0, 0, -length);
   for (let i = 0; i < 7; i++) stage.world.parts.part('box', TUNNEL.bars, gate, [0.1, height, 0.1], [-width / 2 + 0.25 + i * 0.45, height / 2, 0], { metal: true });
   for (const y of [0.6, 2.2]) stage.world.parts.part('box', TUNNEL.bars, gate, [width, 0.12, 0.12], [0, y, 0], { metal: true });

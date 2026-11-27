@@ -105,8 +105,6 @@ export class Campaign {
   private readonly card = new StoryCard();
   private save: CampaignSave | null = null;
   private phase: Phase = { kind: 'idle' };
-  /** Who fell in the last battle, for the roll call at the campfire. */
-  private fallen: readonly string[] = [];
 
   constructor(deps: CampaignDeps) {
     this.deps = deps;
@@ -209,8 +207,7 @@ export class Campaign {
     const save = this.save;
     if (!save) return;
     const { legion, fallen } = afterBattle(save.legion, outcome.fallen, chapter.id);
-    this.store({ ...save, legion });
-    this.fallen = fallen;
+    this.save = { ...save, legion, fallen: [...fallen] };
     this.playScenes(scenesOf(SCENES_AFTER[chapter.id]), () => this.finishChapter(chapter.id));
   }
 
@@ -221,14 +218,23 @@ export class Campaign {
     ]);
   }
 
-  /** What scenes see of the story; their choices are saved at once. */
+  /**
+   * What scenes see of the story. `save` is read live, so a choice made earlier in the same
+   * scene is seen by the beats after it. Choices, like battle outcomes, are kept in memory and
+   * written with the next chapter's checkpoint: leaving mid-scene replays the scene cleanly.
+   */
   private story(): StoryContext {
-    const save = this.save ?? newSave(Date.now());
+    const fallback = newSave(Date.now());
+    const get = (): CampaignSave => this.save ?? fallback;
     return {
-      save,
-      fallen: this.fallen,
+      get save() {
+        return get();
+      },
+      get fallen() {
+        return get().fallen;
+      },
       choose: (choices) => {
-        if (this.save) this.store({ ...this.save, choices: { ...this.save.choices, ...choices } });
+        if (this.save) this.save = { ...this.save, choices: { ...this.save.choices, ...choices } };
       },
     };
   }
@@ -328,7 +334,7 @@ export class Campaign {
     this.phase = { kind: 'battle', chapter };
     this.overlay.hide();
     // Named after Cassian, so the battle draws him as the wanderer rather than a gold commander.
-    const settings = arenaSettings(playerKit(save), fight.opponents, (Date.now() & 0xffff) | 1, CASSIAN_NAMES.wanderer);
+    const settings = arenaSettings(playerKit(save), fight.opponents, arenaSeed(), CASSIAN_NAMES.wanderer);
     this.deps.startBattle(settings, (view) => this.arenaOver(chapter, fight, view.winnerTeam === 0));
     decorateArena(this.deps.world);
   }
@@ -338,7 +344,7 @@ export class Campaign {
     if (!save) return;
     this.phase = { kind: 'card' };
     if (won) {
-      this.store(wonArena(save, fight));
+      this.save = wonArena(save, fight);
       const prize = fight.givesDracoSword ? `${fight.reward} gold and Draco's sword` : `${fight.reward} gold`;
       this.card.show('Victory!', `The crowd roars your name. You win ${prize}.`, [
         { label: 'Go on', primary: true, action: () => this.playScenes(scenesOf(SCENES_AFTER[chapter.id]), () => this.afterArenaWin(chapter)) },
@@ -406,4 +412,11 @@ export class Campaign {
     this.card.hide();
     this.overlay.showLoading(null);
   }
+}
+
+/** Each arena fight gets a fresh seed, so no two fights play out alike. */
+const ARENA_SEED_MASK = 0xffff;
+
+function arenaSeed(): number {
+  return (Date.now() & ARENA_SEED_MASK) | 1;
 }

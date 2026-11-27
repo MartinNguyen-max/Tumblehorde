@@ -65,6 +65,7 @@ export class Horse {
     this.root.position.set(x, 0, z);
     this.root.rotation.y = yaw;
     this.target = null;
+    this.gait = 0;
     return this;
   }
 

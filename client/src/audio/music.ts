@@ -293,7 +293,11 @@ export class CutsceneMusic {
   private schedule(): void {
     const p = this.playing;
     if (!p) return;
-    const horizon = this.ctx.currentTime + LOOKAHEAD;
+    const now = this.ctx.currentTime;
+    // A slowed timer (a hidden tab) leaves the schedule behind: skip what was missed instead of playing it all at once.
+    if (p.nextChord < now) p.nextChord = now;
+    if (p.nextNote < now) p.nextNote = now;
+    const horizon = now + LOOKAHEAD;
     const beat = 60 / p.piece.bpm;
     while (p.nextChord < horizon) {
       const chord = p.piece.chords[p.chordIndex % p.piece.chords.length] ?? [];

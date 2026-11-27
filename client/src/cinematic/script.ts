@@ -71,8 +71,3 @@ export interface StoryContext {
   /** Records a choice (Eirik, Hrolf, the last stand); saved with the story. */
   choose(choices: Partial<CampaignChoices>): void;
 }
-
-/** A story for testing scenes on their own: a fresh save, choices are not kept. */
-export function testStory(save: CampaignSave): StoryContext {
-  return { save, fallen: [], choose: (c) => Object.assign(save.choices, c) };
-}
