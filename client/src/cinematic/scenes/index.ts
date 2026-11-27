@@ -1,7 +1,7 @@
 import type { Cutscene } from '../script.ts';
 import { arenaTunnel, arenaVictory, arenaWon } from './arena.ts';
 import { campfireNight, forestRoadAfter, forgeNight, rollCall } from './companions.ts';
-import { brothersEnd, cassianFalls, luciusPath, marcusPath, mourning, patrolRoad, rebuilding, theCrowning, theEnd, twoBoys } from './ending.ts';
+import { brothersEnd, cassianFalls, heaven, luciusPath, marcusPath, mourning, patrolRoad, rebuilding, theCrowning, theEnd, twoBoys } from './ending.ts';
 import { campSouth, capitalFalls, gateArrive, hrolfFarewell, liviaFound, ridersCome, victoryFeast } from './mongols.ts';
 import { emperor, emperorHall, ruins, villageAfter } from './legion.ts';
 import { prologueMorning } from './prologue.ts';
@@ -19,6 +19,6 @@ export const CUTSCENES: Readonly<Record<string, Cutscene>> = Object.fromEntries(
     villageAfter, emperor, emperorHall, liviaEvening, ruins,
     varroDeath, letterOne, letterTwo, rallySpeech, hrolfMirror,
     victoryFeast, capitalFalls, campSouth, ridersCome, hrolfFarewell, gateArrive, liviaFound,
-    rebuilding, twoBoys, patrolRoad, cassianFalls, mourning, theCrowning, marcusPath, luciusPath, brothersEnd, theEnd,
+    rebuilding, twoBoys, patrolRoad, cassianFalls, heaven, mourning, theCrowning, marcusPath, luciusPath, brothersEnd, theEnd,
   ].map((scene) => [scene.id, scene]),
 );

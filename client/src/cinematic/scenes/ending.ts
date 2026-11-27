@@ -1,5 +1,6 @@
 import { CAPITAL } from '../../campaign/districts.ts';
 import { Crowd, type Seat } from '../../render/crowd.ts';
+import { type TransformNode, Vector3 } from '../../render/babylon.ts';
 import type { Actor } from '../actor.ts';
 import { cast } from '../cast.ts';
 import { sword, upright, woodenCross } from '../props.ts';
@@ -30,6 +31,31 @@ const SET = {
 
 const isMarcus = (story: StoryContext) => (): boolean => story.save.choices.son === 'marcus';
 const isLucius = (story: StoryContext) => (): boolean => story.save.choices.son !== 'marcus';
+
+/** The two babies: Marcus with the face of the east, Lucius with his father's. */
+const BABY = {
+  marcus: { skin: '#C98E66', hair: '#2A1E18', eyeHeight: 0.022 },
+  lucius: { skin: '#E8B894', hair: '#5A3A22', eyeHeight: 0.04 },
+} as const;
+
+/** A baby wrapped in linen, its face looking out of the end of the bundle (+z). */
+function swaddledBaby(stage: Stage, look: (typeof BABY)[keyof typeof BABY]): TransformNode {
+  const g = stage.group('baby', 0, -10, 0);
+  const p = stage.world.parts;
+  const soft = { gloss: true, castShadow: false };
+  p.part('box', SET.baby, g, [0.32, 0.24, 0.46], [0, 0, -0.04], soft);
+  p.part('box', '#E0D4C0', g, [0.34, 0.06, 0.2], [0, 0.1, 0.02], soft);
+  const head = 0.22;
+  p.part('box', look.skin, g, [head, head, head], [0, 0.06, 0.24], soft);
+  p.part('box', look.hair, g, [head + 0.01, 0.06, head * 0.8], [0, 0.18, 0.22], soft);
+  p.part('box', look.hair, g, [0.05, 0.05, 0.05], [0, 0.22, 0.28], soft);
+  for (const side of [-1, 1]) {
+    p.part('box', '#1B1B22', g, [0.05, look.eyeHeight, 0.01], [side * 0.05, 0.08, 0.351], soft);
+    p.part('box', '#F08A8A', g, [0.04, 0.025, 0.01], [side * 0.075, 0.03, 0.351], soft);
+  }
+  p.part('box', '#B85A5A', g, [0.04, 0.015, 0.01], [0, 0.015, 0.351], soft);
+  return g;
+}
 
 /** People standing round a spot in the capital square, facing it. */
 function ringOfPeople(stage: Stage, cx: number, cz: number, inner: number, rows: number, excitement: number): Crowd {
@@ -83,9 +109,8 @@ export const rebuilding: Cutscene = {
     statue.root.scaling.setAll(2.2);
     statue.root.position.y = 1.2;
     stage.box(SET.statue, [3, 1.2, 3], [-14, 0.6, -6]);
-    const baby = stage.group('baby', 0, -10, 0);
-    stage.world.parts.part('box', SET.baby, baby, [0.35, 0.25, 0.5], [0, 0, 0]);
-    stage.world.parts.part('box', STORY_COLORS.tent, baby, [0.22, 0.22, 0.22], [0, 0.08, 0.2]);
+    const baby = swaddledBaby(stage, BABY.marcus);
+    const secondBaby = swaddledBaby(stage, BABY.lucius);
     const whisperers = Array.from({ length: 4 }, (_, i) => cast(stage, 'villager', `Townswoman ${i}`, { outfit: i % 2 === 0 ? 'healer' : 'villager', color: ['#8A6A9A', '#6A8A5A'][i % 2], hairStyle: 'long' }).place(6 + i * 1.1, 1 + (i % 2), -Math.PI / 2));
 
     return [
@@ -170,7 +195,24 @@ export const rebuilding: Cutscene = {
           baby.parent = livia.grips[1];
           baby.position.set(0.2, -0.05, 0.1);
         },
-        narrate: 'In the spring, a son was born. He had black hair, and the eyes of the far east.',
+        narrate: 'In the spring, a son was born.',
+      },
+      {
+        duration: 5,
+        run: () => {
+          // Held up in her arms, face to us.
+          const h = livia.headPosition();
+          baby.parent = stage.root;
+          baby.rotation.set(-0.5, livia.yaw, 0);
+          baby.position.set(h.x + Math.sin(livia.yaw) * 0.42, h.y - 0.55, h.z + Math.cos(livia.yaw) * 0.42);
+        },
+        shot: () => {
+          baby.computeWorldMatrix(true);
+          const p = baby.getAbsolutePosition();
+          const f = baby.getDirection(Vector3.Forward());
+          return { from: [p.x + f.x * 0.9, p.y + f.y * 0.9 + 0.25, p.z + f.z * 0.9], at: [p.x + f.x * 0.25, p.y + 0.08, p.z + f.z * 0.25], fov: FOV.close };
+        },
+        narrate: 'He had black hair, a round little face, and the eyes of the far east. Everyone who looked at him knew.',
       },
       {
         shot: () => portrait(whisperers[1]!, { angle: 0.3 }),
@@ -207,8 +249,9 @@ export const rebuilding: Cutscene = {
         duration: 5,
         shot: () => portrait(livia, { angle: 0.5, distance: 2.6 }),
         run: () => {
-          baby.parent = livia.grips[1];
-          baby.position.set(0.2, -0.05, 0.1);
+          baby.setEnabled(false);
+          secondBaby.parent = livia.grips[1];
+          secondBaby.position.set(0.2, -0.05, 0.1);
           livia.setMood('happy');
           cassian.setPose('embrace').setMood('warm');
         },
@@ -467,6 +510,131 @@ function funeralField(stage: Stage): void {
   for (let i = 0; i < 5; i++) stage.box('#8A8070', [3.6, 13, 3.6], [-48 + i * 24, 6.5, -34]);
   stage.box('#6A6050', [8, 7, 3.4], [0, 3.5, -33.8]);
 }
+
+/** Clouds underfoot, a golden light ahead: where everyone Cassian lost is waiting. */
+function heavenSet(stage: Stage): void {
+  stage.box('#FFF8EC', [80, 0.1, 80], [0, -0.05, 0], 0, { castShadow: false });
+  for (let i = 0; i < 70; i++) {
+    const a = i * 2.399;
+    const r = 2 + (i % 14) * 2.2;
+    const size = 1.2 + (i % 4) * 0.5;
+    stage.shape('bush', i % 3 === 0 ? '#FFFFFF' : '#F4EEE2', [size * 1.4, size * 0.5, size], [Math.cos(a) * r, 0.1, Math.sin(a) * r], { castShadow: false });
+  }
+  // A gate of light at the end of the clouds.
+  for (const x of [-3, 3]) stage.box('#F8E8B0', [0.8, 7, 0.8], [x, 3.5, -16], 0, { glow: true });
+  stage.box('#F8E8B0', [7.6, 0.8, 0.8], [0, 7.2, -16], 0, { glow: true });
+  stage.box('#FFF4C8', [5.2, 6.6, 0.2], [0, 3.3, -16.3], 0, { glow: true });
+}
+
+export const heaven: Cutscene = {
+  id: 'heaven',
+  create(stage: Stage, story: StoryContext): Beat[] {
+    stage.light('white');
+    heavenSet(stage);
+    stage.weather('motes');
+    const cassian = cast(stage, 'cassianCommander', 'Cassian').place(0, 6, Math.PI);
+    const varro = cast(stage, 'varro', 'Varro').place(1.6, -1, Math.PI * 0.1);
+    const anselm = cast(stage, 'anselm', 'Anselm').place(-1.4, -4, 0);
+    const brothers = ['Paul', 'Tomas', 'Ivo', 'Benet', 'Odo', 'Simon'].map((name, i) =>
+      cast(stage, 'monk', `Brother ${name}`, i % 2 === 1 ? { hair: '#2A1E18' } : {}).place(-4 + i * 1.4, -6.5 - (i % 2) * 0.8, 0).setMood('happy', true),
+    );
+    const fallen = story.save.legion.filter((l) => !l.alive).slice(0, 6);
+    const legionaries = fallen.map((l, i) => cast(stage, 'legionary', l.name).place(4 + (i % 3) * 1.3, -4 - Math.floor(i / 3) * 1.4, -0.4).setMood('happy', true));
+    const hrolf = cast(stage, 'hrolf', 'Hrolf').place(-7, -9, 0.6).setMood('warm', true);
+    const tags = [
+      { who: 'Varro', text: 'Varro' },
+      { who: 'Anselm', text: 'Anselm' },
+      ...fallen.slice(0, 3).map((l) => ({ who: l.name, text: l.name })),
+    ];
+
+    return [
+      {
+        duration: 6,
+        fade: { from: 1, to: 0, color: 'white', time: 3 },
+        music: 'monastery',
+        sound: 'bell',
+        shot: { from: [0, 2.2, 13], at: cassian, to: [0, 2, 10], fov: FOV.normal },
+        run: () => cassian.setMood('surprised').lookAt({ x: 0, y: 2, z: -10 }),
+        narrate: 'Rufus swore he heard bells. I like to think he did.',
+      },
+      {
+        duration: 4,
+        shot: () => portrait(cassian, { angle: 0.3, distance: 2.4 }),
+        run: () => cassian.walkTo(0.4, 1.4, 1.0),
+        narrate: 'No more wounds. No more cold. Only the light, and someone walking towards him.',
+      },
+      {
+        shot: () => portrait(varro, { angle: -0.3, distance: 2.4 }),
+        run: () => {
+          cassian.finishWalk();
+          varro.lookAt(cassian.headPosition()).setMood('happy');
+        },
+        tags,
+        say: { who: 'Varro', text: 'Took your time, son. I have been waiting forty years with nothing to hammer.', mood: 'happy' },
+      },
+      {
+        shot: () => portrait(cassian, { angle: 0.3, distance: 2.0 }),
+        run: () => cassian.setMood('crying').setPose('reach'),
+        say: { who: 'Cassian', text: 'Varro... Varro!', mood: 'crying' },
+      },
+      {
+        duration: 4,
+        shot: { from: [3.4, 1.8, 3.6], at: [0.9, 1.4, 0.2], fov: FOV.normal },
+        run: () => {
+          varro.place(1.0, 0.4, Math.PI * 1.2).setPose('embrace');
+          cassian.setPose('embrace').setMood('crying');
+        },
+      },
+      {
+        shot: () => portrait(varro, { angle: -0.4, distance: 2.2 }),
+        run: () => varro.setPose('stand').setMood('happy'),
+        say: { who: 'Varro', text: 'You let Rufus tell a joke on your deathbed? Bravest thing you ever did.', mood: 'happy' },
+      },
+      {
+        shot: () => portrait(anselm, { angle: 0.3, distance: 2.4 }),
+        run: () => {
+          anselm.walkTo(-0.8, -0.8, 1.0);
+          anselm.lookAt(cassian.headPosition()).setMood('warm');
+          for (const b of brothers) b.setPose('wave');
+        },
+        say: { who: 'Anselm', text: 'Welcome home, little brother. You kept it close, I see.', mood: 'warm' },
+      },
+      {
+        shot: () => portrait(cassian, { angle: -0.3, distance: 2.0 }),
+        run: () => cassian.setMood('warm').lookAt(anselm.headPosition()),
+        say: { who: 'Cassian', text: 'It knew the way home, Father. You said it would.', mood: 'warm' },
+      },
+      {
+        duration: 4,
+        shot: { from: [-4, 2, 0], at: [-7, 1.6, -9], fov: FOV.normal },
+        run: () => hrolf.setPose('wave').lookAt(cassian.headPosition()),
+        narrate: 'Further off, a big man with a red beard raised his hand. Cassian raised his.',
+      },
+      {
+        duration: 4,
+        sound: 'crowd',
+        shot: { from: [6, 2.4, 3], at: [3, 1.4, -4], fov: FOV.wide },
+        run: () => {
+          for (const l of legionaries) l.setPose('cheer');
+          for (const b of brothers) b.setPose('cheer');
+          cassian.setPose('cheer').setMood('happy');
+        },
+        narrate: 'And all the men whose names he had read out by the fire were there too, cheering like fools.',
+      },
+      {
+        duration: 6,
+        shot: { from: [0, 3, 9], at: [0, 2, -16], to: [0, 2.6, 4], fov: FOV.normal },
+        run: () => {
+          for (const a of [cassian, varro, anselm]) a.setPose('stand');
+          cassian.walkTo(0, -14, 1.2);
+          varro.walkTo(1.2, -13.6, 1.2);
+          anselm.walkTo(-1.2, -13.6, 1.2);
+        },
+        fade: { to: 1, color: 'white', time: 5.5 },
+      },
+    ];
+  },
+};
 
 export const mourning: Cutscene = {
   id: 'mourning',

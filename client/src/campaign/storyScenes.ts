@@ -35,6 +35,6 @@ export const SCENES_AFTER: Partial<Record<ChapterId, readonly string[]>> = {
   'last-battle': ['hrolf-mirror'],
   'open-field': ['hrolf-farewell'],
   'the-gate': ['livia-found'],
-  'last-patrol': ['cassian-falls'],
+  'last-patrol': ['cassian-falls', 'heaven'],
   brothers: ['brothers-end'],
 };
