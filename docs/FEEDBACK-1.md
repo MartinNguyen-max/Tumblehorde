@@ -13,7 +13,7 @@ the city falling and the aftermath, and Livia tells Cassian later.
 - [x] No "split in two" anywhere in the campaign
 - [x] The end-of-battle message is one short line (plus who fell)
 - [x] Livia's letters can be closed with a Continue button
-- [ ] Varro is "Blacksmith" until we know his name; a yellow arrow over whoever to go to next
+- [x] Varro is "Blacksmith" until we know his name; a yellow arrow over whoever to go to next
 
 ## 2. Looks that match between scenes and battles
 - [ ] Cassian: prisoner rags with a wooden shield and sword in the first arena fight, silver armor and helmet once bought (worn at once), the legion's red only after the Emperor; one red line through all his clothes
@@ -32,8 +32,8 @@ the city falling and the aftermath, and Livia tells Cassian later.
 - [x] Tutorial hints with arrows on the commands: Follow in the first fight with Varro; at the bridge the men start out of order and Cassian is told to hold 2 and pick Two lines; in the ambush, hold 2 and pick Circle around me
 
 ## 5. The capital
-- [ ] Cobblestones, narrow streets, one big busy square, better houses (whole, with roofs and doors), soldiers on patrol, more people and life
-- [ ] Moving around feels like the battle game
+- [x] Cobblestones, narrow streets, one big busy square, better houses (whole, with roofs and doors), soldiers on patrol, more people and life
+- [x] Moving around feels like the battle game
 
 ## 6. Scenes
 - [ ] No plain backgrounds and no visible edge of the world: backdrops, dense forests, horizons

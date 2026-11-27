@@ -2,7 +2,8 @@ import type { District, Footprint, NpcRole, NpcSpec } from '@tumblehorde/shared'
 import type { ActorLook } from '../cinematic/actor.ts';
 import { CLOTH, HAIR, SKIN } from '../cinematic/config.ts';
 import type { LightName } from '../cinematic/light.ts';
-import { house, SET_COLORS, tree } from '../cinematic/sets.ts';
+import { bench, house, SET_COLORS } from '../cinematic/sets.ts';
+import { aqueduct, CITY, CityBuilder, clutter, cobbles, cypress, fountain, gate, houseRow, laundry, stall, temple, vary } from './cityKit.ts';
 import type { Stage } from '../cinematic/stage.ts';
 import type { VoiceSpec } from '../cinematic/script.ts';
 
@@ -34,55 +35,62 @@ export interface DistrictSet {
   build(stage: Stage): void;
 }
 
-const CITY = {
-  plaster: '#E6D3B0',
-  plasterWarm: '#E8C49A',
-  plasterPink: '#E3B4A0',
-  plasterOchre: '#D8B070',
-  awning: '#C8423A',
-  awningBlue: '#3C7BD0',
-  awningGreen: '#4E9A4A',
-  marble: '#E8E4DA',
-  water: '#5AA8D8',
-  cobble: '#8E8474',
-  sand: '#C8AA78',
-  anvil: '#4A4E54',
-  forge: '#3A2A22',
-  colosseum: '#D8C8A8',
-  lantern: '#FFC86A',
+/** The capital's plan: a big square in the middle, four narrow streets out of it, blocks of houses between. */
+const PLAN = {
+  /** The walkable city reaches this far from the middle. */
+  edge: 50,
+  square: { halfX: 24, halfZ: 18 },
+  /** Half the width of a street. */
+  street: 2.5,
+  /** How deep a house is, from the street into the block. */
+  houseDepth: 8,
+  /** Shop counters stick out from the houses: nobody walks through them. */
+  frontage: 0.5,
 } as const;
 
-const PLASTERS = [CITY.plaster, CITY.plasterWarm, CITY.plasterPink, CITY.plasterOchre] as const;
+const E = PLAN.edge;
+const SQ = PLAN.square;
+const ST = PLAN.street;
+const D = PLAN.houseDepth;
 
-interface HouseSpec extends Footprint {
-  height: number;
-  color: string;
+function rect(x0: number, x1: number, z0: number, z1: number, margin = 0): Footprint {
+  return { x: (x0 + x1) / 2, z: (z0 + z1) / 2, width: x1 - x0 + margin * 2, depth: z1 - z0 + margin * 2, yaw: 0 };
 }
 
-function block(x: number, z: number, width: number, depth: number, height: number, i: number): HouseSpec {
-  return { x, z, width, depth, yaw: 0, height, color: PLASTERS[i % PLASTERS.length] ?? CITY.plaster };
-}
-
-/**
- * The forum square in the middle (fountain, Varro's forge to the north, the baker to the
- * north-west), the training yard to the east, the festival street to the south, a lane to the west.
- */
-const HOUSES: readonly HouseSpec[] = [
-  // North side, behind the forge and the stall.
-  block(-28, -24, 14, 9, 7, 0), block(-12, -21, 12, 7, 6.5, 1), block(6, -19, 12, 6, 7.5, 2), block(24, -22, 14, 8, 6, 3),
-  // West: two blocks with the lane between them.
-  block(-28, -10, 12, 9, 6, 1), block(-28, 12, 12, 10, 6.5, 2), block(-16, 20, 6, 8, 5.5, 3),
-  // East: around the training yard.
-  block(30, -10, 8, 8, 5.5, 0), block(30, 14, 8, 10, 6, 1),
-  // South: the festival street runs between these two rows.
-  block(-14, 32, 10, 12, 6.5, 0), block(14, 32, 10, 12, 7, 2), block(-26, 30, 10, 10, 6, 3), block(26, 30, 10, 10, 5.5, 1),
+/** The blocks of houses between the square and the streets. */
+const BLOCKS: readonly Footprint[] = [
+  rect(-E - 10, -ST, -E - 10, -SQ.halfZ, PLAN.frontage),
+  rect(ST, E + 10, -E - 10, -SQ.halfZ, PLAN.frontage),
+  rect(-E - 10, -ST, SQ.halfZ, E + 10, PLAN.frontage),
+  rect(ST, E + 10, SQ.halfZ, E + 10, PLAN.frontage),
+  rect(-E - 10, -SQ.halfX, -SQ.halfZ, -ST, PLAN.frontage),
+  rect(-E - 10, -SQ.halfX, ST, SQ.halfZ, PLAN.frontage),
+  rect(SQ.halfX, E + 10, -SQ.halfZ, -ST, PLAN.frontage),
+  rect(SQ.halfX, E + 10, ST, SQ.halfZ, PLAN.frontage),
 ];
 
-const FOUNTAIN: Footprint = { x: 0, z: 0, width: 3.2, depth: 3.2, yaw: 0 };
-const FORGE: Footprint = { x: 6, z: -13.6, width: 2.2, depth: 1.6, yaw: 0 };
-const STALL: Footprint = { x: -10, z: -15.4, width: 3, depth: 1.4, yaw: 0 };
-const POST: Footprint = { x: 24, z: -3, width: 0.6, depth: 0.6, yaw: 0 };
-const STONE = { x: 22, z: 3 } as const;
+const FOUNTAIN_RADIUS = 2.6;
+const FOUNTAIN: Footprint = { x: 0, z: 0, width: FOUNTAIN_RADIUS * 2, depth: FOUNTAIN_RADIUS * 2, yaw: 0 };
+const FORGE: Footprint = { x: 10, z: -16.4, width: 2.4, depth: 1.4, yaw: 0 };
+const TEMPLE: Footprint = rect(-9, 9, -E - 2, -E + 6);
+const GATE: Footprint = rect(-20, 20, E - 5, E + 2);
+/** Market stalls in the square's west half: x, z and the way they face. */
+const STALLS = [
+  { x: -12, z: -15.6, yaw: 0 },
+  { x: -19, z: -7, yaw: 0 },
+  { x: -13, z: -7, yaw: 0 },
+  { x: -19, z: 7, yaw: Math.PI },
+  { x: -13, z: 7, yaw: Math.PI },
+  { x: 8, z: -7, yaw: 0 },
+] as const;
+const STALL_FOOTPRINTS: readonly Footprint[] = STALLS.map((s) => ({ x: s.x, z: s.z, width: 3, depth: 1.5, yaw: 0 }));
+/** The training yard, in the square's south-east corner. */
+const YARD = { x0: 11, x1: 22, z0: 6, z1: 16 } as const;
+const POST: Footprint = { x: 19.5, z: 9, width: 0.6, depth: 0.6, yaw: 0 };
+const STONE = { x: 15, z: 12.5 } as const;
+const COLUMN: Footprint = { x: 14, z: -6, width: 1.6, depth: 1.6, yaw: 0 };
+
+const FOOTPRINTS: readonly Footprint[] = [...BLOCKS, FOUNTAIN, FORGE, TEMPLE, GATE, ...STALL_FOOTPRINTS, POST, COLUMN];
 
 function townsfolk(color: string, hair: string, extra: Partial<ActorLook> = {}): ActorLook {
   return { outfit: 'villager', color, hair, hairStyle: 'short', ...extra };
@@ -111,118 +119,248 @@ function wanderer(role: NpcRole, name: string, i: number, x: number, z: number, 
 export const VARRO_LOOK: ActorLook = { outfit: 'smith', skin: SKIN.tan, hair: HAIR.grey, hairStyle: 'short', beard: 'short', beardColor: HAIR.grey, scar: true };
 export const VARRO_VOICE: VoiceSpec = { pitch: 118, rate: 0.14 };
 
-const PEOPLE: readonly Townsperson[] = [
-  { role: 'smith', name: 'Varro', home: { x: 6, z: -11.8 }, yaw: 0.2, stationary: true, dialogue: 'varro', look: VARRO_LOOK, voice: VARRO_VOICE },
-  {
-    role: 'baker', name: 'Baker', home: { x: -10, z: -16.6 }, yaw: 0, stationary: true,
-    look: townsfolk(CLOTH.linen, HAIR.black, { hairStyle: 'bald', beard: 'stubble', beardColor: HAIR.black }), voice: { pitch: 170, rate: 0.11 },
-  },
-  { role: 'guard', name: 'Guard', home: { x: -3, z: 38 }, yaw: Math.PI, stationary: true, look: { outfit: 'legion', helmet: true, hair: HAIR.brown }, voice: { pitch: 140, rate: 0.12 } },
-  { role: 'guard', name: 'Guard', home: { x: 3, z: 38 }, yaw: Math.PI, stationary: true, look: { outfit: 'legion', helmet: true, hair: HAIR.black }, voice: { pitch: 132, rate: 0.12 } },
-  { role: 'guard', name: 'Guard', home: { x: -12, z: 4 }, look: { outfit: 'legion', helmet: true, hair: HAIR.brown }, voice: { pitch: 128, rate: 0.12 } },
-  { role: 'guard', name: 'Guard', home: { x: 12, z: -6 }, look: { outfit: 'legion', helmet: true, hair: HAIR.black }, voice: { pitch: 145, rate: 0.12 } },
-  {
-    role: 'smith', name: 'Old Gaius', home: { x: 26, z: 3 }, yaw: -Math.PI / 2, stationary: true, dialogue: 'trainer',
-    look: { outfit: 'villager', color: '#8A6A48', hair: HAIR.white, hairStyle: 'bald', beard: 'short', beardColor: HAIR.white, age: 'old' }, voice: { pitch: 135, rate: 0.15 },
-  },
-  {
-    role: 'merchant', name: 'Merchant', home: { x: 10, z: 6 }, stationary: true, yaw: -Math.PI / 2,
-    look: townsfolk('#8E5BD0', HAIR.black, { beard: 'long', beardColor: HAIR.black, skin: SKIN.tan }), voice: { pitch: 150, rate: 0.1 },
-  },
-  {
-    role: 'merchant', name: 'Spice seller', home: { x: -6, z: 26 }, stationary: true, yaw: Math.PI / 2,
-    look: { outfit: 'healer', color: '#D8A040', hair: HAIR.black, hairStyle: 'long', skin: SKIN.tan }, voice: { pitch: 240, rate: 0.1 },
-  },
-  wanderer('child', 'Child', 0, 5, 6),
-  wanderer('child', 'Child', 1, -5, 7),
-  wanderer('child', 'Child', 2, 2, 24),
-  wanderer('child', 'Child', 3, -20, -2),
-  wanderer('citizen', 'Citizen', 4, -9, 4),
-  wanderer('citizen', 'Citizen', 5, 9, -4, { outfit: 'healer', color: '#B86A8A', hairStyle: 'long' }),
-  wanderer('citizen', 'Citizen', 6, -2, -8),
-  wanderer('citizen', 'Citizen', 7, 14, 10),
-  wanderer('reveller', 'Reveller', 8, 2, 30),
-  wanderer('reveller', 'Reveller', 9, -3, 33, { outfit: 'healer', color: '#C8423A', hairStyle: 'long' }),
-  wanderer('reveller', 'Reveller', 10, 4, 20),
+const LEGION_GUARD: ActorLook = { outfit: 'legion', helmet: true, hair: HAIR.brown };
+
+function guard(name: string, i: number, home: { x: number; z: number }, patrol?: readonly { x: number; z: number }[], yaw?: number): Townsperson {
+  return {
+    role: 'guard',
+    name,
+    home,
+    yaw,
+    stationary: patrol === undefined,
+    patrol,
+    look: { ...LEGION_GUARD, hair: i % 2 === 0 ? HAIR.brown : HAIR.black },
+    voice: { pitch: 125 + (i % 4) * 7, rate: 0.12 },
+  };
+}
+
+/** A round for a squad of three marching side by side round the square, the yard and the market. */
+function squadRound(offset: number): { x: number; z: number }[] {
+  return [
+    { x: -21.5 + offset, z: -11.5 },
+    { x: 20, z: -11.5 + offset },
+    { x: 20 - offset, z: 2.5 },
+    { x: 7, z: 2.5 + offset },
+    { x: 7 - offset, z: 14 },
+    { x: -21.5, z: 14 - offset },
+  ];
+}
+
+/** A seller behind a stall (the stall faces `yaw`). */
+function seller(i: number, at: (typeof STALLS)[number], extra: Partial<ActorLook> = {}): Townsperson {
+  const back = { x: at.x - Math.sin(at.yaw) * 1.25, z: at.z - Math.cos(at.yaw) * 1.25 };
+  return { ...wanderer('merchant', 'Merchant', i, back.x, back.z, extra), stationary: true, yaw: at.yaw };
+}
+
+const STROLLERS: readonly [NpcRole, string, number, number][] = [
+  ['citizen', 'Citizen', -6, -4], ['citizen', 'Citizen', 5, 6], ['citizen', 'Citizen', -9, 11], ['citizen', 'Citizen', 10, -10],
+  ['citizen', 'Citizen', -16, 0], ['citizen', 'Citizen', -3, 12], ['citizen', 'Citizen', 15, 0], ['citizen', 'Citizen', -20, -12],
+  ['citizen', 'Citizen', 0, -28], ['citizen', 'Citizen', 0, -36], ['citizen', 'Citizen', -34, 0], ['citizen', 'Citizen', 36, 0],
+  ['child', 'Child', 3, 4], ['child', 'Child', -5, 6], ['child', 'Child', -12, 1], ['child', 'Child', 0, 30],
+  ['reveller', 'Reveller', 0, 26], ['reveller', 'Reveller', -1, 33], ['reveller', 'Reveller', 1, 38], ['reveller', 'Reveller', 6, 14],
+  ['citizen', 'Citizen', 4, -14], ['citizen', 'Citizen', -8, -12], ['citizen', 'Citizen', 0, 20], ['citizen', 'Citizen', -40, 0],
 ];
 
-/** Lanterns on strings across the festival street. */
-function festival(stage: Stage): void {
-  const colors = [CITY.awning, CITY.awningBlue, CITY.awningGreen, CITY.lantern];
-  for (let row = 0; row < 4; row++) {
-    const z = 20 + row * 5;
-    stage.box(SET_COLORS.darkWood, [18, 0.05, 0.05], [0, 5.5, z], 0, { castShadow: false });
-    for (let i = 0; i < 8; i++) stage.box(colors[(i + row) % colors.length] ?? CITY.lantern, [0.45, 0.5, 0.45], [-7.5 + i * 2.1, 5.1, z], 0, { castShadow: false });
+const PEOPLE: readonly Townsperson[] = [
+  { role: 'smith', name: 'Varro', home: { x: FORGE.x, z: FORGE.z + 2.2 }, yaw: 0.2, stationary: true, dialogue: 'varro', look: VARRO_LOOK, voice: VARRO_VOICE },
+  {
+    role: 'baker', name: 'Baker', home: { x: -12, z: -16.9 }, yaw: 0, stationary: true,
+    look: townsfolk(CLOTH.linen, HAIR.black, { hairStyle: 'bald', beard: 'stubble', beardColor: HAIR.black }), voice: { pitch: 170, rate: 0.11 },
+  },
+  {
+    role: 'smith', name: 'Old Gaius', home: { x: 17.5, z: 10.5 }, yaw: -Math.PI / 2, stationary: true, dialogue: 'trainer',
+    look: { outfit: 'villager', color: '#8A6A48', hair: HAIR.white, hairStyle: 'bald', beard: 'short', beardColor: HAIR.white, age: 'old' }, voice: { pitch: 135, rate: 0.15 },
+  },
+  { ...seller(20, STALLS[1], { beard: 'long', beardColor: HAIR.black, skin: SKIN.tan }), name: 'Merchant' },
+  { ...seller(21, STALLS[2], { outfit: 'healer', color: '#D8A040', hairStyle: 'long', skin: SKIN.tan }), name: 'Spice seller' },
+  seller(22, STALLS[3]),
+  seller(23, STALLS[4], { outfit: 'healer', color: '#5A8A8A', hairStyle: 'long' }),
+  seller(24, STALLS[5]),
+  {
+    role: 'citizen', name: 'Priest', home: { x: 0, z: -E + 7.5 }, yaw: 0, stationary: true,
+    look: { outfit: 'healer', color: '#EDE8DC', hair: HAIR.grey, hairStyle: 'bald', beard: 'short', beardColor: HAIR.grey, age: 'old' }, voice: { pitch: 120, rate: 0.13 },
+  },
+  guard('Guard', 0, { x: -1.8, z: E - 6.5 }, undefined, Math.PI),
+  guard('Guard', 1, { x: 1.8, z: E - 6.5 }, undefined, Math.PI),
+  ...[0, 1, 2].map((i) => guard('Legionary', i + 2, squadRound(i * 1.2)[0] ?? { x: 0, z: 0 }, squadRound(i * 1.2))),
+  ...[-0.8, 0.8].map((x, i) => guard('Legionary', i + 5, { x, z: 22 }, [{ x, z: 22 }, { x, z: E - 9 }])),
+  guard('Legionary', 7, { x: 0, z: -22 }, [{ x: 0.6, z: -22 }, { x: 0.6, z: -E + 9 }]),
+  guard('Legionary', 8, { x: -28, z: 0 }, [{ x: -28, z: 0.6 }, { x: -E + 3, z: 0.6 }, { x: -28, z: -0.6 }]),
+  ...STROLLERS.map(([role, name, x, z], i) =>
+    wanderer(role, name, i, x, z, i % 5 === 1 ? { outfit: 'healer', color: TUNICS[(i * 3) % TUNICS.length] ?? CLOTH.tunic, hairStyle: 'long' } : {}),
+  ),
+];
+
+function squarePaving(b: CityBuilder): void {
+  const g = b.group(0, 0);
+  b.box(g, CITY.cobble, [E * 2 + 20, 0.06, E * 2 + 20], [0, 0, 0]);
+  // Big stone slabs in two shades, edged with darker joints.
+  const tile = 6;
+  b.box(g, CITY.cobbleDark, [SQ.halfX * 2, 0.04, SQ.halfZ * 2], [0, 0.03, 0]);
+  for (let x = -SQ.halfX; x < SQ.halfX; x += tile) {
+    for (let z = -SQ.halfZ; z < SQ.halfZ; z += tile) {
+      const shade = (Math.round((x + z) / tile) % 2 === 0) !== vary(x * 13 + z, 71) < 0.2 ? CITY.paving : CITY.pavingDark;
+      b.box(g, shade, [tile - 0.25, 0.05, tile - 0.25], [x + tile / 2, 0.05, z + tile / 2]);
+    }
   }
-  // Tables with food and wine for the festival.
-  for (const x of [-5, 5]) {
-    stage.box(SET_COLORS.wood, [1.2, 0.8, 4], [x, 0.4, 28]);
-    for (let i = 0; i < 4; i++) stage.box(i % 2 === 0 ? SET_COLORS.straw : '#8A2A3A', [0.3, 0.2, 0.3], [x, 0.9, 26.6 + i * 0.9]);
+  // A ring of dark stone round the fountain.
+  b.shape(g, 'cylinder', CITY.cobbleDark, [FOUNTAIN_RADIUS + 1.4, 0.05, FOUNTAIN_RADIUS + 1.4], [0, 0.05, 0]);
+  cobbles(b, -ST, -E, ST, -SQ.halfZ, 140, 1);
+  cobbles(b, -ST, SQ.halfZ, ST, E, 140, 2);
+  cobbles(b, -E, -ST, -SQ.halfX, ST, 110, 3);
+  cobbles(b, SQ.halfX, -ST, E, ST, 110, 4);
+}
+
+/** Houses on every side of the square and along the four streets. */
+function houses(b: CityBuilder): void {
+  const n = -SQ.halfZ;
+  const s = SQ.halfZ;
+  const w = -SQ.halfX;
+  const e = SQ.halfX;
+  const grand = { shops: 0.45, banners: true, minHeight: 9 };
+  houseRow(b, w, n, -ST, n, 0, D, 10, grand);
+  houseRow(b, ST, n, e, n, 0, D, 11, grand);
+  houseRow(b, -ST, s, w, s, Math.PI, D, 12, grand);
+  houseRow(b, e, s, ST, s, Math.PI, D, 13, grand);
+  houseRow(b, w, -ST, w, n, Math.PI / 2, D, 14, grand);
+  houseRow(b, w, s, w, ST, Math.PI / 2, D, 15, grand);
+  houseRow(b, e, n, e, -ST, -Math.PI / 2, D, 16, grand);
+  houseRow(b, e, ST, e, s, -Math.PI / 2, D, 17, grand);
+  // The narrow streets: taller, closer, washing across.
+  houseRow(b, -ST, n - D, -ST, -E + 6, Math.PI / 2, D, 20);
+  houseRow(b, ST, -E + 6, ST, n - D, -Math.PI / 2, D, 21);
+  houseRow(b, -ST, E - 5, -ST, s + D, Math.PI / 2, D, 22, { shops: 0.6 });
+  houseRow(b, ST, s + D, ST, E - 5, -Math.PI / 2, D, 23, { shops: 0.6 });
+  houseRow(b, w - D, -ST, -E, -ST, 0, D, 24);
+  houseRow(b, -E, ST, w - D, ST, Math.PI, D, 25);
+  houseRow(b, E, -ST, e + D, -ST, 0, D, 26);
+  houseRow(b, e + D, ST, E, ST, Math.PI, D, 27);
+  // The insides of the blocks, under the roofs.
+  for (const f of BLOCKS) {
+    const g = b.group(f.x, f.z);
+    b.box(g, CITY.roofDark, [f.width - D * 1.6, 7, f.depth - D * 1.6], [0, 3.5, 0]);
+  }
+  for (let i = 0; i < 4; i++) {
+    const z = n - 12 - i * 7;
+    laundry(b, -ST - 0.5, z, ST + 0.5, z, 5.2 + (i % 2) * 2.6, 70 + i);
+    const x = w - 12 - i * 6;
+    laundry(b, x, -ST - 0.5, x, ST + 0.5, 5.5, 80 + i);
   }
 }
 
-function forum(stage: Stage): void {
-  stage.box(CITY.marble, [FOUNTAIN.width, 0.6, FOUNTAIN.depth], [0, 0.3, 0]);
-  stage.box(CITY.water, [FOUNTAIN.width - 0.5, 0.1, FOUNTAIN.depth - 0.5], [0, 0.58, 0], 0, { castShadow: false });
-  stage.box(CITY.marble, [0.6, 1.8, 0.6], [0, 1.2, 0]);
-  stage.box(CITY.marble, [1.0, 0.5, 1.0], [0, 2.3, 0]);
-  // Varro's forge: a hearth, an anvil and a rack of blades.
-  stage.box(CITY.forge, [FORGE.width, 1.0, FORGE.depth], [FORGE.x, 0.5, FORGE.z]);
-  stage.box(CITY.anvil, [0.7, 0.5, 0.35], [FORGE.x - 1.6, 0.25, FORGE.z + 0.8], 0, { metal: true });
+/** The things in the square: fountain, market, the smith, the honor column, cypresses. */
+function square(b: CityBuilder, stage: Stage): void {
+  fountain(b, 0, 0, FOUNTAIN_RADIUS);
+  STALLS.forEach((at, i) => stall(b, at.x, at.z, at.yaw, 90 + i));
+  // The smith's workshop: a lean-to roof on posts, the hearth, anvil and a rack of blades.
+  const forge = b.group(FORGE.x, FORGE.z);
+  for (const x of [-2.4, 2.4]) b.box(forge, CITY.door, [0.2, 3, 0.2], [x, 1.5, 1.4]);
+  const roof = b.box(forge, CITY.roofDark, [5.4, 0.18, 3.0], [0, 3.15, 0.3], { castShadow: true });
+  roof.rotation.x = 0.25;
+  b.box(forge, '#3A2A22', [FORGE.width, 1.0, FORGE.depth], [0, 0.5, 0], { castShadow: true });
+  b.box(forge, '#4A4E54', [0.7, 0.5, 0.35], [-1.8, 0.25, 1.0], { metal: true });
+  b.box(forge, CITY.door, [1.6, 1.8, 0.15], [1.9, 0.9, -0.5]);
+  for (let i = 0; i < 4; i++) b.box(forge, '#C8D0D8', [0.08, 1.0, 0.05], [1.4 + i * 0.33, 1.1, -0.38], { metal: true });
+  b.box(forge, CITY.door, [1.6, 0.6, 0.08], [0, 3.6, 1.5]);
+  b.box(forge, '#4A4E54', [0.6, 0.3, 0.1], [0, 3.6, 1.56], { metal: true });
   stage.fire(FORGE.x, FORGE.z, 0.5, 1.0);
-  stage.box(SET_COLORS.darkWood, [2.4, 1.6, 0.2], [FORGE.x + 2.4, 0.8, FORGE.z - 0.4]);
-  for (let i = 0; i < 4; i++) stage.box('#C8D0D8', [0.08, 0.9, 0.05], [FORGE.x + 1.6 + i * 0.5, 1.0, FORGE.z - 0.25], 0, { metal: true });
-  // The baker's stall with an awning and loaves.
-  stage.box(SET_COLORS.wood, [STALL.width, 1.0, STALL.depth], [STALL.x, 0.5, STALL.z]);
-  stage.box(CITY.awning, [STALL.width + 0.4, 0.12, STALL.depth + 0.8], [STALL.x, 2.3, STALL.z + 0.2]);
-  for (const side of [-1, 1]) stage.box(SET_COLORS.darkWood, [0.12, 2.3, 0.12], [STALL.x + side * STALL.width / 2, 1.15, STALL.z + 0.5]);
-  for (let i = 0; i < 4; i++) stage.box(SET_COLORS.straw, [0.35, 0.18, 0.3], [STALL.x - 1 + i * 0.65, 1.1, STALL.z]);
-  // A merchant's rug and pots.
-  stage.box(CITY.awningBlue, [2.4, 0.03, 1.6], [12, 0.02, 6], 0, { castShadow: false });
-  for (let i = 0; i < 3; i++) stage.shape('cylinder', CITY.plasterOchre, [0.25, 0.5, 0.25], [11.4 + i * 0.6, 0.25, 6.4]);
-}
-
-function trainingYard(stage: Stage): void {
-  stage.box(CITY.sand, [12, 0.05, 16], [24, 0.03, 0], 0, { castShadow: false });
-  stage.box(SET_COLORS.wood, [POST.width, 2.0, POST.depth], [POST.x, 1.0, POST.z]);
-  stage.box(SET_COLORS.darkWood, [1.4, 0.15, 0.2], [POST.x, 1.5, POST.z]);
-  stage.shape('rock', '#9A948A', [0.55, 0.4, 0.5], [STONE.x, 0.3, STONE.z]);
-  for (let i = 0; i < 5; i++) stage.box(SET_COLORS.darkWood, [0.15, 1.1, 0.15], [18.5, 0.55, -7 + i * 3.5]);
-  stage.box(SET_COLORS.darkWood, [0.1, 0.1, 14], [18.5, 1.0, 0]);
-}
-
-/** Beyond the district: a sea of roofs and the Colosseum, so the city feels huge. */
-function skyline(stage: Stage): void {
-  for (let i = 0; i < 36; i++) {
-    const a = (i / 36) * Math.PI * 2;
-    const r = 52 + (i % 4) * 7;
-    const h = 8 + ((i * 7) % 5) * 2.5;
-    house(stage, Math.cos(a) * r, Math.sin(a) * r, 10 + (i % 3) * 3, 9, h, a, PLASTERS[i % PLASTERS.length]);
+  clutter(b, FORGE.x + 3.6, FORGE.z + 0.2, 0, 5);
+  // The honor column with a gilded eagle.
+  const col = b.group(COLUMN.x, COLUMN.z);
+  b.box(col, CITY.marbleShade, [1.6, 1.2, 1.6], [0, 0.6, 0], { castShadow: true });
+  b.shape(col, 'cylinder', CITY.marble, [0.55, 8, 0.55], [0, 5.2, 0], { castShadow: true });
+  b.box(col, CITY.gold, [1.2, 0.5, 0.4], [0, 9.5, 0], { metal: true });
+  b.box(col, CITY.gold, [0.4, 0.5, 0.4], [0, 9.9, 0.2], { metal: true });
+  for (const [x, z] of [[-SQ.halfX + 1.2, -SQ.halfZ + 1.2], [SQ.halfX - 1.2, -SQ.halfZ + 1.2], [-SQ.halfX + 1.2, SQ.halfZ - 1.2], [-4, -SQ.halfZ + 1.2], [4, -SQ.halfZ + 1.2], [-4, SQ.halfZ - 1.2], [4, SQ.halfZ - 1.2]] as const) {
+    cypress(b, x, z, 4.5, true);
   }
-  const g = stage.group('colosseum', 0, 0, -95);
-  for (let i = 0; i < 24; i++) {
-    const a = (i / 24) * Math.PI * 2;
-    const piece = stage.world.parts.part('box', CITY.colosseum, g, [9, 22, 3], [Math.sin(a) * 30, 11, Math.cos(a) * 30]);
+  for (const [x, z, yaw] of [[-SQ.halfX + 0.6, 10, Math.PI / 2], [SQ.halfX - 0.6, -10, -Math.PI / 2], [-6, -SQ.halfZ + 0.6, 0], [20, SQ.halfZ - 0.6, Math.PI]] as const) clutter(b, x, z, yaw, Math.round(x * 3 + z));
+  for (const x of [-7, 7]) bench(stage, x, 4.6, 0);
+}
+
+function trainingYard(b: CityBuilder): void {
+  const g = b.group(0, 0);
+  b.box(g, CITY.sand, [YARD.x1 - YARD.x0, 0.06, YARD.z1 - YARD.z0], [(YARD.x0 + YARD.x1) / 2, 0.06, (YARD.z0 + YARD.z1) / 2]);
+  // A low fence with a gap facing the square.
+  for (let x = YARD.x0; x <= YARD.x1; x += 2.2) b.box(g, CITY.door, [0.16, 1.1, 0.16], [x, 0.55, YARD.z0], { castShadow: true });
+  for (let z = YARD.z0 + 4.4; z <= YARD.z1; z += 2.2) b.box(g, CITY.door, [0.16, 1.1, 0.16], [YARD.x0, 0.55, z], { castShadow: true });
+  b.box(g, CITY.door, [YARD.x1 - YARD.x0, 0.1, 0.1], [(YARD.x0 + YARD.x1) / 2, 0.95, YARD.z0]);
+  b.box(g, CITY.door, [0.1, 0.1, YARD.z1 - YARD.z0 - 4.4], [YARD.x0, 0.95, (YARD.z0 + 4.4 + YARD.z1) / 2]);
+  b.box(g, SET_COLORS.wood, [POST.width, 2.0, POST.depth], [POST.x, 1.0, POST.z], { castShadow: true });
+  b.box(g, SET_COLORS.darkWood, [1.4, 0.15, 0.2], [POST.x, 1.5, POST.z]);
+  b.shape(g, 'rock', '#9A948A', [0.55, 0.4, 0.5], [STONE.x, 0.3, STONE.z], { castShadow: true });
+  // A rack of wooden swords and shields.
+  b.box(g, SET_COLORS.darkWood, [2.4, 0.12, 0.3], [YARD.x1 - 1.5, 1.3, YARD.z1 - 0.6]);
+  for (let i = 0; i < 4; i++) b.box(g, SET_COLORS.wood, [0.1, 1.1, 0.06], [YARD.x1 - 2.4 + i * 0.6, 0.9, YARD.z1 - 0.5]);
+  b.shape(g, 'disc', SET_COLORS.wood, [0.8, 0.1, 0.8], [YARD.x1 - 0.4, 0.6, YARD.z1 - 2]).rotation.x = Math.PI / 2;
+}
+
+/** Lanterns on strings across the festival street, down to the gate. */
+function festival(b: CityBuilder): void {
+  const g = b.group(0, 0);
+  for (let row = 0; row < 6; row++) {
+    const z = SQ.halfZ + D + 2 + row * 3.4;
+    b.box(g, SET_COLORS.darkWood, [ST * 2 + 1, 0.05, 0.05], [0, 5.2, z]);
+    for (let i = 0; i < 3; i++) b.box(g, CITY.awnings[(i + row) % CITY.awnings.length] ?? CITY.gold, [0.45, 0.5, 0.45], [-1.6 + i * 1.6, 4.8, z]);
+  }
+}
+
+/** The ends of the streets, so no street runs off into nothing. */
+function streetEnds(b: CityBuilder): void {
+  temple(b, 0, -E + 2.5, 0, 16);
+  gate(b, 0, E - 1.5, Math.PI, ST * 2 + 0.6);
+  for (const side of [-1, 1]) {
+    // A shrine wall with a statue in a niche closes the east and west lanes.
+    const g = b.group(side * (E + 0.4), 0, side * -Math.PI / 2);
+    b.box(g, SET_COLORS.stone, [12, 9, 1.2], [0, 4.5, 0], { castShadow: true });
+    b.box(g, SET_COLORS.stoneDark, [3, 4.2, 0.4], [0, 2.6, 0.5]);
+    b.box(g, CITY.marble, [0.9, 2.4, 0.6], [0, 2.2, 0.8]);
+    b.box(g, CITY.marble, [0.5, 0.5, 0.5], [0, 3.7, 0.8]);
+    b.shape(g, 'bush', CITY.green, [1.2, 1.0, 0.6], [-2.6, 0.8, 0.9]);
+    b.shape(g, 'bush', CITY.green, [1.2, 1.0, 0.6], [2.6, 0.8, 0.9]);
+  }
+}
+
+/** Beyond the district: a sea of roofs, the aqueduct and the Colosseum, so the city feels huge. */
+function skyline(b: CityBuilder, stage: Stage): void {
+  const step = 13;
+  const reach = 120;
+  let i = 0;
+  for (let x = -reach; x <= reach; x += step) {
+    for (let z = -reach; z <= reach; z += step) {
+      i++;
+      if (Math.abs(x) < E + 8 && Math.abs(z) < E + 8) continue;
+      if (Math.hypot(x, z + 125) < 42) continue;
+      const h = 7 + Math.floor(vary(i, 91) * 4) * 2.4;
+      house(stage, x + (vary(i, 92) - 0.5) * 3, z + (vary(i, 93) - 0.5) * 3, 9 + vary(i, 94) * 3, 9, h, Math.floor(vary(i, 95) * 4) * (Math.PI / 2), CITY.plasters[i % CITY.plasters.length]);
+    }
+  }
+  aqueduct(b, 40, -reach, reach);
+  const g = b.group(0, -125);
+  for (let k = 0; k < 28; k++) {
+    const a = (k / 28) * Math.PI * 2;
+    const piece = b.box(g, '#D8C8A8', [8, 24, 3], [Math.sin(a) * 34, 12, Math.cos(a) * 34], { castShadow: false });
     piece.rotation.y = a;
+    for (let level = 0; level < 3; level++) b.box(g, '#8A7A60', [2.4, 3.6, 0.2], [Math.sin(a) * 35.6, 4 + level * 7, Math.cos(a) * 35.6]).rotation.y = a;
   }
 }
 
 export const CAPITAL: DistrictSet = {
   light: 'city',
-  district: { halfSize: 40, footprints: [...HOUSES, FOUNTAIN, FORGE, STALL, POST] },
-  start: { x: 0, z: 22, yaw: Math.PI },
+  district: { halfSize: E, footprints: FOOTPRINTS },
+  start: { x: 0, z: SQ.halfZ + D + 4, yaw: Math.PI },
   people: PEOPLE,
   spots: [{ id: 'workout', x: STONE.x, z: STONE.z, label: 'Work out' }],
   build(stage: Stage): void {
-    stage.ground(SET_COLORS.grass, 260);
-    stage.box(CITY.cobble, [80, 0.06, 80], [0, 0, 0], 0, { castShadow: false });
-    for (const h of HOUSES) house(stage, h.x, h.z, h.width, h.depth, h.height, h.yaw, h.color);
-    forum(stage);
-    trainingYard(stage);
-    festival(stage);
-    tree(stage, -20, -14, 1.2);
-    tree(stage, 20, 22, 1.1);
-    tree(stage, -36, 0, 1.3);
-    skyline(stage);
+    stage.ground(SET_COLORS.grass, 320);
+    const b = new CityBuilder(stage);
+    squarePaving(b);
+    houses(b);
+    square(b, stage);
+    trainingYard(b);
+    festival(b);
+    streetEnds(b);
+    skyline(b, stage);
+    b.freeze();
   },
 };

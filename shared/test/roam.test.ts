@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type District, districtWalkable, overlapsFootprint, resolveDistrict, ROAM, stepWalker, type Walker } from '../src/campaign/index.ts';
+import { type District, districtWalkable, jumpWalker, overlapsFootprint, resolveDistrict, ROAM, stepWalker, type Walker } from '../src/campaign/index.ts';
 
 const DISTRICT: District = {
   halfSize: 20,
@@ -42,5 +42,17 @@ describe('free roam', () => {
     expect(walkable({ x: 0, z: 0 })).toBe(true);
     expect(walkable({ x: 0, z: 5 })).toBe(false);
     expect(walkable({ x: 25, z: 0 })).toBe(false);
+  });
+
+  it('jumps as high as the commander in battle, and lands', () => {
+    const walker: Walker = { pos: { x: 0, z: -10 }, yaw: 0, speed: 0 };
+    jumpWalker(walker);
+    let top = 0;
+    for (let t = 0; t < 2; t += 1 / 60) {
+      stepWalker(walker, DISTRICT, { x: 0, z: 0 }, false, 1 / 60);
+      top = Math.max(top, walker.air?.height ?? 0);
+    }
+    expect(top).toBeCloseTo(ROAM.jumpHeight, 1);
+    expect(walker.air).toBeUndefined();
   });
 });

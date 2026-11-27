@@ -32,17 +32,22 @@ const VARRO_JOB: Dialogue = {
   nodes: {
     hello: {
       lines: [
-        { speaker: 'Varro', text: 'Hm. You have the look of a man who just walked out of a cell.', mood: 'neutral' },
-        { speaker: 'Varro', text: 'Bare hands, no coin, and hungry. I know that look. I wore it once.', mood: 'warm' },
-        { speaker: 'Varro', text: 'The arena pays twenty-five gold to whoever is still standing. Can you take a punch?', mood: 'neutral' },
+        { speaker: 'Blacksmith', text: 'Hm. You have the look of a man who just walked out of a cell.', mood: 'neutral' },
+        { speaker: 'Blacksmith', text: 'Bare hands, no coin, and hungry. I know that look. I wore it once.', mood: 'warm' },
+        { speaker: 'Blacksmith', text: 'The arena pays twenty-five gold to whoever is still standing. Can you take a punch?', mood: 'neutral' },
       ],
       options: [
         { text: 'I can take a punch. Get me in.', next: 'yes', effect: EFFECT.acceptJob },
         { text: 'Not today.', next: 'no' },
       ],
     },
-    yes: { lines: [{ speaker: 'Varro', text: 'Ha! Good. Do not die on me, boy. I hate wasting a good bet.', mood: 'happy' }] },
-    no: { lines: [{ speaker: 'Varro', text: 'Suit yourself. Walk around. The city will still be here, and so will I.', mood: 'neutral' }] },
+    yes: {
+      lines: [
+        { speaker: 'Blacksmith', text: 'Ha! Good. Varro. That is my name, and the arena knows it.', mood: 'happy' },
+        { speaker: 'Varro', text: 'Do not die on me, boy. I hate wasting a good bet.', mood: 'happy' },
+      ],
+    },
+    no: { lines: [{ speaker: 'Blacksmith', text: 'Suit yourself. Walk around. The city will still be here, and so will I.', mood: 'neutral' }] },
   },
 };
 

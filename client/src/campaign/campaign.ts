@@ -49,6 +49,9 @@ const LOADING_TIME = 2.6;
 /** The chapter that reaches the northern fortress, which fills the legion's ranks. */
 const FORTRESS_CHAPTER: ChapterId = 'night-raid';
 
+/** Varro, until he tells Cassian his name. */
+const SMITH_UNNAMED = 'Blacksmith';
+
 /** Where each free-roam chapter is walked. */
 const CHAPTER_DISTRICTS: Partial<Record<ChapterId, DistrictSet>> = {
   capital: CAPITAL,
@@ -298,6 +301,8 @@ export class Campaign {
       dialogueFor: (id) => (this.save ? storyDialogue(id, this.save, chapter.id) : null),
       spotActive: (id) => id === EFFECT.workout && chapter.id === 'apprentice' && this.save !== null && canWorkOut(this.save),
       status: () => (this.save ? `${this.save.gold} gold · strength ${this.save.strength}` : null),
+      renames: chapter.id === 'capital' ? { Varro: SMITH_UNNAMED } : {},
+      guide: () => (chapter.id === 'capital' ? SMITH_UNNAMED : 'Varro'),
     }, district, look);
     this.phase = { kind: 'roam', chapter, roam };
   }

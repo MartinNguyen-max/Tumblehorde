@@ -1,3 +1,5 @@
+import { COMMANDER, SIM } from '../config.ts';
+
 // Campaign numbers. Units: seconds, meters, gold.
 
 export const CAMPAIGN = {
@@ -45,11 +47,16 @@ export const NPC = {
   punchDistance: 1.4,
   /** The player talks to or punches someone within this angle (radians, either side) of where they face. */
   facingHalfAngle: 1.2,
+  /** Seconds a patrolling guard stands at each point of the round. */
+  patrolPause: 1.5,
 } as const;
 
+/** Walking in town moves like the commander in battle: same pace, same jump. */
 export const ROAM = {
-  walkSpeed: 3.2,
-  runSpeed: 5.6,
+  walkSpeed: COMMANDER.speed,
+  runSpeed: COMMANDER.speed * 1.35,
+  jumpHeight: COMMANDER.jumpHeight,
+  gravity: SIM.gravity,
   acceleration: 10,
   stopSpeed: 0.05,
   bodyRadius: 0.4,

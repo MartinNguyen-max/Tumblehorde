@@ -27,6 +27,23 @@ export interface Walker {
   yaw: number;
   /** Current speed (m/s), for the walk animation. */
   speed: number;
+  /** Off the ground in a jump: height and upward speed; absent on the ground. */
+  air?: { height: number; velocity: number };
+}
+
+/** Jumps, unless already in the air. */
+export function jumpWalker(walker: Walker): void {
+  if (walker.air) return;
+  walker.air = { height: 0, velocity: Math.sqrt(2 * ROAM.gravity * ROAM.jumpHeight) };
+}
+
+function fall(walker: Walker, dt: number): void {
+  const air = walker.air;
+  if (!air) return;
+  const before = air.velocity;
+  air.velocity -= ROAM.gravity * dt;
+  air.height += ((before + air.velocity) / 2) * dt;
+  if (air.height <= 0) delete walker.air;
 }
 
 function toLocal(f: Footprint, x: number, z: number): Vec2 {
@@ -79,6 +96,7 @@ export function districtWalkable(district: District): Walkable {
  * along walls rather than sticking to them.
  */
 export function stepWalker(walker: Walker, district: District, move: Vec2, running: boolean, dt: number): void {
+  fall(walker, dt);
   const length = Math.min(1, Math.hypot(move.x, move.z));
   const top = (running ? ROAM.runSpeed : ROAM.walkSpeed) * length;
   walker.speed += (top - walker.speed) * Math.min(1, ROAM.acceleration * dt);

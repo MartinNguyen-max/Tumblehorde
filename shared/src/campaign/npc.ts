@@ -25,6 +25,9 @@ export interface Npc {
   target: Vec2 | null;
   /** Stays on the spot (a guard at a gate, a baker at the stall). */
   stationary: boolean;
+  /** A guard's round: walked point after point, for ever. Null for everyone else. */
+  patrol: readonly Vec2[] | null;
+  patrolIndex: number;
 }
 
 export interface NpcSpec {
@@ -34,6 +37,7 @@ export interface NpcSpec {
   yaw?: number;
   dialogue?: string;
   stationary?: boolean;
+  patrol?: readonly Vec2[];
 }
 
 /** Whether a spot is open ground; the city map answers this. */
@@ -55,6 +59,8 @@ export function createNpc(id: number, spec: NpcSpec): Npc {
     timer: 0,
     target: null,
     stationary: spec.stationary ?? false,
+    patrol: spec.patrol && spec.patrol.length > 0 ? spec.patrol.map((p) => ({ ...p })) : null,
+    patrolIndex: 0,
   };
 }
 
@@ -92,6 +98,14 @@ function walkTowards(npc: Npc, target: Vec2, dt: number, walkable: Walkable): bo
   return true;
 }
 
+/** A guard reached a point of the round (or found it blocked): a short look around, then the next. */
+function nextPost(npc: Npc, patrol: readonly Vec2[]): void {
+  npc.patrolIndex = (npc.patrolIndex + 1) % patrol.length;
+  npc.mode = 'idle';
+  npc.target = null;
+  npc.timer = NPC.patrolPause;
+}
+
 /** One step of an NPC's life. */
 export function stepNpc(npc: Npc, dt: number, rng: RandomSource, walkable: Walkable = OPEN): void {
   switch (npc.mode) {
@@ -105,12 +119,22 @@ export function stepNpc(npc: Npc, dt: number, rng: RandomSource, walkable: Walka
         rest(npc, rng);
         return;
       }
+      if (npc.patrol) {
+        npc.target = npc.patrol[npc.patrolIndex] ?? null;
+        npc.mode = 'walk';
+        return;
+      }
       npc.target = strollTarget(npc, rng, walkable);
       if (npc.target) npc.mode = 'walk';
       else rest(npc, rng);
       return;
     case 'walk':
-      if (!npc.target || !walkTowards(npc, npc.target, dt, walkable)) rest(npc, rng);
+      if (npc.target && walkTowards(npc, npc.target, dt, walkable)) return;
+      if (npc.patrol) {
+        nextPost(npc, npc.patrol);
+        return;
+      }
+      rest(npc, rng);
       return;
     case 'flee':
       npc.timer -= dt;

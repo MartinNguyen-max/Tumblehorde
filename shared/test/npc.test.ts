@@ -63,4 +63,21 @@ describe('npcs', () => {
     endTalk(varro, createRandom(1));
     expect(varro.mode).toBe('idle');
   });
+
+  it('a guard on patrol walks his round, point after point, and starts over', () => {
+    const round = [{ x: 0, z: 0 }, { x: 6, z: 0 }, { x: 6, z: 6 }];
+    const guard = createNpc(0, { role: 'guard', name: 'Guard', home: { x: 0, z: 0 }, patrol: round });
+    const rng = createRandom(3);
+    const seen = new Set<number>();
+    let wentBack = false;
+    for (let t = 0; t < 40; t += DT) {
+      stepNpc(guard, DT, rng);
+      const target = guard.mode === 'walk' ? guard.target : null;
+      if (target) seen.add(round.findIndex((p) => p.x === target.x && p.z === target.z));
+      if (seen.size === 3 && guard.patrolIndex === 0) wentBack = true;
+      expect(Math.hypot(guard.pos.x - 3, guard.pos.z - 3)).toBeLessThan(6);
+    }
+    expect([...seen].sort()).toEqual([0, 1, 2]);
+    expect(wentBack).toBe(true);
+  });
 });

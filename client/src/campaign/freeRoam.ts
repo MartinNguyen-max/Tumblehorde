@@ -30,8 +30,11 @@ import {
   startWorkout,
   type Walkable,
   type Walker,
+  jumpWalker,
+  type Vec2,
 } from '@tumblehorde/shared';
-import { Vector3 } from '../render/babylon.ts';
+import { type TransformNode, Vector3 } from '../render/babylon.ts';
+import { CAMERA } from '../visualConfig.ts';
 import type { InputState } from '../input/input.ts';
 import type { Actor, ActorLook } from '../cinematic/actor.ts';
 import type { CinematicOverlay } from '../cinematic/overlay.ts';
@@ -39,6 +42,7 @@ import type { CinematicSound } from '../cinematic/script.ts';
 import { Stage } from '../cinematic/stage.ts';
 import { CAST } from '../cinematic/cast.ts';
 import { SMALL_TALK } from './dialogues.ts';
+import { CityMap } from './cityMap.ts';
 import type { DistrictSet, Spot } from './districts.ts';
 
 /**
@@ -47,21 +51,24 @@ import type { DistrictSet, Spot } from './districts.ts';
  * more to say than a line of small talk.
  */
 
+/** The camera works as it does in battle. */
 const VIEW = {
-  sensitivity: 0.0024,
-  distance: 4.6,
-  height: 1.55,
-  minPitch: -0.3,
-  maxPitch: 1.1,
-  startPitch: 0.22,
-  smoothing: 10,
+  sensitivity: CAMERA.mouseSensitivity,
+  distance: CAMERA.distance,
+  height: CAMERA.height,
+  minPitch: CAMERA.minPitch,
+  maxPitch: CAMERA.maxPitch,
+  startPitch: CAMERA.startPitch,
+  smoothing: CAMERA.smoothing,
   /** Samples along the line from the player to the camera, to keep walls out of the view. */
   collisionSteps: 12,
   wallMargin: 0.3,
   talkDistance: 4.2,
   talkHeight: 1.35,
-  fov: 0.8,
+  fov: CAMERA.fov,
 } as const;
+/** The yellow arrow over whoever to go to next. */
+const GUIDE = { color: '#FFD23A', height: 2.9, bob: 0.22, bobSpeed: 4, spin: 1.8 } as const;
 const PUNCH_TIME = 0.32;
 /** How long a line of talk is voiced: by its length, up to a few seconds. */
 const TALK_VOICE = { maxSeconds: 3, charsPerSecond: 14 } as const;
@@ -91,6 +98,10 @@ export interface FreeRoamDeps {
   spotActive: (id: string) => boolean;
   /** A line in the corner: gold and strength. */
   status: () => string | null;
+  /** Names shown instead of the real ones (the smith is "Blacksmith" until he says his name). */
+  renames?: Readonly<Record<string, string>>;
+  /** Who to go to next (a name as shown, or a spot id), for the arrow and the map; null for nobody. */
+  guide?: () => string | null;
 }
 
 /** How close the player must be to a spot to use it. */
@@ -131,6 +142,9 @@ export class FreeRoam {
   /** A story effect from the last talk, handed on at the end of the frame. */
   private pendingEffect: string | null = null;
   private wasClicking = false;
+  private readonly map: CityMap;
+  private readonly arrow: TransformNode;
+  private time = 0;
   private readonly onCanvasClick = (): void => {
     if (!this.talk?.choosing) this.deps.input.requestLock();
   };
@@ -155,7 +169,7 @@ export class FreeRoam {
     this.yaw = set.start.yaw;
     this.player = stage.actor(PLAYER_NAME, playerLook);
     this.player.voice = CAST.cassianPrisoner.voice;
-    this.npcs = set.people.map((spec, i) => createNpc(i, spec));
+    this.npcs = set.people.map((spec, i) => createNpc(i, { ...spec, name: deps.renames?.[spec.name] ?? spec.name }));
     this.npcActors = set.people.map((spec, i) => {
       const actor = stage.actor(`${spec.name}#${i}`, spec.look);
       actor.voice = spec.voice;
@@ -163,6 +177,11 @@ export class FreeRoam {
       return actor;
     });
     stage.camera.fov = VIEW.fov;
+    this.map = new CityMap(set.district);
+    this.arrow = stage.group('guide-arrow');
+    const tip = stage.world.parts.part('cone', GUIDE.color, this.arrow, [0.32, 0.55, 0.32], [0, 0, 0], { glow: true, castShadow: false });
+    tip.rotation.x = Math.PI;
+    stage.world.parts.part('box', GUIDE.color, this.arrow, [0.2, 0.5, 0.2], [0, 0.5, 0], { glow: true, castShadow: false });
     deps.overlay.show(false);
     deps.canvas.addEventListener('click', this.onCanvasClick);
   }
@@ -178,8 +197,12 @@ export class FreeRoam {
 
     if (this.workout) this.updateWorkout(dt);
     else if (this.talk) this.updateTalk(pressedE);
-    else this.updateWalking(dt, pressedE);
+    else this.updateWalking(dt, pressedE, pressed.includes('Space'));
     this.deps.overlay.status(this.deps.status());
+    this.time += dt;
+    const goal = this.talk || this.workout ? null : this.guideTarget();
+    this.placeArrow(dt, goal);
+    this.map.update(dt, this.walker.pos, this.yaw, this.npcs, goal ? goal.pos : null);
 
     for (const npc of this.npcs) stepNpc(npc, dt, this.rng, this.walkable);
     this.syncActors(dt);
@@ -191,8 +214,26 @@ export class FreeRoam {
     if (effect) this.deps.onEffect(effect);
   }
 
-  private updateWalking(dt: number, pressedE: boolean): void {
+  /** Where the arrow points: the person (or spot) the story wants next. */
+  private guideTarget(): { pos: Vec2; height: number } | null {
+    const name = this.deps.guide?.() ?? null;
+    if (name === null) return null;
+    const spot = this.set.spots.find((s) => s.id === name);
+    if (spot) return { pos: spot, height: 1.2 };
+    const npc = this.npcs.find((n) => n.name === name);
+    return npc ? { pos: npc.pos, height: GUIDE.height } : null;
+  }
+
+  private placeArrow(dt: number, goal: { pos: Vec2; height: number } | null): void {
+    this.arrow.setEnabled(goal !== null);
+    if (!goal) return;
+    this.arrow.position.set(goal.pos.x, goal.height + Math.sin(this.time * GUIDE.bobSpeed) * GUIDE.bob, goal.pos.z);
+    this.arrow.rotation.y += GUIDE.spin * dt;
+  }
+
+  private updateWalking(dt: number, pressedE: boolean, pressedJump: boolean): void {
     const { input } = this.deps;
+    if (pressedJump) jumpWalker(this.walker);
     const forward = (input.isHeld('KeyW') ? 1 : 0) - (input.isHeld('KeyS') ? 1 : 0);
     const right = (input.isHeld('KeyD') ? 1 : 0) - (input.isHeld('KeyA') ? 1 : 0);
     const sin = Math.sin(this.yaw);
@@ -337,6 +378,7 @@ export class FreeRoam {
 
   private syncActors(dt: number): void {
     this.player.drive(this.walker.pos.x, this.walker.pos.z, this.walker.yaw, this.walker.speed);
+    this.player.root.position.y = this.walker.air?.height ?? 0;
     if (!this.workout) this.player.setPose(this.punchTimer > 0 ? 'punch' : 'stand');
     this.npcs.forEach((npc, i) => {
       const actor = this.npcActors[i];
@@ -397,6 +439,7 @@ export class FreeRoam {
   }
 
   dispose(): void {
+    this.map.dispose();
     this.deps.canvas.removeEventListener('click', this.onCanvasClick);
     this.deps.input.exitLock();
     this.deps.overlay.talk(null, null);
