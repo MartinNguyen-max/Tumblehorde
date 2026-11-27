@@ -29,11 +29,11 @@ export const varroDeath: Cutscene = {
         duration: 5,
         fade: { from: 1, to: 0, time: 2 },
         music: 'sorrow',
-        shot: { from: [3.5, 3, 5], at: [0, 0.6, 0.6], to: [2.6, 2.2, 3.8], fov: FOV.normal },
+        shot: { from: [-1.5, 3.2, -4.5], at: [0, 0.6, 0.6], to: [-1.1, 2.4, -3.4], fov: FOV.normal },
         narrate: 'We had won. Then I heard Felix shouting my name.',
       },
       {
-        shot: () => portrait(cassian, { angle: 0.3, distance: 2.2 }),
+        shot: { from: [1.6, 0.9, -1.2], at: { actor: cassian, offset: [0, -0.05, 0] }, fov: FOV.close },
         run: () => cassian.setMood('crying').lookAt(varro.headPosition()),
         say: { who: 'Cassian', text: 'Varro. Varro, look at me. Rufus! Get a healer! Now!', mood: 'crying' },
       },
