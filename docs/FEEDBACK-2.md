@@ -11,7 +11,7 @@ The player played again after round 1. Work list; items are ticked as they land.
 - [x] Jumping works; walking around looks and feels like the battle game
 
 ## Battles
-- [ ] The burning village: smoke seen from afar, the Vikings surrounding the Romans, then Cassian joins; Vikings and Romans easy to tell apart
+- [x] The burning village: smoke seen from afar, the Vikings surrounding the Romans, then Cassian joins; Vikings and Romans easy to tell apart
 - [x] More time to form the circle in the ambush
 - [ ] Scenes before each fight (bridge, outpost, the night camp...) with a reason and a transition
 - [x] The last battle against Hrolf is hard: the legion loses many men

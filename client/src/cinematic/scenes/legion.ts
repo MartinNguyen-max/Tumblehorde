@@ -21,7 +21,7 @@ const VILLAGE = {
 } as const;
 
 /** The village after the raid: houses burning or burnt out, smoke, broken fences, a well, a beached dragon boat. */
-function burningVillage(stage: Stage): void {
+export function burningVillage(stage: Stage): void {
   stage.ground('#4A5A34', 120);
   stage.weather('ash');
   const burning = [[-8, -8, 7, 5, 3.6, 0.2], [9, -6, 6, 5, 3.4, -0.3], [-14, 2, 5, 6, 3.2, 1.3], [15, 4, 6, 5, 3.6, -1.2], [-3, -16, 7, 5, 4, 0.1]] as const;
@@ -54,6 +54,97 @@ function burningVillage(stage: Stage): void {
   dragonBoat(stage, 26, -2, 0.4);
   stage.box(STORY_COLORS.water, [10, 0.06, 120], [28, 0.01, 0], 0, { castShadow: false });
 }
+
+/** Columns of black smoke over the burning houses, seen from far off. */
+function smokeColumns(stage: Stage): void {
+  for (const [x, z] of [[-8, -8], [9, -6], [-14, 2], [15, 4], [-3, -16]] as const) {
+    for (let i = 0; i < 8; i++) stage.shape('bush', i < 3 ? '#3A3230' : '#6A625E', [1.4 + i * 0.5, 1.2 + i * 0.3, 1.4 + i * 0.5], [x + Math.sin(i * 0.8) * 1.6 + i * 0.5, 6 + i * 2.8, z + i * 0.4], { castShadow: false });
+  }
+}
+
+export const villageApproach: Cutscene = {
+  id: 'village-approach',
+  create(stage: Stage): Beat[] {
+    stage.light('dusk');
+    burningVillage(stage);
+    smokeColumns(stage);
+    const cassian = cast(stage, 'cassianTraveller', 'Cassian').place(-34, 2, Math.PI / 2);
+    const varro = cast(stage, 'varroArmored', 'Varro').place(-35.5, 3.4, Math.PI / 2);
+    const felix = cast(stage, 'felix', 'Felix').place(-35.5, 0.4, Math.PI / 2);
+    const rufus = cast(stage, 'rufus', 'Rufus').place(-37, 2, Math.PI / 2);
+    const galba = cast(stage, 'galba', 'Galba').place(1, 1, -Math.PI / 2).setPose('raiseSword').setMood('shout');
+    const romans = Array.from({ length: 7 }, (_, i) => {
+      const a = (i / 7) * Math.PI * 2;
+      return cast(stage, 'legionary', `Legionary ${i}`).place(1 + Math.sin(a) * 1.8, 1 + Math.cos(a) * 1.8, a).setPose('raiseSword').setMood('afraid');
+    });
+    const vikings = Array.from({ length: 16 }, (_, i) => {
+      const a = (i / 16) * Math.PI * 2;
+      return cast(stage, 'viking', i === 0 ? 'Viking' : `Viking ${i}`).place(1 + Math.sin(a) * 6.5, 1 + Math.cos(a) * 6.5, a + Math.PI).setPose('raiseSword').setMood('shout');
+    });
+    const heroes = [cassian, varro, felix, rufus];
+
+    return [
+      {
+        duration: 6,
+        fade: { from: 1, to: 0, time: 2 },
+        music: 'dread',
+        sound: 'wind',
+        shot: { from: [-44, 3, 6], at: [0, 6, -4], to: [-42, 3.4, 4], fov: FOV.normal },
+        narrate: 'We ran all night towards the smoke. At first light we came over the hill, and saw it.',
+      },
+      {
+        duration: 4,
+        sound: 'crowd',
+        tags: [
+          { who: 'Galba', text: 'Romans' },
+          { who: 'Viking 4', text: 'Vikings' },
+        ],
+        shot: { from: [-6, 4.5, 9], at: [1, 1, 1], to: [-5, 3.6, 7], fov: FOV.wide },
+        run: () => {
+          for (const v of vikings) v.walkTo(1 + (v.root.position.x - 1) * 0.6, 1 + (v.root.position.z - 1) * 0.6, 1.2);
+        },
+        narrate: 'In the middle of the village, a handful of legionaries, back to back. And all round them, the Vikings closing in.',
+      },
+      {
+        duration: 3,
+        shot: () => portrait(galba, { angle: 0.4, distance: 2.6 }),
+        say: { who: 'Galba', text: 'Hold! Shields together! Nobody breaks! NOBODY!', mood: 'shout' },
+      },
+      {
+        duration: 3,
+        shot: { from: [4, 2, 5], at: [1, 1, 1], fov: FOV.normal },
+        run: () => {
+          romans[2]?.setPose('lie');
+          vikings[5]?.setPose('punch');
+        },
+        narrate: 'One of them went down. Then another.',
+      },
+      {
+        shot: () => portrait(rufus, { angle: 0.4 }),
+        run: () => {
+          romans[5]?.setPose('lie');
+          for (const h of heroes) h.finishWalk();
+          rufus.setMood('afraid');
+        },
+        say: { who: 'Rufus', text: 'There are a LOT of them, Cassian. A lot. I counted. Then I stopped counting.', mood: 'afraid' },
+      },
+      {
+        shot: () => portrait(cassian, { angle: 0.3, distance: 2.2 }),
+        run: () => cassian.setPose('raiseSword').setMood('angry'),
+        say: { who: 'Cassian', text: 'Then we will not count. With me! Down the hill, all together!', mood: 'shout' },
+      },
+      {
+        duration: 3,
+        sound: 'horn',
+        shot: { from: [-30, 1.4, 8], at: [-34, 1.4, 2], fov: FOV.wide },
+        run: () => {
+          for (const [i, h] of heroes.entries()) h.setPose('raiseSword').setMood('shout').walkTo(-20, 2 - i * 1.2, 5.5);
+        },
+        fade: { to: 1, time: 2.6 },
+      },
+    ];
+  },
+};
 
 export const villageAfter: Cutscene = {
   id: 'village-after',

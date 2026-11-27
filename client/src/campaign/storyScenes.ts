@@ -10,6 +10,7 @@ export const SCENES_BEFORE: Partial<Record<ChapterId, readonly string[]>> = {
   'arena-1': ['arena-tunnel'],
   forge: ['forge-night'],
   'forest-road': ['forest-road-walk'],
+  'burning-village': ['village-approach'],
   campfire: ['campfire'],
   emperor: ['emperor-street', 'emperor-hall', 'livia-evening'],
   ruins: ['ruins'],

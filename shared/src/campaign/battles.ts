@@ -66,8 +66,9 @@ export const STORY_BATTLE = {
    */
   weakling: { hp: 0.35, damage: 0.3 },
   bandits: 10,
-  villageRaiders: 24,
-  galbasMen: 3,
+  /** In each of the three bands round Galba. */
+  villageRaiders: 13,
+  galbasMen: 8,
   bridgeWave: 40,
   bridgeSecondWave: 45,
   bridgeHold: 150,
@@ -344,9 +345,10 @@ function buildBattle(chapter: ChapterId, save: CampaignSave): CampaignBattle | n
     }
     case 'burning-village': {
       const me = cassian(save, chapter, VILLAGE_POINTS.arrival, heroes, false);
-      const galba = army({ name: 'Galba', team: 0, faction: 'roman', soldiers: STORY_BATTLE.galbasMen, spawn: VILLAGE_POINTS.defenders, commander: true, looks: { commander: STORY_LOOKS.galba } });
-      const horde = raiders('Raiders', 'viking', STORY_BATTLE.villageRaiders, VILLAGE_POINTS.raiders);
-      return { ...base, time: 'night', settings: settings('village', [me.setup, galba, horde], 0), legionNames: me.legionNames, commanders: { 1: 'Galba' } };
+      // Galba's men are already surrounded when Cassian comes over the hill.
+      const galba = army({ name: 'Galba', team: 0, faction: 'roman', soldiers: STORY_BATTLE.galbasMen, spawn: VILLAGE_POINTS.defenders, commander: true, startFormation: 'circle', looks: { commander: STORY_LOOKS.galba } });
+      const ring = [VILLAGE_POINTS.raidersNorth, VILLAGE_POINTS.raidersSouth, VILLAGE_POINTS.raidersEast].map((spawn) => raiders('Vikings', 'viking', STORY_BATTLE.villageRaiders, spawn));
+      return { ...base, time: 'dusk', settings: settings('village', [me.setup, galba, ...ring], 0), legionNames: me.legionNames, commanders: { 1: 'Galba' } };
     }
     case 'bridge': {
       const me = cassian(save, chapter, RIVER_POINTS.bridgehead, heroes, true);

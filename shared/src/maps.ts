@@ -300,9 +300,12 @@ export const FOREST_POINTS = {
 
 /** A Roman village of plastered houses round a small square, a road coming in from the west. */
 export const VILLAGE_POINTS = {
-  arrival: { x: -52, z: 0, yaw: EAST },
-  raiders: { x: 6, z: -5, yaw: WEST },
-  defenders: { x: 22, z: -6, yaw: WEST },
+  arrival: { x: -30, z: 0, yaw: EAST },
+  /** Galba's men in the middle of the village, back to back; the raiders all round them. */
+  defenders: { x: 8, z: -2, yaw: WEST },
+  raidersNorth: { x: 8, z: 12, yaw: Math.PI },
+  raidersSouth: { x: 6, z: -14, yaw: 0 },
+  raidersEast: { x: 22, z: -1, yaw: WEST },
 } satisfies Record<string, MapPoint>;
 
 function village(): Structure[] {
