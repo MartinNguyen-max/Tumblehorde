@@ -102,7 +102,7 @@ The client is hosted statically for free.
 - Max 4 players online.
 - The server must be able to run on a small VPS.
 
-## Campaign (M11)
+## Campaign (M11–M13)
 
 - **Logic (`shared/src/campaign/`):** chapter list and order, save shape with `parseSave` (validates everything read back), legion roster (names, veterans, permadeath from the Dark Forest, fortress recruits), heroes per chapter, the beat timeline with hold-to-skip, dialogue cursor with choices, NPC behaviour (stroll, flee, knocked out, talk) and free-roam walking with building footprints. All covered by Vitest.
 - **Cutscenes (`client/src/cinematic/`):** a scene is a `Cutscene` whose `create(stage)` builds its set and cast and returns `Beat`s (shot, line or narration, title, letter, fade, music, sound, `run` at the start, `during` every frame, `choice`). `CutscenePlayer` drives them with the shared timeline; a skipped beat calls `during(stage, 1)` and finishes every walk so the scene stays consistent. `Stage` holds the set, actors, light preset, fires and weather; `CinematicOverlay` is the DOM layer.
