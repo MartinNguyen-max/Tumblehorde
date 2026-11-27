@@ -212,7 +212,7 @@ export const rebuilding: Cutscene = {
           livia.setMood('happy');
           cassian.setPose('embrace').setMood('warm');
         },
-        narrate: 'Two years later, another boy. Lucius, with his father\'s brown hair and his father\'s stubborn chin.',
+        narrate: 'Two years later, another boy. We named him Lucius, after the son Varro lost. Brown hair, and his father\'s stubborn chin.',
         fade: { to: 1, time: 4 },
       },
     ];

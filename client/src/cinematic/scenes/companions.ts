@@ -195,6 +195,27 @@ export const campfireNight: Cutscene = {
         say: { who: 'Varro', text: 'Ha! Hahaha! Terrible! Tell another one!', mood: 'happy' },
       },
       {
+        shot: () => portrait(rufus, { angle: 0.6 }),
+        run: () => rufus.setPose('offer').setMood('happy'),
+        say: { who: 'Rufus', text: 'What do you call a Viking who lost his ship? ... WALKING! Hehehe!', mood: 'happy' },
+      },
+      {
+        duration: 3.5,
+        shot: { from: [-3.6, 1.2, 2.2], at: [-2.2, 0.6, -0.4], fov: FOV.normal },
+        run: () => {
+          varro.setStance('pose').place(-2.6, -0.7, Math.PI / 2).setPose('lie').setMood('happy');
+          cassian.setPose('cheer').setMood('happy');
+          felix.setMood('surprised');
+        },
+        narrate: 'Varro laughed so hard he fell backwards off the log. And I laughed too. For the first time since the bells.',
+      },
+      {
+        duration: 2.6,
+        shot: () => portrait(felix, { angle: -0.4 }),
+        run: () => felix.setMood('happy'),
+        say: { who: 'Felix', text: 'Do not encourage him. He has forty more.', mood: 'happy' },
+      },
+      {
         duration: 3.5,
         music: 'dread',
         sound: 'wind',
@@ -202,7 +223,7 @@ export const campfireNight: Cutscene = {
         run: () => {
           smoke.setEnabled(true);
           glow.setEnabled(true);
-          varro.setPose('sit');
+          varro.place(-1.6, -0.7, Math.PI / 2).setStance('sit').setPose('sit');
           rufus.setPose('sit');
           cassian.setMood('surprised').lookAt({ x: 0, y: 6, z: -40 });
         },

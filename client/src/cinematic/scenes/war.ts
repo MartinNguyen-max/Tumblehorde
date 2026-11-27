@@ -271,6 +271,7 @@ export const rallySpeech: Cutscene = {
     const cassian = cast(stage, 'cassianHelmet', 'Cassian');
     stage.mount(cassian, horse);
     upright(woodenCross(stage.world.parts, cassian.grips[0], 1.3));
+    const rufus = cast(stage, 'rufusLegion', 'Rufus').place(2.6, 4.2, Math.PI);
 
     return [
       {
@@ -312,6 +313,18 @@ export const rallySpeech: Cutscene = {
         shot: () => portrait(cassian, { angle: -0.2, distance: 2.8, rise: -0.3, push: 0.4 }),
         run: () => cassian.setPose('raiseSword').setMood('shout'),
         say: { who: 'Cassian', text: 'Look at the man beside you. That is why we stand. For Varro! For home!', mood: 'shout' },
+      },
+      {
+        duration: 3,
+        shot: () => portrait(rufus, { angle: 0.4, distance: 2.2 }),
+        run: () => rufus.setPose('raiseSword').setMood('shout'),
+        say: { who: 'Rufus', text: 'AND FOR THE CHICKEN!', mood: 'shout' },
+      },
+      {
+        duration: 3,
+        shot: () => portrait(cassian, { angle: 0.4, distance: 2.6, rise: -0.3 }),
+        run: () => cassian.setMood('happy'),
+        narrate: 'Nobody knew what it meant. Two thousand men shouted it anyway.',
       },
       {
         duration: 4,
