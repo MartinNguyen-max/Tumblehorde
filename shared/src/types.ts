@@ -249,6 +249,8 @@ export interface ArmySetup {
   style?: BotStyle;
   /** Story battles: the commander starts without a horse (before he has one, or after the riders dismounted). */
   onFoot?: boolean;
+  /** Story battles: each soldier's hit points, times this (veterans are tougher); missing means 1. */
+  toughness?: readonly number[];
   /** Campaign: hit points of every fighter in the army, and multipliers on their damage and shield. */
   kit?: FighterKit;
 }

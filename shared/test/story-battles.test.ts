@@ -178,3 +178,17 @@ describe('horses in the story', () => {
     expect(mounted('last-night')).toBe(true);
   });
 });
+
+describe('veterans', () => {
+  it('survivors of a deadly battle come back tougher', () => {
+    const save = saveAt('outpost');
+    save.legion[1]!.veteran = true;
+    const battle = campaignBattle('outpost', save)!;
+    const state = createMatch(battle.settings);
+    const army = state.armies[0]!;
+    const heroes = army.soldierIds.filter((id) => state.units[id]?.hero !== null).length;
+    const plain = state.units[army.soldierIds[heroes]!]!;
+    const veteran = state.units[army.soldierIds[heroes + 1]!]!;
+    expect(veteran.maxHp).toBeCloseTo(plain.maxHp * STORY_BATTLE.veteranToughness);
+  });
+});

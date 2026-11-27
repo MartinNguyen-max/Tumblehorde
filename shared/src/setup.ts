@@ -107,10 +107,9 @@ function createArmy(
     const soldier = addUnit(state, (id) => createUnit(id, kind, armyId, groundPos(settings, slot.x, slot.z), spawn.yaw, faction));
     soldier.group = groupForKind(kind, ARMY_GROUPS);
     soldier.hero = setup?.heroes?.[i] ?? null;
-    if (soldier.hero !== null) {
-      soldier.maxHp *= HERO.toughness;
-      soldier.hp = soldier.maxHp;
-    }
+    const toughness = (soldier.hero !== null ? HERO.toughness : 1) * (setup?.toughness?.[i] ?? 1);
+    soldier.maxHp *= toughness;
+    soldier.hp = soldier.maxHp;
     soldierIds.push(soldier.id);
     soldiers.push(soldier);
     if (kind === 'rider') {

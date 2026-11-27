@@ -63,6 +63,8 @@ export const STORY_BATTLE = {
   alliedArmy: 20,
   horde: 66,
   hrolfToughness: 3,
+  /** A veteran legionary's hit points, times this. */
+  veteranToughness: 1.2,
   lastNightLegion: 20,
   oldFriendsArmy: 15,
   /** The last night ends when Cassian first falls, or after this long at the latest. */
@@ -146,9 +148,12 @@ function cassianName(chapter: ChapterId): string {
 
 function cassian(save: CampaignSave, chapter: ChapterId, spawn: MapPoint, heroes: readonly HeroId[], withLegion: boolean): { setup: ArmySetup; legionNames: string[] } {
   const heroNames = heroes.map((h) => HERO_NAMES[h]);
-  const legionNames = withLegion ? livingLegion(save.legion).map((l) => l.name) : [];
+  const legion = withLegion ? livingLegion(save.legion) : [];
+  const legionNames = legion.map((l) => l.name);
   const setup = army({ name: cassianName(chapter), team: 0, faction: 'roman', soldiers: heroNames.length + legionNames.length, spawn, bot: false, heroes: heroNames });
   if (ON_FOOT.includes(chapter)) setup.onFoot = true;
+  // Survivors of a deadly battle are veterans: a little harder to bring down.
+  if (legion.some((l) => l.veteran)) setup.toughness = [...heroNames.map(() => 1), ...legion.map((l) => (l.veteran ? STORY_BATTLE.veteranToughness : 1))];
   return { setup, legionNames };
 }
 
