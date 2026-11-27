@@ -514,7 +514,11 @@ function createRiver(scene: Scene, parts: PartFactory, root: TransformNode, map:
 /** Snow drifts down around the camera on snowy maps. */
 export function updateWeather(world: World, dt: number): void {
   const camera = world.scene.activeCamera;
-  if (world.snow && camera) world.snow.update(dt, camera.position);
+  if (!world.snow || !camera) return;
+  // A cutscene set or the capital hides the map: its snow goes with it.
+  const showing = world.mapRoot?.isEnabled() ?? false;
+  world.snow.setVisible(showing);
+  if (showing) world.snow.update(dt, camera.position);
 }
 
 function createMoat(scene: Scene, parts: PartFactory, root: TransformNode): void {

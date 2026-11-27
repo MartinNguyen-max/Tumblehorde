@@ -82,6 +82,8 @@ export class GameController {
     this.listener = parts.listener;
     this.hooks = hooks;
     this.input.onPointerLockChange = (locked) => this.setPaused(!locked);
+    // A new battle starts with a clean slate: nothing pressed in a cutscene or the menu carries over.
+    this.input.flush();
     this.camera.setMode(readViewMode());
   }
 

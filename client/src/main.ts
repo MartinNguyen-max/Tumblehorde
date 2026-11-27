@@ -88,6 +88,7 @@ async function boot(): Promise<void> {
     const preview = settings ?? landing.previewSettings();
     useMap(preview.map);
     demo = new LocalSession(preview, null);
+    camera.setMode('third');
     camera.distance = DEMO_CAMERA.distance;
     camera.pitch = DEMO_CAMERA.pitch;
   };
@@ -95,6 +96,7 @@ async function boot(): Promise<void> {
   const stopBattle = (): void => {
     controller?.dispose();
     controller = null;
+    renderer.setFirstPerson(null);
     input.exitLock();
     hud.setVisible(false);
     results.hide();
@@ -177,6 +179,11 @@ async function boot(): Promise<void> {
     landing.onlineHint.textContent = 'Connecting…';
     try {
       await action();
+      if (campaign.active) {
+        // The story was started while we were connecting: it wins.
+        void onlineLobby.leave(true);
+        return;
+      }
       landing.setVisible(false);
       landing.onlineHint.textContent = 'Battle 1–3 friends. Share the room code or link.';
       onlineLobby.show();
@@ -245,7 +252,10 @@ async function boot(): Promise<void> {
   showLanding();
 
   const linkedCode = roomCodeFromUrl();
-  if (await onlineLobby.tryReconnect()) {
+  const reconnected = await onlineLobby.tryReconnect();
+  if (reconnected && campaign.active) {
+    void onlineLobby.leave(true);
+  } else if (reconnected) {
     landing.setVisible(false);
     onlineLobby.show();
   } else if (linkedCode) {

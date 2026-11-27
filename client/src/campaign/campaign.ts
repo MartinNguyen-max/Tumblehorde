@@ -195,7 +195,7 @@ export class Campaign {
     }
     this.phase = { kind: 'card' };
     const text =
-      battle.onLoss === 'retryOrLeave' ? 'The horde broke your lines. Rally the legion and fight again, or leave.' : 'Your story is saved at the start of this battle.';
+      battle.onLoss === 'retryOrLeave' ? 'The horde broke your lines. Rally the legion and fight again, or leave.' : 'Your story is saved at the start of this chapter.';
     this.card.show('Defeated', text, [
       { label: 'Fight again', primary: true, action: () => this.runStoryBattle(chapter, done) },
       { label: 'Leave to menu', action: () => this.leave() },
@@ -383,6 +383,7 @@ export class Campaign {
     const phase = this.phase;
     const pausable = phase.kind === 'cutscene' || phase.kind === 'roam' || phase.kind === 'loading';
     if (this.pause.consumeToggle() && pausable) this.pause.toggle();
+    this.overlay.choiceKeysEnabled = !this.pause.open;
     if (this.pause.open) return;
     if (phase.kind === 'loading') {
       phase.timer -= dt;

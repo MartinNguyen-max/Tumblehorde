@@ -1,5 +1,5 @@
 /** Keys that act once per press rather than while held. */
-const PRESS_KEYS = new Set(['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'KeyF', 'KeyR', 'KeyE', 'KeyV', 'KeyQ']);
+const PRESS_KEYS = new Set(['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'KeyF', 'KeyR', 'KeyE', 'KeyV', 'KeyQ', 'KeyT']);
 
 /** Raw keyboard and mouse state for the game, with pointer lock for mouse look. */
 export class InputState {
@@ -44,7 +44,9 @@ export class InputState {
   };
   private readonly onContextMenu = (e: Event): void => e.preventDefault();
   private readonly onLockChange = (): void => {
-    if (!this.isLocked()) this.releaseAll();
+    // Taking the mouse starts fresh: keys pressed meanwhile (a cutscene choice) are not orders.
+    if (this.isLocked()) this.flush();
+    else this.releaseAll();
     this.onPointerLockChange?.(this.isLocked());
   };
   private readonly onBlur = (): void => this.releaseAll();
@@ -112,6 +114,15 @@ export class InputState {
     const w = this.wheel;
     this.wheel = 0;
     return w;
+  }
+
+  /** Forgets presses, releases, mouse look and wheel that piled up while nothing read them. */
+  flush(): void {
+    this.pressed.length = 0;
+    this.released.length = 0;
+    this.lookX = 0;
+    this.lookY = 0;
+    this.wheel = 0;
   }
 
   private releaseAll(): void {

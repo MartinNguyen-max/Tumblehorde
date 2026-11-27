@@ -156,7 +156,8 @@ export class OnlineLobby {
     this.overlay.hidden = true;
   }
 
-  async leave(): Promise<void> {
+  /** Leaves the room; `quietly` skips telling the menu (something else, like the story, has the screen). */
+  async leave(quietly = false): Promise<void> {
     const room = this.room;
     this.room = null;
     this.lobby = null;
@@ -166,7 +167,7 @@ export class OnlineLobby {
     url.searchParams.delete('room');
     history.replaceState(null, '', url);
     if (room) await room.leave(true).catch(() => undefined);
-    this.hooks.onClosed('You left the room.');
+    if (!quietly) this.hooks.onClosed('You left the room.');
   }
 
   private sendSettings(): void {

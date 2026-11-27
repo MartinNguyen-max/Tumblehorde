@@ -22,6 +22,10 @@ export class Snowfall {
     this.layers = [flakes, second];
   }
 
+  setVisible(visible: boolean): void {
+    for (const layer of this.layers) layer.setEnabled(visible);
+  }
+
   dispose(): void {
     this.layers[0]?.material?.dispose();
     for (const layer of this.layers) layer.dispose();

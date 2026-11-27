@@ -23,6 +23,8 @@ export class CinematicOverlay {
   private readonly title: HTMLDivElement;
   private readonly letter: HTMLDivElement;
   private readonly choices: HTMLDivElement;
+  /** Off while the story is paused, so 1–9 never pick an answer behind the pause menu. */
+  choiceKeysEnabled = true;
   private readonly skip: HTMLDivElement;
   private readonly skipFill: HTMLElement;
   private readonly loading: HTMLDivElement;
@@ -139,6 +141,7 @@ export class CinematicOverlay {
       });
     });
     this.choiceKeys = (e: KeyboardEvent) => {
+      if (!this.choiceKeysEnabled) return;
       const index = Number(e.key) - 1;
       if (Number.isInteger(index) && index >= 0 && index < options.length) {
         this.clearChoices();
