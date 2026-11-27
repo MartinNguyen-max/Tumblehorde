@@ -64,11 +64,16 @@ export class Minimap {
       ctx.ellipse(px, py, sheet.radiusX * scale, sheet.radiusZ * scale, 0, 0, Math.PI * 2);
       ctx.fill();
     }
-    if (MAPS[map].layout === 'siege') {
+    const river = MAPS[map].river;
+    if (MAPS[map].layout === 'siege' || river) {
       ctx.fillStyle = COLORS.water;
       const step = 2;
-      for (let x = CASTLE.centerX - CASTLE.moatOuter; x <= CASTLE.centerX + CASTLE.moatOuter; x += step) {
-        for (let z = -CASTLE.moatOuter; z <= CASTLE.moatOuter; z += step) {
+      // The moat lies around the castle; a river can run anywhere across the map.
+      const area = river
+        ? { x0: -MAP.halfSize, x1: MAP.halfSize, z0: -MAP.halfSize, z1: MAP.halfSize }
+        : { x0: CASTLE.centerX - CASTLE.moatOuter, x1: CASTLE.centerX + CASTLE.moatOuter, z0: -CASTLE.moatOuter, z1: CASTLE.moatOuter };
+      for (let x = area.x0; x <= area.x1; x += step) {
+        for (let z = area.z0; z <= area.z1; z += step) {
           if (!inWater(map, x, z)) continue;
           const [px, py] = this.toCanvas(x, z);
           ctx.fillRect(px - (step * scale) / 2, py - (step * scale) / 2, step * scale + 0.5, step * scale + 0.5);

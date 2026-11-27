@@ -529,6 +529,8 @@ export const SOUND = {
 /** The minimap's ground per map where it differs from green. */
 export const MINIMAP_GROUND: Partial<Record<MapId, string>> = {
   north: 'rgba(120, 135, 150, 0.6)',
+  fortress: 'rgba(120, 135, 150, 0.6)',
+  forest: 'rgba(26, 48, 28, 0.6)',
 };
 
 export const MINIMAP = {
