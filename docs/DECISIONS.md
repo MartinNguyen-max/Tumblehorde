@@ -188,3 +188,13 @@ Agreed with the player before building. None of these replace an earlier line un
 - **Viking voices are lower and rougher**, they roar on 35 % of their swings and roar instead of the war cry on Attack.
 - **The Frozen North** is a fourth battlefield (open layout): snowy hills and pines, three longhouses, two huts, a broken palisade, rune stones and two frozen lakes. Ice: 22 % grip and 12 % friction, and running soldiers slip (15 % per second, 1.2 s down). Snow falls (one mesh of flakes drawn twice, following the camera). Camera also keeps out of tree crowns now.
 - **Picking peoples:** on the start page "Your people" (Romans/Vikings) and "Enemies" (Romans/Vikings/Mixed; allied bots are your people); online a lobby setting "Peoples": all Romans, all Vikings, or Romans vs Vikings (by team, or every other player in a free-for-all).
+
+## 2026-11-27 (The capital, M12, session 2)
+
+- **Arena fights run in the battle engine** on a campaign-only map `arena` (a sand floor inside a ring of podium walls; `STORY_MAP_IDS`, never offered on the start page, in the lobby or by "random"). The player is a lone commander on foot (`ArmySetup.soldiers: 0`), each opponent a one-man bot army; `MatchSettings.arena` means no respawn (going down loses), bots charge and form up for only 3 s. Everything else plays like a battle.
+- **Gear and strength are a fighter kit** (`ArmySetup.kit`: hit points, damage and shield multipliers): 200 HP (+100 with armor), damage +8 % per strength, +25 % with Varro's sword (+40 % with Draco's), and the borrowed shield blocks only 55 % as well as a bought one. Opponents: poor men 100 HP, trained fighters 170 HP, Draco 420 HP.
+- **Losing the first arena fight sends you back to the city** (as the story says); losing the second or Draco offers "Fight again" (and for Draco "Let him keep his crown"). After the second win a card asks whether to take Draco's challenge.
+- **The workout is a stone lift**: press A and D in turn 24 times within 8 s at the stone in the training yard (Old Gaius explains). Each success gives +1 strength, at most three.
+- **Varro's shop is a talk**: options list what you do not own yet with prices, plus "I am ready for the next fight". Purchases are saved at once.
+- **The capital** is one district (80 × 80 m) of the huge city with the Colosseum and a ring of tall houses beyond it; Cassian wears rags in chapter 1 and a smith's tunic with his hair cut as Varro's apprentice.
+- The arena fighters still look like legionaries and the player like the gold commander: the battle rigs belong to the battle code. A campaign look for them is left for polish.
