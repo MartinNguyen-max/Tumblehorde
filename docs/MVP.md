@@ -16,6 +16,12 @@ Updated as work progresses. ✅ done · 🚧 in progress · ⬜ not started.
 | M6 Rider and horse | ✅ | Mount/dismount (E), trample, thrown off when the horse dies, spear |
 | M7 After the battle | ✅ | Results table, duration, kills/deaths, rematch |
 | M8 Online | ✅ | Colyseus room with code/link, lobby, 2–4 players FFA or teams, prediction + interpolation, 30 s disconnect rule |
+| M9 Smarter, better fights | ⬜ | Bots defend when hit, flank and gang up; spacing, dodges, counters; spear kept after volley; rally courage; no wall clipping; celebration; first person |
+| M10 Vikings and the north | ⬜ | Viking faction (looks, axes, formations, orders), Romans vs Vikings ~50/50, frozen north map |
+| M11 Campaign foundations | ⬜ | Cutscene engine, cutscene music, subtitles + narrator, hold-to-skip beats, saving, loading screens, talk + choices, NPCs |
+| M12 The capital | ⬜ | Walkable district in a huge city, ~20 NPCs, Varro, shop, workout, three arena fights |
+| M13 Campaign chapters | ⬜ | All chapters from the prologue to the zombie night, with their battles and cutscenes |
+| M14 Polish | ⬜ | Full play-through, balance, independent review, docs |
 
 The simulation for all unit types lives in `/shared` and is covered by Vitest
 (`npm test`). The online flow is covered by `npm run smoke -w server` against a
@@ -84,6 +90,29 @@ difficulty levels (see "Out of scope for v1").
 - 30-second timer on disconnect, after which the army dies
 
 **Done when:** Two players can play a full battle over the network.
+
+## M9: Smarter, better fights
+- Soldiers hit from behind or the side turn and fight back; soldiers on an order still defend themselves
+- Bots pick targets as a team: flank, attack from behind, gang up on the biggest threat instead of a third army
+- No soldier waits behind a wall forever: they route round to an enemy they know about
+- Melee keeps a fighting distance and looks like fighting: circling, wind-ups, dodges, counters, shoves; wilder on Attack
+- Soldiers keep a spear for formations after the volley; Advance stops at the enemy line
+- Rally gives courage (a moderate buff for a while)
+- Ragdolls and the camera do not go through walls
+- Allied armies start next to each other
+- Winners celebrate for about 7 s before the results
+- First-person view in the settings, showing your own body, shield and sword
+
+## M10: Vikings and the north
+- Viking faction with its own looks (pelts, beards, hair, scars), axes that beat shields, own formations and orders
+- Romans vs Vikings, Vikings vs Vikings; bot-vs-bot simulations about 50/50
+- Frozen north battlefield with snow, ice and a frozen lake
+
+## M11–M13: Campaign
+See `docs/STORY.md` for the story, chapters and cutscenes.
+
+## M14: Polish
+- Play the whole campaign through, tune balance, independent review, update docs
 
 ## Out of scope for v1
 Login, persistence, mobile, more maps, online bots and more difficulty levels. (Sound was added after v1.)

@@ -134,3 +134,18 @@ Decisions made while building v1. None of them replace an earlier line.
   - A bot army picks a new style once when it starts falling back, not every step.
   - A formation order for a half that does not exist no longer changes the formation.
   - A bot army that knows where the enemy is but has not been hurt for 40 s charges, so no stand-off lasts forever. With this, every 2–4 army bot battle tried on every map ends.
+
+## 2026-11-27 (Vikings and campaign plan)
+
+Agreed with the player before building. None of these replace an earlier line unless stated.
+
+- **The next update is milestones M9–M14** (see `MVP.md`): smarter and better-looking fights, Vikings and a frozen north map, then a long campaign. Built by one agent, step by step, a commit per step.
+- **Vikings are a second faction**, same blocky shape and height as the Romans but with pelts, beards, longer hair, scars and broad arms, and each one looks a bit different (Romans all look alike). Axes beat shields more easily; Romans keep the tighter wall and longer reach. Tuned until bot-vs-bot battles are about 50/50. Vikings roar and scream more and have their own formations and special orders.
+- **Campaign** as written in `STORY.md`, including the extra chapters (the Champion, the Ruins, the Bridge, the Outpost, the Night Raid), Eirik, Hrolf as Cassian's mirror, named legionaries with a roll call of the fallen, Livia's letters and visible ageing. One difficulty only.
+- **Cutscenes are made in the game** with the same characters: camera shots, letterbox, brows, mouths and tears, emotional gibberish voices with English subtitles and a narrator (old Cassian). No recorded voices.
+- **Soft, warm synthesized music plays only in cutscenes** (pad, plucked lyre, soft choir, one recurring monastery melody). Battles stay without music. Narrows "No music; funnier sounds".
+- **Holding Space skips one beat** of a cutscene (a shot or a line), never the whole scene.
+- **Campaign progress is saved in the browser** (localStorage) at every checkpoint. Replaces "Login, persistence" being out of scope, for the campaign only.
+- **No gore.** Wounds are shown as red stains on clothes and armor.
+- **The zombies come from a grave, unexplained**, and can be any kind of dead. The last battle of the campaign cannot be won.
+- **Commanders still get knocked down and get back up** in army battles; in the arena, going down loses the fight.
