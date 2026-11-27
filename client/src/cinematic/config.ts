@@ -38,6 +38,9 @@ export const CLOTH = {
   vikingTunic: '#3E5A7A',
   bandit: '#4A4A3A',
   steel: '#A3ACB6',
+  /** The smith's silver armor, brighter than legion steel, over a plain brown tunic. */
+  silver: '#D0D7DE',
+  silverTunic: '#6A5A4A',
   gold: '#E0B040',
   leather: '#6E4528',
   boots: '#45291A',

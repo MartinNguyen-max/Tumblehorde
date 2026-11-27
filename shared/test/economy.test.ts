@@ -7,6 +7,7 @@ import {
   KIT,
   newSave,
   playerKit,
+  SHOP_ITEMS,
   startWorkout,
   WORKOUT,
   workedOut,
@@ -17,23 +18,23 @@ import {
 } from '../src/campaign/index.ts';
 
 describe('shop', () => {
-  it('sells each item once, for gold', () => {
+  it('sells only the silver armor and helmet, once, for gold', () => {
+    expect(SHOP_ITEMS).toEqual(['armor']);
     const poor = newSave(0);
-    expect(buy(poor, 'sword')).toEqual({ ok: false, reason: 'gold' });
+    expect(buy(poor, 'armor')).toEqual({ ok: false, reason: 'gold' });
     const rich = { ...poor, gold: 50 };
-    const bought = buy(rich, 'sword');
+    const bought = buy(rich, 'armor');
     if (!bought.ok) throw new Error('should buy');
-    expect(bought.save.gold).toBe(50 - CAMPAIGN.prices.sword);
-    expect(bought.save.gear.sword).toBe(true);
-    expect(buy(bought.save, 'sword')).toEqual({ ok: false, reason: 'owned' });
+    expect(bought.save.gold).toBe(50 - CAMPAIGN.prices.armor);
+    expect(bought.save.gear.armor).toBe(true);
+    expect(buy(bought.save, 'armor')).toEqual({ ok: false, reason: 'owned' });
   });
 
-  it('gear and strength make the fighter tougher', () => {
+  it('armor and strength make the fighter tougher', () => {
     const bare = playerKit(newSave(0));
-    const geared = playerKit({ ...newSave(0), strength: 3, gear: { armor: true, shield: true, sword: true, dracoSword: false } });
+    const geared = playerKit({ ...newSave(0), strength: 3, gear: { armor: true, shield: false, sword: false, dracoSword: false } });
     expect(geared.hp).toBe(bare.hp + KIT.armorHp);
     expect(geared.damage).toBeGreaterThan(bare.damage);
-    expect(geared.block).toBeGreaterThan(bare.block);
   });
 });
 
@@ -55,11 +56,19 @@ describe('workout', () => {
 });
 
 describe('arena purses', () => {
-  it('pay 25, 40 and 60 gold, and the champion gives his sword', () => {
+  it('pay 25 and then 40 gold; the second fight has Draco, and he and Cassian are the strongest', () => {
     let save = newSave(0);
-    for (const chapter of ['arena-1', 'arena-2', 'champion'] as const) save = wonArena(save, arenaFight(chapter)!);
-    expect(save.gold).toBe(125);
-    expect(save.gear.dracoSword).toBe(true);
+    for (const chapter of ['arena-1', 'arena-2'] as const) save = wonArena(save, arenaFight(chapter)!);
+    expect(save.gold).toBe(65);
     expect(arenaFight('bridge')).toBeNull();
+    const second = arenaFight('arena-2')!;
+    const draco = second.opponents.find((o) => o.name.startsWith('Draco'))!;
+    expect(draco).toBeDefined();
+    const others = second.opponents.filter((o) => o !== draco);
+    const armored = playerKit({ ...newSave(0), gear: { armor: true, shield: false, sword: false, dracoSword: false } });
+    for (const o of others) {
+      expect(o.kit.hp * o.kit.damage).toBeLessThan(draco.kit.hp * draco.kit.damage);
+      expect(o.kit.hp * o.kit.damage).toBeLessThan(armored.hp * armored.damage);
+    }
   });
 });

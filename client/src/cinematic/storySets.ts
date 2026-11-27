@@ -1,6 +1,7 @@
 import type { TransformNode } from '../render/babylon.ts';
 import { house, SET_COLORS } from './sets.ts';
 import type { Stage } from './stage.ts';
+import { Crowd, ringSeats } from '../render/crowd.ts';
 
 /** Set pieces for the story's places: boats, fires, graves, the forge, the palace, ruins, a cell. */
 
@@ -206,4 +207,55 @@ export function castleYard(stage: Stage, stone = '#9A948A'): void {
   stage.box(stone, [4, 2.4, 2], [0, 5.8, -10]);
   stage.box('#1A1612', [4, 4.6, 0.1], [0, 2.3, -10.9], 0, { castShadow: false });
   for (const x of [-14, 14]) stage.box(stone, [3, 9, 3], [x, 4.5, -10]);
+}
+
+/** The Colosseum for scenes: sand, the podium wall, banners, the emperor's box, and a full, roaring house. */
+export const COLOSSEUM = {
+  floor: 17,
+  wallHeight: 3.4,
+  rows: 8,
+  rowDepth: 2.2,
+  rowRise: 1.4,
+  /** Meters between spectators in a row. */
+  seatSpacing: 0.95,
+  sand: '#D8BA82',
+  stone: '#C8BCA6',
+  stoneDark: '#A89C86',
+  arch: '#B8AC96',
+  banner: '#C8423A',
+} as const;
+
+export function colosseum(stage: Stage): Crowd {
+  const { floor, wallHeight, rows, rowDepth, rowRise } = COLOSSEUM;
+  stage.shape('disc', COLOSSEUM.sand, [floor * 2, 0.1, floor * 2], [0, -0.04, 0], { castShadow: false });
+  stage.box(COLOSSEUM.stoneDark, [300, 0.1, 300], [0, -0.06, 0], 0, { castShadow: false });
+  const segments = 36;
+  for (let i = 0; i < segments; i++) {
+    const a = (i / segments) * Math.PI * 2;
+    const g = stage.group('tier', 0, 0, 0);
+    g.rotation.y = a;
+    const inner = floor + 0.7;
+    const width = 2 * (inner + rows * rowDepth) * Math.tan(Math.PI / segments) + 0.2;
+    stage.world.parts.part('box', COLOSSEUM.stoneDark, g, [width * 0.55, wallHeight, 1.4], [0, wallHeight / 2, inner], {});
+    for (let r = 0; r < rows; r++) {
+      const radius = inner + 0.7 + r * rowDepth + rowDepth / 2;
+      const top = wallHeight + r * rowRise;
+      const w = 2 * radius * Math.tan(Math.PI / segments) + 0.15;
+      stage.world.parts.part('box', r % 2 === 0 ? COLOSSEUM.stone : COLOSSEUM.stoneDark, g, [w, top, rowDepth], [0, top / 2, radius], { castShadow: false });
+    }
+    // The outer wall of arches rises behind the top row, closing the world off.
+    const outer = inner + 0.7 + rows * rowDepth + 1;
+    const ow = 2 * outer * Math.tan(Math.PI / segments) + 0.2;
+    stage.world.parts.part('box', COLOSSEUM.arch, g, [ow, wallHeight + rows * rowRise + 4, 1.4], [0, (wallHeight + rows * rowRise + 4) / 2, outer], {});
+    stage.world.parts.part('box', '#3A3026', g, [ow * 0.4, 3, 0.2], [0, wallHeight + rows * rowRise + 1, outer - 0.75], { castShadow: false });
+    if (i % 3 === 0) stage.world.parts.part('box', COLOSSEUM.banner, g, [1.3, 2.4, 0.08], [0, wallHeight - 1.1, inner - 0.75], { castShadow: false });
+  }
+  const seats = ringSeats(floor + 1.4, rows, rowDepth, rowRise, wallHeight, (r) => Math.floor((2 * Math.PI * (floor + 1.4 + r * rowDepth)) / COLOSSEUM.seatSpacing));
+  const crowd = new Crowd(stage.world.parts, stage.root, seats);
+  stage.animate((_dt, time) => crowd.update(time));
+  // The emperor's box: purple under a gold canopy.
+  stage.box(STORY_COLORS.purple, [7, 0.25, 3], [0, wallHeight + 1.8, -(floor + 2.2)]);
+  stage.box(STORY_COLORS.gold, [7.4, 0.3, 3.4], [0, wallHeight + 5.4, -(floor + 2.2)]);
+  for (const x of [-3.4, 3.4]) stage.box(STORY_COLORS.gold, [0.3, 3.6, 0.3], [x, wallHeight + 3.6, -(floor + 0.7)]);
+  return crowd;
 }

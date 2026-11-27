@@ -129,6 +129,8 @@ function createArmy(
     name,
     isBot,
     faction,
+    color: setup?.color ?? null,
+    looks: setup?.looks ?? {},
     commanderId: commander?.id ?? null,
     soldierIds,
     groupCount: ARMY_GROUPS,

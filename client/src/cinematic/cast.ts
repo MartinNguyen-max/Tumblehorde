@@ -17,16 +17,25 @@ export const CAST = {
   cassianYoung: { look: { outfit: 'monk', hair: HAIR.brown, hairStyle: 'tonsure', beard: 'stubble', beardColor: HAIR.brown }, voice: { pitch: 190, rate: 0.12 } },
   cassianPrisoner: { look: { outfit: 'rags', hair: HAIR.brown, hairStyle: 'long', beard: 'long', beardColor: HAIR.brown }, voice: { pitch: 175, rate: 0.12 } },
   cassianSmith: { look: { outfit: 'smith', color: CLOTH.tunic, hair: HAIR.brown, hairStyle: 'short', beard: 'short', beardColor: HAIR.brown }, voice: { pitch: 175, rate: 0.12 } },
-  cassianTraveller: { look: { outfit: 'legion', color: '#7A6A4A', hair: HAIR.brown, hairStyle: 'short', beard: 'short', beardColor: HAIR.brown }, voice: { pitch: 175, rate: 0.12 } },
+  /** In the silver armor and helmet bought from the smith, from the second arena fight to the Emperor. */
+  cassianTraveller: { look: { outfit: 'silver', helmet: true, hair: HAIR.brown, hairStyle: 'short', beard: 'short', beardColor: HAIR.brown }, voice: { pitch: 175, rate: 0.12 } },
   cassianCommander: { look: { outfit: 'commander', color: LEGION_RED, cape: LEGION_RED, hair: HAIR.brown, hairStyle: 'short', beard: 'short', beardColor: HAIR.brown }, voice: { pitch: 170, rate: 0.12 } },
   cassianHelmet: { look: { outfit: 'commander', color: LEGION_RED, cape: LEGION_RED, helmet: true, hair: HAIR.brown, beard: 'short', beardColor: HAIR.brown }, voice: { pitch: 170, rate: 0.12 } },
   cassianOld: { look: { outfit: 'commander', color: '#6A4A7A', cape: '#6A2A7A', hair: HAIR.white, hairStyle: 'short', beard: 'long', beardColor: HAIR.white, age: 'old' }, voice: { pitch: 140, rate: 0.15 } },
   anselm: { look: { outfit: 'abbot', hair: HAIR.white, hairStyle: 'tonsure', beard: 'long', beardColor: HAIR.white, age: 'old', skin: SKIN.light }, voice: { pitch: 150, rate: 0.15 } },
   monk: { look: { outfit: 'monk', hair: HAIR.brown, hairStyle: 'tonsure', beard: 'short' }, voice: { pitch: 160, rate: 0.13 } },
   varro: { look: { outfit: 'smith', skin: SKIN.tan, hair: HAIR.grey, hairStyle: 'short', beard: 'short', beardColor: HAIR.grey, scar: true }, voice: { pitch: 118, rate: 0.14 } },
-  varroArmored: { look: { outfit: 'legion', color: '#6A5A4A', skin: SKIN.tan, hair: HAIR.grey, hairStyle: 'short', beard: 'short', beardColor: HAIR.grey, scar: true }, voice: { pitch: 118, rate: 0.14 } },
+  varroArmored: { look: { outfit: 'silver', skin: SKIN.tan, hair: HAIR.grey, hairStyle: 'short', beard: 'short', beardColor: HAIR.grey, scar: true }, voice: { pitch: 118, rate: 0.14 } },
   felix: { look: { outfit: 'villager', color: '#4E7A9A', hair: HAIR.auburn, hairStyle: 'short', beard: 'stubble', beardColor: HAIR.auburn }, voice: { pitch: 185, rate: 0.1 } },
   rufus: { look: { outfit: 'villager', color: '#9A6A3A', hair: HAIR.auburn, hairStyle: 'bald', beard: 'short', beardColor: HAIR.auburn }, voice: { pitch: 150, rate: 0.11 } },
+  /** Felix and Rufus in the legion's red once the Emperor takes them in. */
+  felixLegion: { look: { outfit: 'legion', color: LEGION_RED, helmet: true, hair: HAIR.auburn, hairStyle: 'short', beard: 'stubble', beardColor: HAIR.auburn }, voice: { pitch: 185, rate: 0.1 } },
+  rufusLegion: { look: { outfit: 'legion', color: LEGION_RED, helmet: true, hair: HAIR.auburn, hairStyle: 'bald', beard: 'short', beardColor: HAIR.auburn }, voice: { pitch: 150, rate: 0.11 } },
+  quintus: { look: { outfit: 'commander', color: LEGION_RED, cape: '#2A5A2A', helmet: true, hair: HAIR.brown, beard: 'short', beardColor: HAIR.brown }, voice: { pitch: 140, rate: 0.13 } },
+  /** The arena: poor men in rags like Cassian, trained gladiators, and Draco the Undefeated. */
+  poorFighter: { look: { outfit: 'rags', hair: HAIR.black, hairStyle: 'short', beard: 'stubble', beardColor: HAIR.black }, voice: { pitch: 160, rate: 0.12 } },
+  gladiator: { look: { outfit: 'legion', color: '#6A4A2A', helmet: true, hair: HAIR.black, beard: 'short', beardColor: HAIR.black, skin: SKIN.tan }, voice: { pitch: 130, rate: 0.12 } },
+  draco: { look: { outfit: 'commander', color: '#2A2A2E', cape: '#8A1A1A', helmet: true, hair: HAIR.black, beard: 'short', beardColor: HAIR.black, scar: true, skin: SKIN.tan }, voice: { pitch: 110, rate: 0.13 } },
   felixOld: { look: { outfit: 'commander', color: '#4E7A9A', cape: '#2E4A6A', hair: HAIR.white, hairStyle: 'short', beard: 'short', beardColor: HAIR.white, age: 'old' }, voice: { pitch: 160, rate: 0.13 } },
   rufusOld: { look: { outfit: 'commander', color: '#9A6A3A', cape: '#6A3A1A', hair: HAIR.white, hairStyle: 'bald', beard: 'long', beardColor: HAIR.white, age: 'old' }, voice: { pitch: 130, rate: 0.14 } },
   galba: { look: { outfit: 'commander', color: LEGION_RED, cape: '#2A2A6A', helmet: true, hair: HAIR.black, beard: 'none', skin: SKIN.tan }, voice: { pitch: 135, rate: 0.12 } },
@@ -46,6 +55,10 @@ export const CAST = {
 } as const satisfies Record<string, Role>;
 
 export type RoleName = keyof typeof CAST;
+
+export function isRoleName(value: string): value is RoleName {
+  return value in CAST;
+}
 
 /** Puts a member of the cast on stage under `name` (shown on their subtitles). */
 export function cast(stage: Stage, role: RoleName, name: string, changes: Partial<ActorLook> = {}): Actor {

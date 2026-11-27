@@ -136,7 +136,7 @@ function addRoundShield(parts: PartFactory, torso: TransformNode, palette: ArmyP
 }
 
 /** A bearded axe: a long haft and an iron head whose lower edge hooks down. */
-function addAxe(parts: PartFactory, grip: TransformNode, jarl: boolean): TransformNode {
+export function addAxe(parts: PartFactory, grip: TransformNode, jarl: boolean): TransformNode {
   const axe = childNode('axe', grip);
   parts.part('box', ROMAN.wood, axe, [0.07, 0.82, 0.07], [0, -0.26, 0], GLOSS);
   parts.part('box', VIKING_LOOK.leather, axe, [0.085, 0.14, 0.085], [0, 0.06, 0], SMALL);

@@ -46,9 +46,9 @@ const VARRO_JOB: Dialogue = {
   },
 };
 
-const ITEM_NAMES: Record<ShopItem, string> = { armor: 'armor', shield: 'a shield', sword: 'a real sword' };
+const ITEM_NAMES: Record<ShopItem, string> = { armor: 'silver armor and a helmet', shield: 'a shield', sword: 'a real sword' };
 const ITEM_LINES: Record<ShopItem, string> = {
-  armor: 'Good leather and iron. It will not stop everything, but it will stop enough.',
+  armor: 'Silver plates and a helmet. Put them on, right here. There. Now you look like you mean it.',
   shield: 'Oak and iron. Hold it high and they will break their swords on it.',
   sword: 'Balanced. Sharp. Better than that borrowed stick, I promise you.',
 };

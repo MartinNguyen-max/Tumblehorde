@@ -52,6 +52,9 @@ export interface ArmyView {
   name: string;
   isBot: boolean;
   faction: Faction;
+  /** Story battles: cloth color and named people's looks. */
+  color: string | null;
+  looks: Readonly<Record<string, string>>;
   eliminated: boolean;
   forfeited: boolean;
   groupCount: number;
@@ -135,6 +138,8 @@ export function matchView(state: MatchState): MatchView {
       name: army.name,
       isBot: army.isBot,
       faction: army.faction,
+      color: army.color,
+      looks: army.looks,
       eliminated: army.eliminated,
       forfeited: army.forfeited,
       groupCount: army.groupCount,

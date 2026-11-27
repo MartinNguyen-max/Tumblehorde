@@ -2,6 +2,9 @@ import { HAIR, SKIN } from '../config.ts';
 import { sword, upright } from '../props.ts';
 import type { Beat, Cutscene } from '../script.ts';
 import { SET_COLORS } from '../sets.ts';
+import { colosseum } from '../storySets.ts';
+import { arenaFight, type ChapterId } from '@tumblehorde/shared';
+import type { StoryContext } from '../script.ts';
 import { FOV, portrait } from '../shot.ts';
 import type { Stage } from '../stage.ts';
 import type { ActorLook } from '../actor.ts';
@@ -114,15 +117,7 @@ export const arenaWon: Cutscene = {
   id: 'arena-won',
   create(stage: Stage): Beat[] {
     stage.light('city');
-    stage.ground('#A88A5A', 60);
-    for (let i = 0; i < 20; i++) {
-      const a = (i / 20) * Math.PI * 2;
-      const wall = stage.box('#C8BCA6', [6, 3.4, 1.4], [Math.sin(a) * 12, 1.7, Math.cos(a) * 12]);
-      wall.rotation.y = a;
-      for (let k = 0; k < 4; k++) {
-        stage.box(['#C8423A', '#3C7BD0', '#E3B52B', '#E8E0CC'][k] ?? '#E8E0CC', [0.5, 0.6, 0.4], [Math.sin(a) * 13.2 + Math.cos(a) * (k - 1.5) * 1.2, 3.7, Math.cos(a) * 13.2 - Math.sin(a) * (k - 1.5) * 1.2]);
-      }
-    }
+    colosseum(stage).excitement = 0.5;
     stage.box(SET_COLORS.dirt, [1.2, 0.3, 0.6], [2.2, 0.15, -1.4]);
     const cassian = stage.actor('Cassian', CASSIAN);
     cassian.voice = { pitch: 175, rate: 0.12 };
@@ -181,6 +176,84 @@ export const arenaWon: Cutscene = {
         duration: 4.5,
         shot: { from: [3.5, 2.5, 5], at: [-0.3, 1.2, 0.7], to: [6, 6, 10], fov: FOV.normal },
         narrate: 'He did not know it yet, and neither did I. But that day I found a father.',
+        fade: { to: 1, time: 4 },
+      },
+    ];
+  },
+};
+
+const PURSE = { leather: '#6E4528', coin: '#E8C14A', cabbage: '#7AB04A' } as const;
+
+/**
+ * After a won arena fight: the house goes wild, a purse comes flying down from the emperor's box,
+ * Cassian bites a coin to check it is real, and walks out to the roar of the crowd.
+ */
+export const arenaVictory: Cutscene = {
+  id: 'arena-victory',
+  create(stage: Stage, story: StoryContext): Beat[] {
+    stage.light('city');
+    const crowd = colosseum(stage);
+    crowd.excitement = 1;
+    const armored = story.save.gear.armor;
+    const look: ActorLook = armored
+      ? { outfit: 'silver', helmet: true, hair: HAIR.brown, hairStyle: 'short', beard: 'short', beardColor: HAIR.brown }
+      : CASSIAN;
+    const cassian = stage.actor('Cassian', look);
+    cassian.voice = { pitch: 175, rate: 0.12 };
+    cassian.place(0, 0, 0).setPose('raiseSword', true).setMood('shout', true);
+    upright(sword(stage.world.parts, cassian.grips[0]));
+    cassian.settle();
+    const reward = arenaFight(story.save.chapter as ChapterId)?.reward ?? 25;
+    const purse = stage.group('purse', 0, 9, -16);
+    stage.world.parts.part('box', PURSE.leather, purse, [0.34, 0.34, 0.3], [0, 0, 0], { gloss: true });
+    stage.world.parts.part('box', PURSE.coin, purse, [0.2, 0.06, 0.2], [0, 0.2, 0], { metal: true });
+    const cabbage = stage.shape('sphere', PURSE.cabbage, [0.4, 0.4, 0.4], [6, 7, 6]);
+    const from = { x: 0, y: 9, z: -16 };
+    return [
+      {
+        duration: 3.5,
+        fade: { from: 1, to: 0, color: 'white', time: 1 },
+        music: 'hope',
+        sound: 'crowd',
+        shot: { from: [0, 2.5, 9], at: [0, 1.6, 0], to: [0, 6, 14], fov: FOV.normal },
+        narrate: armored ? 'The whole city was on its feet. Even Draco lay in the sand.' : 'They did not know my name that morning. By noon they were shouting it.',
+      },
+      {
+        duration: 2.2,
+        shot: { from: [3, 1.4, 3], at: [0, 1.7, 0], fov: FOV.normal },
+        during: (_stage, p) => {
+          // A cabbage from the cheap seats bounces off his head.
+          cabbage.position.set(6 - p * 6, 7 - p * 5.2 + Math.sin(p * Math.PI) * 2, 6 - p * 6);
+          if (p > 0.85) cassian.setMood('surprised');
+        },
+      },
+      {
+        duration: 3,
+        shot: { from: [2.5, 1.2, 3.5], at: [0, 1.6, -2], fov: FOV.normal },
+        run: () => cassian.faceTowards(0, -16).setPose('reach').setMood('happy'),
+        during: (_stage, p) => {
+          purse.position.set(from.x, from.y - (from.y - 1.5) * p + Math.sin(p * Math.PI) * 3, from.z + (0.4 - from.z) * p);
+          purse.rotation.x = p * 9;
+        },
+      },
+      {
+        shot: () => portrait(cassian, { angle: 0.3, distance: 1.9 }),
+        run: () => cassian.setPose('offer').setMood('happy'),
+        say: { who: 'Cassian', text: `${reward} coins. Real ones.`, mood: 'happy' },
+      },
+      {
+        duration: 2.4,
+        shot: () => portrait(cassian, { angle: -0.2, distance: 1.6, fov: FOV.close }),
+        run: () => cassian.setPose('carve').setMood('surprised'),
+        say: { who: 'Cassian', text: '...Ow. Very real.', mood: 'surprised' },
+      },
+      {
+        duration: 4.5,
+        shot: { from: [0, 3, 11], at: [0, 1.5, -6], to: [0, 4.5, 14], fov: FOV.normal },
+        run: () => {
+          cassian.setPose('wave').setMood('happy');
+          cassian.walkTo(0, -15, 1.3);
+        },
         fade: { to: 1, time: 4 },
       },
     ];

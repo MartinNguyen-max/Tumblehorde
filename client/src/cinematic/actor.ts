@@ -16,6 +16,8 @@ export type Outfit =
   | 'rags'
   | 'smith'
   | 'legion'
+  /** Plain silver armor over a brown tunic: what Cassian buys from the smith, what Varro wears. */
+  | 'silver'
   | 'commander'
   | 'emperor'
   | 'healer'
@@ -502,7 +504,7 @@ function isRobed(outfit: Outfit): boolean {
   return outfit === 'monk' || outfit === 'abbot' || outfit === 'emperor' || outfit === 'healer';
 }
 
-function clothOf(look: ActorLook): { main: string; dark: string; sleeve: string } {
+export function clothOf(look: ActorLook): { main: string; dark: string; sleeve: string } {
   switch (look.outfit) {
     case 'monk':
       return { main: CLOTH.robe, dark: CLOTH.robeDark, sleeve: CLOTH.robe };
@@ -515,6 +517,8 @@ function clothOf(look: ActorLook): { main: string; dark: string; sleeve: string 
     case 'legion':
     case 'commander':
       return { main: look.color ?? CLOTH.legion, dark: CLOTH.legionTrim, sleeve: look.color ?? CLOTH.legion };
+    case 'silver':
+      return { main: look.color ?? CLOTH.silverTunic, dark: CLOTH.leather, sleeve: look.color ?? CLOTH.silverTunic };
     case 'emperor':
       return { main: CLOTH.purple, dark: CLOTH.purpleTrim, sleeve: CLOTH.linen };
     case 'healer':
@@ -551,7 +555,7 @@ function addArm(parts: PartFactory, torso: TransformNode, side: number, skin: st
   const lower = childNode('forearm', upper, 0, -0.3, 0);
   parts.part('box', longSleeve ? cloth.sleeve : skin, lower, [0.2, 0.24, 0.21], [0, -0.11, 0], GLOSS);
   if (look.outfit === 'smith' || look.outfit === 'warlord') parts.part('box', CLOTH.leather, lower, [0.23, 0.14, 0.24], [0, -0.16, 0], GLOSS);
-  if (look.outfit === 'legion' || look.outfit === 'commander') parts.part('box', CLOTH.steel, lower, [0.22, 0.12, 0.23], [0, -0.14, 0], METAL);
+  if (look.outfit === 'legion' || look.outfit === 'commander' || look.outfit === 'silver') parts.part('box', look.outfit === 'silver' ? CLOTH.silver : CLOTH.steel, lower, [0.22, 0.12, 0.23], [0, -0.14, 0], METAL);
   parts.part('box', skin, lower, [0.2, 0.16, 0.21], [0, -0.3, 0.01], GLOSS);
   return { upper, lower };
 }
@@ -584,8 +588,9 @@ function addTorso(parts: PartFactory, torso: TransformNode, look: ActorLook): vo
       parts.part('box', cloth.dark, torso, [0.82, 0.08, 0.54], [0, 0.18, 0], GLOSS);
       return;
     case 'legion':
+    case 'silver':
     case 'commander': {
-      const metal = look.outfit === 'commander' ? CLOTH.gold : CLOTH.steel;
+      const metal = look.outfit === 'commander' ? CLOTH.gold : look.outfit === 'silver' ? CLOTH.silver : CLOTH.steel;
       parts.part('box', metal, torso, [0.84, 0.5, 0.56], [0, 0.46, 0], METAL);
       for (const side of [-1, 1]) parts.part('box', metal, torso, [0.3, 0.14, 0.58], [side * 0.42, 0.74, 0], METAL);
       parts.part('box', CLOTH.leather, torso, [0.86, 0.1, 0.58], [0, 0.2, 0], GLOSS);
@@ -705,7 +710,7 @@ function addHeadgear(parts: PartFactory, head: TransformNode, look: ActorLook): 
   if (look.outfit === 'bandit') parts.part('box', CLOTH.ragsDark, head, [HEAD + 0.04, 0.18, HEAD + 0.04], [0, -0.16, 0.0], GLOSS);
   if (!look.helmet) return;
   const roman = look.outfit === 'legion' || look.outfit === 'commander';
-  const metal = look.outfit === 'commander' ? CLOTH.gold : CLOTH.steel;
+  const metal = look.outfit === 'commander' ? CLOTH.gold : look.outfit === 'silver' ? CLOTH.silver : CLOTH.steel;
   parts.part('box', metal, head, [HEAD + 0.08, 0.2, HEAD + 0.08], [0, half - 0.02, -0.01], METAL);
   if (roman) {
     parts.part('box', metal, head, [HEAD + 0.08, 0.3, 0.08], [0, 0.05, -half - 0.04], METAL);

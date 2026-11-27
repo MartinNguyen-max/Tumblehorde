@@ -17,14 +17,14 @@ the city falling and the aftermath, and Livia tells Cassian later.
 
 ## 2. Looks that match between scenes and battles
 - [ ] Cassian: prisoner rags with a wooden shield and sword in the first arena fight, silver armor and helmet once bought (worn at once), the legion's red only after the Emperor; one red line through all his clothes
-- [ ] Varro in silver armor, not Roman blue; Felix and Rufus look like villagers, never like bandits
-- [ ] Battles use the same looks as the scenes around them
+- [x] Varro in silver armor, not Roman blue; Felix and Rufus look like villagers, never like bandits
+- [x] Battles use the same looks as the scenes around them
 
 ## 3. The arena
-- [ ] The shop sells only silver armor and helmet
-- [ ] No third (Champion) fight; the second fight is two fighters and Draco (name over him); Cassian and Draco are the strongest
-- [ ] After a win: a short scene (the crowd cheers, Cassian is handed his coins, he leaves) instead of a card
-- [ ] Fights a bit longer but still easy; a livelier crowd
+- [x] The shop sells only silver armor and helmet
+- [x] No third (Champion) fight; the second fight is two fighters and Draco (name over him); Cassian and Draco are the strongest
+- [x] After a win: a short scene (the crowd cheers, Cassian is handed his coins, he leaves) instead of a card
+- [x] Fights a bit longer but still easy; a livelier crowd
 
 ## 4. Battles
 - [ ] Many more enemies in the campaign, each weaker; they rush together, disorganized

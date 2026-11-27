@@ -11,7 +11,7 @@ const PLAYER: FighterKit = { hp: 150, damage: 1, block: 1 };
 const POOR: FighterKit = { hp: 90, damage: 0.8, block: 0.8 };
 
 function arena(opponents = 3) {
-  return createMatch(arenaSettings(PLAYER, Array.from({ length: opponents }, (_, i) => ({ name: `Poor man ${i + 1}`, kit: POOR })), 3));
+  return createMatch(arenaSettings(PLAYER, Array.from({ length: opponents }, (_, i) => ({ name: `Poor man ${i + 1}`, kit: POOR, look: 'poorFighter' })), 3));
 }
 
 describe('arena', () => {

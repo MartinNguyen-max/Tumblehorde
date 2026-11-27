@@ -61,14 +61,17 @@ export interface FighterKit {
 export interface ArenaFighter {
   name: string;
   kit: FighterKit;
+  /** How the fighter looks: a member of the client's cast. */
+  look: string;
 }
 
 /**
  * Settings for an arena fight: the player as a lone commander (army 0) against bot fighters,
  * each a one-man army, everyone for themselves.
  */
-export function arenaSettings(player: FighterKit, opponents: readonly ArenaFighter[], seed: number, playerName = 'You'): MatchSettings {
+export function arenaSettings(player: FighterKit, opponents: readonly ArenaFighter[], seed: number, playerName = 'You', playerLook?: string): MatchSettings {
   const you: ArmySetup = { name: playerName, team: 0, isBot: false, soldiers: 0, kit: player };
-  const others: ArmySetup[] = opponents.map((o, i) => ({ name: o.name, team: i + 1, isBot: true, soldiers: 1, kit: o.kit, style: 'charge' }));
+  if (playerLook) you.looks = { commander: playerLook };
+  const others: ArmySetup[] = opponents.map((o, i) => ({ name: o.name, team: i + 1, isBot: true, soldiers: 1, kit: o.kit, style: 'charge', looks: { soldier: o.look } }));
   return { mode: 'ffa', armySize: ARENA.armySize, armies: [you, ...others], seed, map: 'arena', arena: true, prepareTime: ARENA.prepareTime };
 }

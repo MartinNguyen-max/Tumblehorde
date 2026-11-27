@@ -553,8 +553,10 @@ export class Hud {
   private storyName(view: MatchView, unit: UnitView): string | null {
     if (unit.hero) return unit.hero;
     const army = view.armies[unit.armyId];
-    if (unit.kind === 'commander' && army && army.id !== this.myArmyId) return army.name;
-    return null;
+    if (!army || army.id === this.myArmyId) return null;
+    if (unit.kind === 'commander') return army.name;
+    // A one-man army (an arena fighter) goes by its name.
+    return army.isBot && army.startingSoldiers === 1 && unit.kind !== 'horse' ? army.name : null;
   }
 
   /** Shows the number of enemies in the army you are looking at. */

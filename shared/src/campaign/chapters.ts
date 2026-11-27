@@ -11,7 +11,6 @@ export type ChapterId =
   | 'arena-1'
   | 'apprentice'
   | 'arena-2'
-  | 'champion'
   | 'forge'
   | 'forest-road'
   | 'campfire'
@@ -45,22 +44,21 @@ export const CHAPTERS: readonly Chapter[] = [
   { id: 'arena-1', number: 2, title: 'The Arena I', kind: 'arena', optional: false, loadingLine: 'The crowd does not know your name. Yet.' },
   { id: 'apprentice', number: 3, title: 'The Apprentice', kind: 'freeRoam', optional: false, loadingLine: 'Iron, sweat, and a gruff old smith.' },
   { id: 'arena-2', number: 4, title: 'The Arena II', kind: 'arena', optional: false, loadingLine: 'These men were trained to kill.' },
-  { id: 'champion', number: 5, title: 'The Champion', kind: 'arena', optional: true, loadingLine: 'Draco has never lost. Not once.' },
-  { id: 'forge', number: 6, title: 'The Forge at Night', kind: 'cutscene', optional: false, loadingLine: 'Some stories are only told by firelight.' },
-  { id: 'forest-road', number: 7, title: 'The Forest Road', kind: 'battle', optional: false, loadingLine: 'The road north runs through bandit woods.' },
-  { id: 'campfire', number: 8, title: 'The Campfire', kind: 'cutscene', optional: false, loadingLine: 'Wine, friends, and smoke on the horizon.' },
-  { id: 'burning-village', number: 9, title: 'The Burning Village', kind: 'battle', optional: false, loadingLine: 'Dragon-headed boats on the river. Again.' },
-  { id: 'emperor', number: 10, title: 'The Emperor', kind: 'cutscene', optional: false, loadingLine: 'The whole city is cheering your name.' },
-  { id: 'ruins', number: 11, title: 'The Ruins', kind: 'cutscene', optional: false, loadingLine: 'The road north passes a place you know.' },
-  { id: 'bridge', number: 12, title: 'The Bridge', kind: 'battle', optional: false, loadingLine: 'Hold the bridge until the last cart is over.' },
-  { id: 'dark-forest', number: 13, title: 'The Dark Forest', kind: 'battle', optional: false, loadingLine: 'No moon tonight. Stay close.' },
-  { id: 'varro', number: 14, title: 'Varro', kind: 'cutscene', optional: false, loadingLine: 'Not every wound can be bandaged.' },
-  { id: 'outpost', number: 15, title: 'The Outpost', kind: 'battle', optional: false, loadingLine: 'Into the white north, where the lakes are stone.' },
-  { id: 'night-raid', number: 16, title: 'The Night Raid', kind: 'battle', optional: false, loadingLine: 'Torches in the dark. Hold until dawn.' },
-  { id: 'last-battle', number: 17, title: 'The Last Battle', kind: 'battle', optional: false, loadingLine: 'Hrolf the Red waits on the frozen field.' },
-  { id: 'peace', number: 18, title: 'Peace', kind: 'cutscene', optional: false, loadingLine: 'Years pass like seasons in a window.' },
-  { id: 'last-night', number: 19, title: 'The Last Night', kind: 'battle', optional: false, loadingLine: 'Tonight he dreamed of the monks.' },
-  { id: 'the-end', number: 20, title: 'The End', kind: 'cutscene', optional: false, loadingLine: 'Dawn.' },
+  { id: 'forge', number: 5, title: 'The Forge at Night', kind: 'cutscene', optional: false, loadingLine: 'Some stories are only told by firelight.' },
+  { id: 'forest-road', number: 6, title: 'The Forest Road', kind: 'battle', optional: false, loadingLine: 'The road north runs through bandit woods.' },
+  { id: 'campfire', number: 7, title: 'The Campfire', kind: 'cutscene', optional: false, loadingLine: 'Wine, friends, and smoke on the horizon.' },
+  { id: 'burning-village', number: 8, title: 'The Burning Village', kind: 'battle', optional: false, loadingLine: 'Dragon-headed boats on the river. Again.' },
+  { id: 'emperor', number: 9, title: 'The Emperor', kind: 'cutscene', optional: false, loadingLine: 'The whole city is cheering your name.' },
+  { id: 'ruins', number: 10, title: 'The Ruins', kind: 'cutscene', optional: false, loadingLine: 'The road north passes a place you know.' },
+  { id: 'bridge', number: 11, title: 'The Bridge', kind: 'battle', optional: false, loadingLine: 'Hold the bridge until the last cart is over.' },
+  { id: 'dark-forest', number: 12, title: 'The Dark Forest', kind: 'battle', optional: false, loadingLine: 'No moon tonight. Stay close.' },
+  { id: 'varro', number: 13, title: 'Varro', kind: 'cutscene', optional: false, loadingLine: 'Not every wound can be bandaged.' },
+  { id: 'outpost', number: 14, title: 'The Outpost', kind: 'battle', optional: false, loadingLine: 'Into the white north, where the lakes are stone.' },
+  { id: 'night-raid', number: 15, title: 'The Night Raid', kind: 'battle', optional: false, loadingLine: 'Torches in the dark. Hold until dawn.' },
+  { id: 'last-battle', number: 16, title: 'The Last Battle', kind: 'battle', optional: false, loadingLine: 'Hrolf the Red waits on the frozen field.' },
+  { id: 'peace', number: 17, title: 'Peace', kind: 'cutscene', optional: false, loadingLine: 'Years pass like seasons in a window.' },
+  { id: 'last-night', number: 18, title: 'The Last Night', kind: 'battle', optional: false, loadingLine: 'Tonight he dreamed of the monks.' },
+  { id: 'the-end', number: 19, title: 'The End', kind: 'cutscene', optional: false, loadingLine: 'Dawn.' },
 ];
 
 export function chapterById(id: ChapterId): Chapter {

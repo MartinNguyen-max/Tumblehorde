@@ -1,5 +1,5 @@
 import type { Cutscene } from '../script.ts';
-import { arenaTunnel, arenaWon } from './arena.ts';
+import { arenaTunnel, arenaVictory, arenaWon } from './arena.ts';
 import { campfireNight, forestRoadAfter, forgeNight, rollCall } from './companions.ts';
 import { lastNight, peace, theEnd } from './ending.ts';
 import { emperor, emperorHall, ruins, villageAfter } from './legion.ts';
@@ -11,7 +11,7 @@ import { hrolfMirror, letterOne, letterTwo, rallySpeech, varroDeath } from './wa
 export const CUTSCENES: Readonly<Record<string, Cutscene>> = Object.fromEntries(
   [
     prologueMorning, prologueRaid, prologueRoad, prologuePrison,
-    arenaTunnel, arenaWon,
+    arenaTunnel, arenaWon, arenaVictory,
     forgeNight, forestRoadAfter, campfireNight, rollCall,
     villageAfter, emperor, emperorHall, ruins,
     varroDeath, letterOne, letterTwo, rallySpeech, hrolfMirror,

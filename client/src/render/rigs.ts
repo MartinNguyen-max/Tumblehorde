@@ -1,9 +1,12 @@
 import { type InstancedMesh, TransformNode, type Scene } from './babylon.ts';
-import { approach, CASSIAN_NAMES, DUEL, type Faction, lerp, meleeStatsForKind, type UnitKind, type UnitView, type Weapon } from '@tumblehorde/shared';
-import { ANIMATION, type ArmyPalette, COLORS, ROMAN, STORY_LOOKS, VIKING_LOOK } from '../visualConfig.ts';
+import { approach, DUEL, type Faction, lerp, meleeStatsForKind, type UnitKind, type UnitView, type Weapon } from '@tumblehorde/shared';
+import { ANIMATION, type ArmyPalette, COLORS, ROMAN } from '../visualConfig.ts';
 import { buildBean } from './beans.ts';
 import { buildRoman, type PersonBody } from './legionary.ts';
-import { buildViking, vikingLook } from './viking.ts';
+import { addAxe, buildViking, vikingLook } from './viking.ts';
+import { buildFromLook } from './storyKit.ts';
+import { CAST, isRoleName } from '../cinematic/cast.ts';
+import type { ActorLook } from '../cinematic/actor.ts';
 import { buildBandit, buildZombie } from './folk.ts';
 import { childNode, type PartFactory } from './parts.ts';
 
@@ -152,36 +155,25 @@ function addStars(parts: PartFactory, head: TransformNode): TransformNode {
 }
 
 /** Builds the body for a unit of `faction`; Vikings each get their own look from their id. */
-/** The story's named people look like themselves, whatever army they fight in. */
-function buildStoryBody(parts: PartFactory, body: TransformNode, kind: UnitKind, palette: ArmyPalette, name: string): { built: PersonBody; look: string } | null {
-  const officer = kind === 'commander';
-  switch (name) {
-    case 'Eirik': {
-      const { look } = vikingLook(0);
-      const eirik = { ...look, beard: STORY_LOOKS.eirik.beard, pelt: VIKING_LOOK.pelts[STORY_LOOKS.eirik.pelt] ?? look.pelt, helmet: false, scar: false, braids: true };
-      return { built: buildViking(parts, body, palette, officer, eirik), look: 'eirik' };
-    }
-    case 'Hrolf the Red':
-    case 'Hrolf': {
-      const { look } = vikingLook(0);
-      return { built: buildViking(parts, body, palette, true, { ...look, beard: STORY_LOOKS.hrolfBeard, scar: true, braids: true }), look: 'hrolf' };
-    }
-    case 'Varro':
-      return { built: buildRoman(parts, body, palette, officer, STORY_LOOKS.varroBeard), look: 'varro' };
-    // Before the legion he fights in a plain soldier's kit; old, he is still its general.
-    case CASSIAN_NAMES.wanderer:
-      return { built: buildRoman(parts, body, palette, false, STORY_LOOKS.cassianBeard), look: 'cassian' };
-    case CASSIAN_NAMES.old:
-      return { built: buildRoman(parts, body, palette, true, STORY_LOOKS.oldBeard), look: 'old-cassian' };
-    default:
-      return null;
+/** The story's named people look the way the cutscenes show them (`look` names a member of the cast). */
+function buildStoryBody(parts: PartFactory, body: TransformNode, palette: ArmyPalette, look: string): { built: PersonBody; look: string } | null {
+  if (!isRoleName(look)) return null;
+  const actorLook: ActorLook = CAST[look].look;
+  const built = buildFromLook(parts, body, actorLook, palette);
+  if (actorLook.outfit === 'viking' || actorLook.outfit === 'warlord') {
+    // Norse people fight with the axe, the spear for the shield wall.
+    const grip = built.weapons.sword?.parent;
+    built.weapons.sword?.dispose();
+    if (grip) built.weapons = { axe: addAxe(parts, grip as TransformNode, actorLook.outfit === 'warlord'), spear: built.weapons.spear };
+    built.sideArm = 'axe';
   }
+  return { built, look: `story-${look}` };
 }
 
 function buildBody(parts: PartFactory, body: TransformNode, kind: UnitKind, palette: ArmyPalette, faction: Faction, id: number, name: string | null): { built: PersonBody; look: string } {
   const person = kind === 'swordsman' || kind === 'commander';
   if (!person) return { built: buildBean(parts, body, kind, palette), look: 'bean' };
-  const story = name ? buildStoryBody(parts, body, kind, palette, name) : null;
+  const story = name ? buildStoryBody(parts, body, palette, name) : null;
   if (story) return story;
   if (faction === 'viking') {
     const { look, variant } = vikingLook(id);
@@ -198,7 +190,7 @@ function buildBody(parts: PartFactory, body: TransformNode, kind: UnitKind, pale
   return { built: buildRoman(parts, body, palette, kind === 'commander'), look: 'roman' };
 }
 
-/** `name`: a story hero (or a named general) who should look like themselves. */
+/** `name`: in a story battle, the cast look of a named person (a hero, a general, Cassian). */
 export function createPersonRig(scene: Scene, parts: PartFactory, kind: UnitKind, palette: ArmyPalette, faction: Faction = 'roman', id = 0, name: string | null = null): PersonRig {
   const scale = kind === 'commander' ? COMMANDER_SCALE : SOLDIER_SCALE;
   const root = new TransformNode(kind, scene);

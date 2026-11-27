@@ -116,7 +116,7 @@ export class FreeRoam {
   private readonly set: DistrictSet;
   private readonly walkable: Walkable;
   private readonly walker: Walker;
-  private readonly player: Actor;
+  private player: Actor;
   private readonly npcs: Npc[];
   private readonly npcActors: Actor[];
   private readonly rng = createRandom(7);
@@ -134,6 +134,15 @@ export class FreeRoam {
   private readonly onCanvasClick = (): void => {
     if (!this.talk?.choosing) this.deps.input.requestLock();
   };
+
+  /** Cassian changes clothes (puts on the armor he just bought): a new body in the same spot. */
+  setPlayerLook(look: ActorLook): void {
+    const voice = this.player.voice;
+    this.player.dispose();
+    this.player = this.stage.actor(PLAYER_NAME, look);
+    this.player.voice = voice;
+    this.player.drive(this.walker.pos.x, this.walker.pos.z, this.walker.yaw, 0);
+  }
 
   constructor(stage: Stage, deps: FreeRoamDeps, set: DistrictSet, playerLook: ActorLook) {
     this.stage = stage;

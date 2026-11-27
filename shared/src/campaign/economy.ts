@@ -9,16 +9,13 @@ import type { CampaignGear, CampaignSave } from './save.ts';
  */
 
 export type ShopItem = Exclude<keyof CampaignGear, 'dracoSword'>;
-export const SHOP_ITEMS: readonly ShopItem[] = ['armor', 'shield', 'sword'];
+/** The smith sells one thing: silver armor and a helmet. The sword and wooden shield are lent from the start. */
+export const SHOP_ITEMS: readonly ShopItem[] = ['armor'];
 
 export const KIT = {
   baseHp: 200,
   armorHp: 100,
   damagePerStrength: 0.08,
-  swordDamage: 0.25,
-  dracoSwordDamage: 0.4,
-  /** Without a proper shield the borrowed one blocks only this much. */
-  bareBlock: 0.55,
   shieldBlock: 1,
 } as const;
 
@@ -30,22 +27,30 @@ export interface ArenaFight {
   givesDracoSword: boolean;
 }
 
-const POOR: FighterKit = { hp: 100, damage: 0.6, block: 0.5 };
-const TRAINED: FighterKit = { hp: 170, damage: 0.9, block: 1 };
-const DRACO: FighterKit = { hp: 420, damage: 1.2, block: 1.2 };
+/** Poor men like Cassian: they last a while but hardly hurt. */
+const POOR: FighterKit = { hp: 150, damage: 0.5, block: 0.5 };
+/** Trained fighters, still weaker than Cassian in his silver armor. */
+const TRAINED: FighterKit = { hp: 160, damage: 0.75, block: 0.9 };
+/** Draco the Undefeated: the only one as strong as Cassian. */
+const DRACO: FighterKit = { hp: 300, damage: 1.05, block: 1.1 };
 
 export const ARENA_FIGHTS: readonly ArenaFight[] = [
   {
     chapter: 'arena-1', reward: 25, givesDracoSword: false,
-    opponents: [{ name: 'Old Brutus', kit: POOR }, { name: 'Skinny Paulus', kit: POOR }, { name: 'One-eyed Silo', kit: POOR }],
+    opponents: [
+      { name: 'Old Brutus', kit: POOR, look: 'poorFighter' },
+      { name: 'Skinny Paulus', kit: POOR, look: 'poorFighter' },
+      { name: 'One-eyed Silo', kit: POOR, look: 'poorFighter' },
+    ],
   },
   {
+    // The champion is introduced in the second fight: the two strongest left standing are Cassian and Draco.
     chapter: 'arena-2', reward: 40, givesDracoSword: false,
-    opponents: [{ name: 'Marcus the Bull', kit: TRAINED }, { name: 'Felicia the Quick', kit: TRAINED }, { name: 'Crixo', kit: TRAINED }],
-  },
-  {
-    chapter: 'champion', reward: 60, givesDracoSword: true,
-    opponents: [{ name: 'Draco the Undefeated', kit: DRACO }],
+    opponents: [
+      { name: 'Marcus the Bull', kit: TRAINED, look: 'gladiator' },
+      { name: 'Crixo', kit: TRAINED, look: 'gladiator' },
+      { name: 'Draco the Undefeated', kit: DRACO, look: 'draco' },
+    ],
   },
 ];
 
@@ -53,12 +58,12 @@ export function arenaFight(chapter: ChapterId): ArenaFight | null {
   return ARENA_FIGHTS.find((f) => f.chapter === chapter) ?? null;
 }
 
+/** Cassian in the arena: the lent sword and wooden shield, the silver armor once bought, and his workouts. */
 export function playerKit(save: CampaignSave): FighterKit {
-  const swordBonus = save.gear.dracoSword ? KIT.dracoSwordDamage : save.gear.sword ? KIT.swordDamage : 0;
   return {
     hp: KIT.baseHp + (save.gear.armor ? KIT.armorHp : 0),
-    damage: 1 + save.strength * KIT.damagePerStrength + swordBonus,
-    block: save.gear.shield ? KIT.shieldBlock : KIT.bareBlock,
+    damage: 1 + save.strength * KIT.damagePerStrength,
+    block: KIT.shieldBlock,
   };
 }
 

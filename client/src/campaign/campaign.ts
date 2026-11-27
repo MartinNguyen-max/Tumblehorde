@@ -36,6 +36,7 @@ import { decorateArena } from './arenaDecor.ts';
 import { StoryCard } from './card.ts';
 import { SCENES_AFTER, SCENES_BEFORE } from './storyScenes.ts';
 import { StoryBattle } from './storyBattle.ts';
+import { CAST } from '../cinematic/cast.ts';
 import type { LocalSession } from '../game/session.ts';
 import { boughtItem, EFFECT, storyDialogue } from './dialogues.ts';
 import { CAPITAL, type DistrictSet } from './districts.ts';
@@ -287,7 +288,7 @@ export class Campaign {
 
   private startRoam(chapter: Chapter, district: DistrictSet): void {
     const { input, sound, canvas, world } = this.deps;
-    const look = chapter.id === 'capital' ? CASSIAN_FREED : CASSIAN_APPRENTICE;
+    const look = this.roamLook(chapter);
     const roam = new FreeRoam(new Stage(world), {
       input,
       sound,
@@ -308,7 +309,10 @@ export class Campaign {
     const item = boughtItem(effect);
     if (item) {
       const result = buy(save, item);
-      if (result.ok) this.store(result.save);
+      if (!result.ok) return;
+      this.store(result.save);
+      // He puts it on at once.
+      phase.roam.setPlayerLook(this.roamLook(chapter));
       return;
     }
     if (effect === EFFECT.workout) {
@@ -321,6 +325,12 @@ export class Campaign {
       this.endRoam();
       this.finishChapter(chapter.id);
     }
+  }
+
+  /** Cassian in the city: a freed prisoner's rags, the smith's apprentice, then in his silver armor. */
+  private roamLook(chapter: Chapter): ActorLook {
+    if (chapter.id === 'capital') return CASSIAN_FREED;
+    return this.save?.gear.armor ? CAST.cassianTraveller.look : CASSIAN_APPRENTICE;
   }
 
   private endRoam(): void {
@@ -338,9 +348,10 @@ export class Campaign {
     if (!save) return;
     this.phase = { kind: 'battle', chapter };
     this.overlay.hide();
-    // Named after Cassian, so the battle draws him as the wanderer rather than a gold commander.
-    const settings = arenaSettings(playerKit(save), fight.opponents, arenaSeed(), CASSIAN_NAMES.wanderer);
-    this.deps.startBattle(settings, (view) => this.arenaOver(chapter, fight, view.winnerTeam === 0));
+    // In his prisoner's rags with the lent sword and wooden shield, or in the silver armor once bought.
+    const look = save.gear.armor ? 'cassianTraveller' : 'cassianPrisoner';
+    const settings = arenaSettings(playerKit(save), fight.opponents, arenaSeed(), CASSIAN_NAMES.wanderer, look);
+    this.deps.startBattle(settings, (view) => this.arenaOver(chapter, fight, view.winnerTeam === 0), () => 'Last one standing wins');
     decorateArena(this.deps.world);
   }
 
@@ -350,10 +361,8 @@ export class Campaign {
     this.phase = { kind: 'card' };
     if (won) {
       this.save = wonArena(save, fight);
-      const prize = fight.givesDracoSword ? `${fight.reward} gold and Draco's sword` : `${fight.reward} gold`;
-      this.card.show('Victory!', `The crowd roars your name. You win ${prize}.`, [
-        { label: 'Go on', primary: true, action: () => this.playScenes(scenesOf(SCENES_AFTER[chapter.id]), () => this.afterArenaWin(chapter)) },
-      ]);
+      // No card: the crowd roars, the purse is thrown down, and Cassian walks out.
+      this.playScenes(scenesOf(['arena-victory', ...(SCENES_AFTER[chapter.id] ?? [])]), () => this.finishChapter(chapter.id));
       return;
     }
     if (chapter.id === 'arena-1') {
@@ -366,21 +375,10 @@ export class Campaign {
       { label: 'Fight again', primary: true, action: () => this.startArena(chapter, fight) },
       { label: 'Leave to menu', action: () => this.leave() },
     ];
-    if (chapter.optional) buttons.splice(1, 0, { label: 'Let Draco keep his crown', primary: false, action: () => this.finishChapter(chapter.id) });
     this.card.show('You went down', 'The sand is hot and the crowd is cruel. Get up and try again.', buttons);
   }
 
-  private afterArenaWin(chapter: Chapter): void {
-    if (chapter.id !== 'arena-2') {
-      this.finishChapter(chapter.id);
-      return;
-    }
-    this.phase = { kind: 'card' };
-    this.card.show('A challenge', 'Draco the Undefeated, the crowd\'s favourite, has heard of you. He wants to fight. It is your choice.', [
-      { label: 'Fight Draco', primary: true, action: () => this.finishChapter(chapter.id, true) },
-      { label: 'Not now', action: () => this.finishChapter(chapter.id) },
-    ]);
-  }
+
 
   // ---------- frame ----------
 

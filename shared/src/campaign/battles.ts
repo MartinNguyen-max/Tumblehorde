@@ -104,6 +104,60 @@ interface Side {
   style?: BotStyle;
   commanderToughness?: number;
   reinforce?: { every: number; count: number };
+  /** Named people's looks (see `ArmySetup.looks`). */
+  looks?: Record<string, string>;
+}
+
+/** Story armies wear their people's colors, the same as in the scenes. */
+export const STORY_COLORS: Record<Faction, string> = {
+  roman: '#C8423A',
+  viking: '#3E5A7A',
+  bandit: '#4A4A3A',
+  zombie: '#4E4638',
+};
+
+/**
+ * How the story's people look in each part of the story, named after the client's cast, so a
+ * battle shows them exactly as the scenes around it do.
+ */
+export const STORY_LOOKS = {
+  cassianPrisoner: 'cassianPrisoner',
+  cassianSilver: 'cassianTraveller',
+  cassianLegate: 'cassianHelmet',
+  cassianOld: 'cassianOld',
+  varro: 'varroArmored',
+  felix: 'felix',
+  rufus: 'rufus',
+  felixLegion: 'felixLegion',
+  rufusLegion: 'rufusLegion',
+  felixOld: 'felixOld',
+  rufusOld: 'rufusOld',
+  eirik: 'eirik',
+  marcus: 'marcusYoung',
+  galba: 'galba',
+  quintus: 'quintus',
+  hrolf: 'hrolf',
+} as const;
+
+/** Cassian as he looks in `chapter`: silver armor from the smith, the legion's red from the Emperor on, old at the end. */
+function cassianLook(chapter: ChapterId): string {
+  if (chapter === 'last-night') return STORY_LOOKS.cassianOld;
+  return isAtOrAfter(chapter, 'emperor') ? STORY_LOOKS.cassianLegate : STORY_LOOKS.cassianSilver;
+}
+
+/** A hero's look in `chapter`: Felix and Rufus are villagers until they join the legion. */
+function heroLook(hero: HeroId, chapter: ChapterId): string {
+  const legion = isAtOrAfter(chapter, 'emperor');
+  switch (hero) {
+    case 'varro':
+      return STORY_LOOKS.varro;
+    case 'felix':
+      return legion ? STORY_LOOKS.felixLegion : STORY_LOOKS.felix;
+    case 'rufus':
+      return legion ? STORY_LOOKS.rufusLegion : STORY_LOOKS.rufus;
+    case 'eirik':
+      return STORY_LOOKS.eirik;
+  }
 }
 
 function army(side: Side): ArmySetup {
@@ -114,7 +168,9 @@ function army(side: Side): ArmySetup {
     faction: side.faction,
     soldiers: side.soldiers,
     spawn: at(side.spawn),
+    color: STORY_COLORS[side.faction],
   };
+  if (side.looks) setup.looks = side.looks;
   if (side.commander) setup.commander = true;
   if (side.heroes) setup.heroes = side.heroes;
   if (side.arriveAt !== undefined) setup.arriveAt = side.arriveAt;
@@ -150,7 +206,9 @@ function cassian(save: CampaignSave, chapter: ChapterId, spawn: MapPoint, heroes
   const heroNames = heroes.map((h) => HERO_NAMES[h]);
   const legion = withLegion ? livingLegion(save.legion) : [];
   const legionNames = legion.map((l) => l.name);
-  const setup = army({ name: cassianName(chapter), team: 0, faction: 'roman', soldiers: heroNames.length + legionNames.length, spawn, bot: false, heroes: heroNames });
+  const looks: Record<string, string> = { commander: cassianLook(chapter) };
+  for (const hero of heroes) looks[HERO_NAMES[hero]] = heroLook(hero, chapter);
+  const setup = army({ name: cassianName(chapter), team: 0, faction: 'roman', soldiers: heroNames.length + legionNames.length, spawn, bot: false, heroes: heroNames, looks });
   if (ON_FOOT.includes(chapter)) setup.onFoot = true;
   // Survivors of a deadly battle are veterans: a little harder to bring down.
   if (legion.some((l) => l.veteran)) setup.toughness = [...heroNames.map(() => 1), ...legion.map((l) => (l.veteran ? STORY_BATTLE.veteranToughness : 1))];
@@ -171,13 +229,13 @@ export function campaignBattle(chapter: ChapterId, save: CampaignSave): Campaign
     case 'forest-road': {
       // Varro rides with Cassian; Felix and Rufus are the villagers fighting for their lives up the road.
       const me = cassian(save, chapter, FOREST_POINTS.arrival, heroes.filter((h) => h === 'varro'), false);
-      const villagers = army({ name: 'Villagers', team: 0, faction: 'bandit', soldiers: 2, spawn: FOREST_POINTS.villagers, heroes: [HERO_NAMES.felix, HERO_NAMES.rufus] });
+      const villagers = army({ name: 'Villagers', team: 0, faction: 'bandit', soldiers: 2, spawn: FOREST_POINTS.villagers, heroes: [HERO_NAMES.felix, HERO_NAMES.rufus], looks: { [HERO_NAMES.felix]: STORY_LOOKS.felix, [HERO_NAMES.rufus]: STORY_LOOKS.rufus } });
       const bandits = army({ name: 'Bandits', team: 1, faction: 'bandit', soldiers: STORY_BATTLE.bandits, spawn: FOREST_POINTS.bandits, style: 'charge' });
       return { ...base, settings: settings('forest', [me.setup, villagers, bandits]), legionNames: me.legionNames };
     }
     case 'burning-village': {
       const me = cassian(save, chapter, VILLAGE_POINTS.arrival, heroes, false);
-      const galba = army({ name: 'Galba', team: 0, faction: 'roman', soldiers: STORY_BATTLE.galbasMen, spawn: VILLAGE_POINTS.defenders, commander: true });
+      const galba = army({ name: 'Galba', team: 0, faction: 'roman', soldiers: STORY_BATTLE.galbasMen, spawn: VILLAGE_POINTS.defenders, commander: true, looks: { commander: STORY_LOOKS.galba } });
       const raiders = army({ name: 'Raiders', team: 1, faction: 'viking', soldiers: STORY_BATTLE.villageRaiders, spawn: VILLAGE_POINTS.raiders, style: 'charge' });
       return { ...base, time: 'night', settings: settings('village', [me.setup, galba, raiders]), legionNames: me.legionNames, commanders: { 1: 'Galba' } };
     }
@@ -208,8 +266,8 @@ export function campaignBattle(chapter: ChapterId, save: CampaignSave): Campaign
     }
     case 'last-battle': {
       const me = cassian(save, chapter, FORTRESS_POINTS.legion, heroes, true);
-      const galba = army({ name: 'Galba', team: 0, faction: 'roman', soldiers: STORY_BATTLE.alliedArmy, spawn: FORTRESS_POINTS.leftWing, commander: true, style: 'steady' });
-      const quintus = army({ name: 'Quintus', team: 0, faction: 'roman', soldiers: STORY_BATTLE.alliedArmy, spawn: FORTRESS_POINTS.rightWing, commander: true, style: 'steady' });
+      const galba = army({ name: 'Galba', team: 0, faction: 'roman', soldiers: STORY_BATTLE.alliedArmy, spawn: FORTRESS_POINTS.leftWing, commander: true, style: 'steady', looks: { commander: STORY_LOOKS.galba } });
+      const quintus = army({ name: 'Quintus', team: 0, faction: 'roman', soldiers: STORY_BATTLE.alliedArmy, spawn: FORTRESS_POINTS.rightWing, commander: true, style: 'steady', looks: { commander: STORY_LOOKS.quintus } });
       const horde = army({
         name: 'Hrolf',
         team: 1,
@@ -219,6 +277,7 @@ export function campaignBattle(chapter: ChapterId, save: CampaignSave): Campaign
         commander: true,
         commanderToughness: STORY_BATTLE.hrolfToughness,
         style: 'steady',
+        looks: { commander: STORY_LOOKS.hrolf },
       });
       return {
         ...base,
@@ -234,9 +293,14 @@ export function campaignBattle(chapter: ChapterId, save: CampaignSave): Campaign
       const old = cassian(save, chapter, spot, heroes.filter((h) => h === 'eirik'), false);
       // Years later the legion is a new one, with Marcus at his father's side.
       const heroNames = ['Marcus', ...(old.setup.heroes ?? [])];
-      const me: ArmySetup = { ...old.setup, soldiers: STORY_BATTLE.lastNightLegion + heroNames.length, heroes: heroNames };
-      const felix = army({ name: 'Felix', team: 0, faction: 'roman', soldiers: STORY_BATTLE.oldFriendsArmy, spawn: OLD_FRIENDS_POINTS.felix, commander: true, style: 'steady' });
-      const rufus = army({ name: 'Rufus', team: 0, faction: 'roman', soldiers: STORY_BATTLE.oldFriendsArmy, spawn: OLD_FRIENDS_POINTS.rufus, commander: true, style: 'steady' });
+      const me: ArmySetup = {
+        ...old.setup,
+        soldiers: STORY_BATTLE.lastNightLegion + heroNames.length,
+        heroes: heroNames,
+        looks: { ...old.setup.looks, Marcus: STORY_LOOKS.marcus },
+      };
+      const felix = army({ name: 'Felix', team: 0, faction: 'roman', soldiers: STORY_BATTLE.oldFriendsArmy, spawn: OLD_FRIENDS_POINTS.felix, commander: true, style: 'steady', looks: { commander: STORY_LOOKS.felixOld } });
+      const rufus = army({ name: 'Rufus', team: 0, faction: 'roman', soldiers: STORY_BATTLE.oldFriendsArmy, spawn: OLD_FRIENDS_POINTS.rufus, commander: true, style: 'steady', looks: { commander: STORY_LOOKS.rufusOld } });
       const dead = army({
         name: 'The Dead',
         team: 1,

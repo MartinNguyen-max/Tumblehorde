@@ -16,15 +16,13 @@ import {
 } from '../src/campaign/index.ts';
 
 describe('chapters', () => {
-  it('are numbered 0..20 in story order with unique ids', () => {
+  it('are numbered from 0 in story order with unique ids', () => {
     expect(CHAPTERS.map((c) => c.number)).toEqual(CHAPTERS.map((_, i) => i));
     expect(new Set(CHAPTERS.map((c) => c.id)).size).toBe(CHAPTERS.length);
   });
 
-  it('skip the optional Champion unless taken', () => {
+  it('go from the second arena fight straight to the forge, and end after the last', () => {
     expect(nextChapter('arena-2')).toBe('forge');
-    expect(nextChapter('arena-2', true)).toBe('champion');
-    expect(nextChapter('champion')).toBe('forge');
     expect(nextChapter('the-end')).toBeNull();
   });
 
