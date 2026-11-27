@@ -155,6 +155,18 @@ describe('the story battles', () => {
     expect(state.phase).toBe('playing');
   });
 
+  it('the brothers end when the other son falls; against Lucius the dead keep coming', async () => {
+    const { checkStoryGoal } = await import('../src/campaign/battles.ts');
+    const battle = campaignBattle('brothers', { ...saveAt('brothers'), choices: { eirikSpared: null, hrolfSpared: null, son: 'lucius' } })!;
+    expect(battle.goal.kind).toBe('warlord');
+    expect(battle.settings.armies.find((a) => a.faction === 'zombie')?.reinforce).toBeDefined();
+    const state = createMatch(battle.settings);
+    expect(checkStoryGoal(state, battle)).toBeNull();
+    const marcus = state.armies[battle.warlordArmy!]!;
+    killUnit(state, state.units[marcus.commanderId!]!, 3, { x: 0, y: 1, z: 0 });
+    expect(checkStoryGoal(state, battle)).toBe('won');
+  });
+
   it('the brothers: the player leads the son they chose; Marcus fights beside the dead', () => {
     const lucius = campaignBattle('brothers', { ...saveAt('brothers'), choices: { eirikSpared: null, hrolfSpared: null, son: 'lucius' } })!;
     expect(lucius.settings.armies[0]!.name).toBe('Lucius');

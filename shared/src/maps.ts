@@ -236,8 +236,9 @@ export const CAPITAL_POINTS = {
   forum: { x: 0, z: 2, yaw: Math.PI },
   forumWest: { x: -12, z: 2, yaw: Math.PI },
   forumEast: { x: 12, z: 2, yaw: Math.PI },
-  southGate: { x: 0, z: -62, yaw: 0 },
-  eastGate: { x: 62, z: 0, yaw: -Math.PI / 2 },
+  /** Inside the broken walls, on the open avenues, a short charge from the forum. */
+  southGate: { x: 0, z: -34, yaw: 0 },
+  eastGate: { x: 34, z: 0, yaw: -Math.PI / 2 },
 } satisfies Record<string, MapPoint>;
 
 export const NORTH = {

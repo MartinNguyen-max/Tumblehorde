@@ -17,7 +17,7 @@ The player played again after round 1. Work list; items are ticked as they land.
 - [x] The last battle against Hrolf is hard: the legion loses many men
 - [x] The formation hint only the first time it is taught
 - [x] The Mongols fought on a truly open field (no fences)
-- [ ] Holding the capital is hard: almost everyone dies; Marcus and his riders do not get stuck
+- [x] Holding the capital is hard: almost everyone dies; Marcus and his riders do not get stuck
 
 ## Scenes
 - [ ] The Mongol raid: terror, screams, fighting, the dead

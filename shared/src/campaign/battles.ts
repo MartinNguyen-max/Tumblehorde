@@ -11,7 +11,8 @@ import type { CampaignSave } from './save.ts';
  */
 
 /** Rout: beat every enemy. Hold: last out the clock (or beat them sooner). Last stand: it cannot be won. */
-export type BattleGoal = { kind: 'rout' } | { kind: 'hold'; seconds: number; label: string } | { kind: 'lastStand' };
+/** `warlord`: the battle is won when the enemy's leader (`CampaignBattle.warlordArmy`'s commander) falls. */
+export type BattleGoal = { kind: 'rout' } | { kind: 'hold'; seconds: number; label: string } | { kind: 'lastStand' } | { kind: 'warlord' };
 
 export type TimeOfDay = 'day' | 'dusk' | 'night';
 
@@ -111,8 +112,10 @@ export const STORY_BATTLE = {
   /** The brothers' war: the legion of Lucius with Felix and Rufus, against Marcus's riders and the dead. */
   luciusLegion: 30,
   oldFriendsArmy: 14,
-  marcusRiders: 16,
+  marcusRiders: 14,
   theDead: 34,
+  deadWave: { every: 10, count: 6 },
+  deadWithMarcus: 26,
 } as const;
 
 /** The line at the top of the screen in each story battle. */
@@ -491,13 +494,24 @@ function brothersBattle(save: CampaignSave, base: Omit<CampaignBattle, 'settings
     color: PEOPLE_COLORS.mongol,
     looks: { commander: STORY_LOOKS.marcusMongol, soldier: STORY_LOOKS.mongol },
   });
-  const dead = army({ name: 'The Dead', team: playMarcus ? 0 : 1, faction: 'zombie', soldiers: STORY_BATTLE.theDead, spawn: CAPITAL_POINTS.eastGate, style: 'charge' });
+  // Against Lucius the dead keep coming until Marcus falls; on Marcus's side they are a fixed host, so his
+  // brother's legion still has a fighting chance.
+  const dead = army({
+    name: 'The Dead',
+    team: playMarcus ? 0 : 1,
+    faction: 'zombie',
+    soldiers: playMarcus ? STORY_BATTLE.deadWithMarcus : STORY_BATTLE.theDead,
+    spawn: CAPITAL_POINTS.eastGate,
+    style: 'charge',
+    ...(playMarcus ? {} : { reinforce: STORY_BATTLE.deadWave }),
+  });
   const roman = [lucius, friend('Felix', CAPITAL_POINTS.forumWest, STORY_LOOKS.felixOld), friend('Rufus', CAPITAL_POINTS.forumEast, STORY_LOOKS.rufusOld)];
   const armies = playMarcus ? [marcus, dead, ...roman] : [...roman, marcus, dead];
   const commanders: Record<number, string> = playMarcus ? { 2: SON_NAMES.lucius, 3: 'Felix', 4: 'Rufus' } : { 1: 'Felix', 2: 'Rufus', 3: SON_NAMES.marcus };
   return {
     ...base,
-    objective: playMarcus ? 'Take the capital from your brother' : 'Hold the capital against your brother',
+    objective: playMarcus ? 'Take the capital: bring down Lucius' : 'Hold the capital: the dead stop when Marcus falls',
+    goal: { kind: 'warlord' },
     tutorial: playMarcus ? BROTHERS_HINTS.marcus : BROTHERS_HINTS.lucius,
     time: 'dusk',
     onLoss: 'retryOrLeave',
@@ -535,6 +549,11 @@ export function checkStoryGoal(state: MatchState, battle: CampaignBattle): 'won'
   const mine = state.armies[0];
   if (state.phase !== 'playing' || !mine) return null;
   if (battle.goal.kind === 'hold' && !mine.eliminated && state.time >= battle.goal.seconds) {
+    declareVictory(state, mine.team);
+    return 'won';
+  }
+  const warlord = battle.warlordArmy === null ? null : state.armies[battle.warlordArmy];
+  if (battle.goal.kind === 'warlord' && !mine.eliminated && warlord && warlord.stats.commanderDeaths > 0) {
     declareVictory(state, mine.team);
     return 'won';
   }
