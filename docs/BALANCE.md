@@ -168,3 +168,18 @@ these are the values after the legion update.
 | Romans vs Vikings | bots, 15 a side: Vikings won 46 % of 80 on the meadow, 50 % of 40 at 25 a side, 50 % at the castle, 42 % in the city |
 | Ice | 22 % grip, 12 % friction; running soldiers slip 15 % per second (1.2 s down) |
 | Fog of war (city) | 60 m sight, sightings remembered 25 s |
+
+### Story battles (see `shared/src/campaign/battles.ts`)
+
+| Battle | Sides |
+|---|---|
+| Forest road | Cassian and Varro, the two villagers (heroes) against 5 bandits |
+| Burning village (night) | Cassian and his 3 heroes, Galba and 3 Romans against 9 raiders |
+| Bridge | the legion and heroes hold 150 s against 18, then 24 Vikings (at 55 s) |
+| Dark forest (night) | the legion against 15 + 15 Vikings from both sides |
+| Outpost (north) | the legion against 24 Vikings in their village |
+| Night raid (north, night) | hold 150 s against 18, then 20 Vikings (at 30 s) |
+| Last battle (fortress) | the legion, Galba's 20 and Quintus's 20 against Hrolf (3× HP) and 66 Vikings |
+| Last night (fortress, night) | 20 legionaries, Marcus, Felix's 15 and Rufus's 15 against 40 dead, 9 more every 6 s; ends when Cassian falls (240 s at most) |
+
+Heroes: 1.5× HP, get up after 9 s with 60 % while someone on their side who is not a hero still stands.

@@ -48,7 +48,7 @@ export const STORY_BATTLE = {
   /** Story battles start sooner than skirmishes: the enemy is already on its way. */
   prepareTime: 6,
   bandits: 5,
-  villageRaiders: 10,
+  villageRaiders: 9,
   galbasMen: 3,
   bridgeWave: 18,
   bridgeSecondWave: 24,
@@ -61,7 +61,7 @@ export const STORY_BATTLE = {
   nightRaidSecondAt: 30,
   nightRaidHold: 150,
   alliedArmy: 20,
-  horde: 72,
+  horde: 66,
   hrolfToughness: 3,
   lastNightLegion: 20,
   oldFriendsArmy: 15,
