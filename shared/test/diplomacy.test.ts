@@ -92,11 +92,11 @@ describe('the spear volley', () => {
     }
     expect(thrown).toBe(mine.length);
     expect(foes.some((f) => f.hp < f.maxHp)).toBe(true);
-    expect(mine.every((s) => s.spearThrown && s.weapon === 'sword')).toBe(true);
-    // Without spears they hold with swords from now on.
+    expect(mine.every((s) => s.spearThrown)).toBe(true);
+    // They carry a second spear: holding, they still keep the line with it.
     applyCommand(state, 0, { type: 'order', order: 'hold', group: null });
     stepMatch(state, new Map([[0, neutralInput()]]), DT);
-    expect(mine.every((s) => s.weapon === 'sword')).toBe(true);
+    expect(mine.every((s) => s.weapon === 'spear')).toBe(true);
   });
 
   it('punches through raised shields and sticks in whoever it hits', () => {

@@ -143,7 +143,7 @@ these are the values after the legion update.
 |---|---|
 | Army sizes | 15 / 25 / 40 swordsmen (archers and riders parked) |
 | Swordsman | 180 HP, 5 m/s |
-| Sword (Attack) | 25 damage, 2.0 m, 1.1 s, shove 3 m/s |
+| Sword (Attack) | 25 damage, 2.0 m, 1.1 s, 0.38 s wind-up, shove 3 m/s |
 | Spear (Follow, Hold) | 14 damage, 2.7 m, 1.1 s, shove 9 m/s that lands through shields |
 | Commander | 300 HP, 6 m/s, back up after 15 s |
 | Horse | 280 HP, 7.5 m/s; tramples above 5 m/s; the commander's charge breaks shield walls (15 damage, 2.8 s down) |
@@ -153,5 +153,11 @@ these are the values after the legion update.
 | Banquet (once) | 6 s feast; drunk: 55 % damage taken, 40 % shove taken, 130 % damage dealt, 1.8× shove |
 | Water | 1.1 m deep, 55 % speed; soldiers fall for 1.8 s |
 | Crouch | 45 % speed; 4 crouches in 3.5 s at a commander within 16 m offer an alliance |
-| Bot styles | steady, charge, phalanx (3 m steps, swords after 15 s at the line), patient (9 m or 50 s) |
+| Bot styles | steady, charge, phalanx (3 m steps, swords after 15 s at the line), patient (9 m or 50 s), flank (pincer for 14 s, then charge) |
+| Rally speech | 15 s courage: 115 % damage dealt, 60 % stun and 75 % shove taken; 40 s rest |
+| Close fighting | revenge on whoever hurt you within 4 s and 7 m; at most 3 on one enemy before others look elsewhere |
+| Dodges | 30 % (45 % on Attack) of blows seen coming: 0.3 s hop at 1.8× speed |
+| Counter | a blocked blow makes the next strike ready within 0.15 s |
+| Shield bash | 40 % of blows at a raised shield: 6 damage, 1.6 m, knocks the guard aside (0.8 s) |
+| Celebration | 7 s after the win before the results |
 | Fog of war (city) | 60 m sight, sightings remembered 25 s |

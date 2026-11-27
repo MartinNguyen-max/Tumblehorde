@@ -149,12 +149,19 @@ function addSpear(parts: PartFactory, grip: TransformNode): TransformNode {
   return spear;
 }
 
-/** A short, broad box sword with a gold guard. */
+/**
+ * A short, broad gladius: a round brass pommel, a wrapped grip, a wide guard, a bright blade
+ * with a dark groove down the middle and a tapered point. Still a handful of chunky boxes.
+ */
 function addSword(parts: PartFactory, grip: TransformNode): TransformNode {
   const sword = childNode('sword', grip);
-  parts.part('box', ROMAN.wood, sword, [0.07, 0.16, 0.07], [0, 0.06, 0], SMALL);
-  parts.part('box', ROMAN.brass, sword, [0.22, 0.06, 0.09], [0, -0.03, 0], METAL);
-  parts.part('box', ROMAN.steel, sword, [0.11, 0.62, 0.035], [0, -0.36, 0], METAL);
+  parts.part('box', ROMAN.brass, sword, [0.1, 0.07, 0.1], [0, 0.16, 0], METAL);
+  parts.part('box', ROMAN.leather, sword, [0.075, 0.16, 0.075], [0, 0.06, 0], SMALL);
+  parts.part('box', ROMAN.brass, sword, [0.26, 0.065, 0.1], [0, -0.03, 0], METAL);
+  parts.part('box', ROMAN.bladeEdge, sword, [0.12, 0.5, 0.035], [0, -0.31, 0], METAL);
+  parts.part('box', ROMAN.bladeGroove, sword, [0.03, 0.4, 0.045], [0, -0.28, 0], METAL);
+  const point = parts.part('box', ROMAN.bladeEdge, sword, [0.085, 0.085, 0.034], [0, -0.58, 0], METAL);
+  point.rotation.z = Math.PI / 4;
   return sword;
 }
 

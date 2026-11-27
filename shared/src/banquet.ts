@@ -21,6 +21,7 @@ export function finishFeast(state: MatchState, army: Army): void {
 export function updateBanquets(state: MatchState, dt: number): void {
   for (const army of state.armies) {
     army.rallyTimer = Math.max(0, army.rallyTimer - dt);
+    army.courageTimer = Math.max(0, army.courageTimer - dt);
     if (army.banquet !== 'feasting') continue;
     army.feastTimer -= dt;
     const commander = getUnit(state, army.commanderId);

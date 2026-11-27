@@ -163,19 +163,45 @@ export function throwSpears(state: MatchState, army: Army, at: Vec3, group: numb
   return true;
 }
 
+/**
+ * How far a holding group can step forward along `dir` before its front line would walk into an
+ * enemy in its way: a line stops at the enemy's shields instead of marching through them.
+ */
+export function roomToAdvance(state: MatchState, army: Army, order: GroupOrder, dir: Vec2): number {
+  const front = order.aroundCommander ? FORMATION.holdLineAhead : 0;
+  let room: number = FORMATION.advanceStep;
+  for (const unit of state.units) {
+    if (!canBeTargeted(unit) || !armiesHostile(state, army.id, sideArmyId(state, unit))) continue;
+    const rx = unit.pos.x - order.anchor.x;
+    const rz = unit.pos.z - order.anchor.z;
+    const ahead = rx * dir.x + rz * dir.z;
+    if (ahead <= 0 || Math.abs(rx * dir.z - rz * dir.x) > FORMATION.advanceCorridor) continue;
+    room = Math.min(room, ahead - front - FORMATION.advanceEnemyGap);
+  }
+  return Math.max(0, room);
+}
+
+/** Below this a step forward is not worth taking. */
+const MIN_ADVANCE = 0.5;
+
 /** Every holding group (or just `group`) steps forward, turning to face where the commander looks. */
 export function advanceFormation(state: MatchState, army: Army, group: number | null): boolean {
   const commander = getUnit(state, army.commanderId);
   if (!commander || !canGiveOrders(state, army)) return false;
   const dir = { x: Math.sin(commander.yaw), z: Math.cos(commander.yaw) };
+  let holding = false;
   let moved = false;
   army.groupOrders.forEach((order, g) => {
     if (order.order !== 'hold' || (group !== null && group !== g)) return;
-    order.anchor = { x: order.anchor.x + dir.x * FORMATION.advanceStep, z: order.anchor.z + dir.z * FORMATION.advanceStep };
+    holding = true;
+    const step = roomToAdvance(state, army, order, dir);
+    if (step < MIN_ADVANCE) return;
+    order.anchor = { x: order.anchor.x + dir.x * step, z: order.anchor.z + dir.z * step };
     order.anchorYaw = commander.yaw;
     moved = true;
   });
-  if (!moved) return refuse(state, army, 'notHolding');
+  if (!holding) return refuse(state, army, 'notHolding');
+  if (!moved) return refuse(state, army, 'enemyAhead');
   state.events.push({ type: 'advance', armyId: army.id, group });
   return true;
 }
@@ -196,10 +222,12 @@ export function startBanquet(state: MatchState, army: Army): boolean {
   return true;
 }
 
-/** A rousing speech. It changes nothing but the soldiers' mood, so it only needs a short pause. */
+/** A rousing speech: the army fights with courage for a while (harder blows, steadier on its feet). */
 export function rally(state: MatchState, army: Army): boolean {
-  if (army.rallyTimer > 0 || army.commanderId === null || !canGiveOrders(state, army)) return false;
+  if (army.commanderId === null || !canGiveOrders(state, army)) return false;
+  if (army.rallyTimer > 0) return refuse(state, army, 'rallyResting');
   army.rallyTimer = RALLY.cooldown;
+  army.courageTimer = RALLY.courageTime;
   state.events.push({ type: 'rally', armyId: army.id, commanderId: army.commanderId });
   return true;
 }

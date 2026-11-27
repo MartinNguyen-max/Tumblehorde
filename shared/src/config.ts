@@ -38,6 +38,8 @@ export const MAP = {
   edgeHardOvershoot: 1,
   /** Armies start on a circle of this radius, so two armies are 170 m apart (~35 s walk). */
   armySpawnRadius: 85,
+  /** In a team battle, team mates start this far apart around the circle (radians), side by side. */
+  teamSpawnSpread: 0.6,
   seed: 1337,
 } as const;
 
@@ -184,12 +186,12 @@ export const COMMANDER = {
 export const SWORDSMAN = {
   hp: 180,
   speed: 5,
-  /** Attack: the gladius comes out. */
+  /** Attack: the gladius comes out. A clear wind-up, so you can see a blow coming (and dodge it). */
   melee: {
     damage: 25,
     range: 2.0,
     cooldown: 1.1,
-    windup: 0.3,
+    windup: 0.38,
     arcHalfAngle: 55 * DEG,
     maxTargets: 1,
     knockback: SWORD_KNOCKBACK,
@@ -360,8 +362,12 @@ export const FORMATION = {
   /** A wedge's ranks grow by this many soldiers from its tip backwards. */
   wedgeGrowth: 2,
 
-  /** Advance moves a holding formation this far forward. */
+  /** Advance moves a holding formation this far forward... */
   advanceStep: 4,
+  /** ...but stops with its front line this far from an enemy in its way. */
+  advanceEnemyGap: 1.8,
+  /** Enemies count as "in the way" within this distance either side of the formation's middle. */
+  advanceCorridor: 8,
   /** The ring around the commander never gets smaller than this. */
   circleMinRadius: 2.4,
   defaultFormation: 'double' as const,
@@ -393,8 +399,12 @@ export const NAV = {
   lookahead: 8,
   /** Cells searched for a way out of water or an alley. */
   escapeSearch: 800,
-  /** Only cells this deep inside a wall count as solid, so even the narrowest alley stays open. */
-  solidInset: 0.6,
+  /**
+   * Only cells this deep inside a wall count as solid. Small enough that a 2.4 m castle wall always
+   * has a solid cell across it (a way out never leads through it), while a 2.2 m alley always keeps
+   * an open one.
+   */
+  solidInset: 0.1,
   /** Sight lines are checked against the walls every this many meters. */
   sightStep: 0.4,
   /** A soldier re-plans its next step this often, or when its goal moves this far. */
@@ -523,6 +533,12 @@ export const BOT = {
   retreatDistance: 8,
   /** Bot commanders fight anyone this close, whatever their army's order. */
   selfDefenseDistance: 12,
+  /** Harm done to a bot army fades with this time constant (seconds)... */
+  threatMemory: 20,
+  /** ...and every point of it makes the army that did it this many meters "closer" when picking whom to fight. */
+  threatWeight: 0.12,
+  /** Flankers hold their pincer this long for the wings to get round, then charge. */
+  flankTime: 14,
 } as const;
 
 /** The banquet: soldiers gather round, drink, and stay very drunk for the rest of the battle. */
@@ -551,9 +567,77 @@ export const BANQUET = {
   tripPop: 2.5,
 } as const;
 
-/** The commander's rousing speech: only for show, so it just needs a pause between speeches. */
+/** The commander's rousing speech gives the army courage for a while: a help, not a win. */
 export const RALLY = {
-  cooldown: 6,
+  cooldown: 40,
+  courageTime: 15,
+  damageFactor: 1.15,
+  stunTakenFactor: 0.6,
+  knockbackTakenFactor: 0.75,
+} as const;
+
+/**
+ * Soldiers fighting up close: who they pick, how far apart they stand, and the dodges, counters
+ * and shield bashes that make a melee look like a fight rather than a pile.
+ */
+export const DUEL = {
+  /** A soldier hurt within this many seconds goes for whoever hurt them... */
+  revengeMemory: 4,
+  /** ...if they are this close, whatever the order. */
+  selfDefenseRadius: 7,
+  /** Holding soldiers turn round to an enemy this close, even one behind them. */
+  closeThreatRadius: 2.6,
+  /** Picking a target: how many meters further a soldier walks for someone who hurt them... */
+  revengeBonus: 8,
+  /** ...for an enemy whose back is turned... */
+  backBonus: 3,
+  /** ...or who is fighting one of their friends. */
+  busyBonus: 2,
+  /** Meters added to a target for every friend beyond `crowdFree` already on them, so the fight spreads out. */
+  crowdPenalty: 2.5,
+  crowdFree: 2,
+  /** Targets are looked for this far around (fog of war still limits them in the city). */
+  scanRadius: 25,
+  /** Fighting distance as a share of reach; closer than `tooClose` they step back. */
+  idealReach: 0.8,
+  tooClose: 0.55,
+  /** Circling between blows, as a share of full speed; wilder on Attack. */
+  circleSpeed: 0.35,
+  wildCircleSpeed: 0.65,
+  /** Seconds between changing the circling direction (randomized up to twice this). */
+  circleFlipTime: 1.6,
+  /** Friends walk round an enemy that is busy with someone else, towards its back, by up to this angle. */
+  flankAngle: 110 * DEG,
+  /** Chance to hop out of the way of a blow instead of raising the shield. */
+  dodgeChance: 0.3,
+  wildDodgeChance: 0.45,
+  dodgeTime: 0.3,
+  dodgeSpeedFactor: 1.8,
+  /** Blocking a blow opens a counter: the next strike is ready within this long. */
+  counterCooldown: 0.15,
+  /** On Attack, a lunge is a jump attack this often. */
+  jumpAttackChance: 0.1,
+  /** Chance per blow to shove a shield-hider with your own shield instead. */
+  bashChance: 0.4,
+  /** The shield bash: little damage, but it knocks the guard aside. */
+  bash: {
+    damage: 6,
+    range: 1.6,
+    cooldown: 1.0,
+    windup: 0.25,
+    arcHalfAngle: 50 * DEG,
+    maxTargets: 1,
+    knockback: { strength: 6.5, stun: 0.8 },
+  } satisfies MeleeStats,
+} as const;
+
+/** After a win the survivors celebrate: jumping, spinning and cheering before the results. */
+export const CELEBRATION = {
+  /** Chance per second that a celebrating soldier jumps. */
+  jumpPerSecond: 1.1,
+  /** Chance per second to start a happy spin. */
+  spinPerSecond: 0.25,
+  spinSpeed: 9,
 } as const;
 
 /** Alliances: crouch a few times at another commander; if they crouch back up close, you are allies. */
@@ -596,8 +680,8 @@ export const MATCH = {
   forfeitPopSideways: 2,
   forfeitPopUpMin: 3,
   forfeitPopUpMax: 6,
-  /** Seconds after victory before the battle is marked as finished. */
-  endDelay: 2.5,
+  /** Seconds after victory before the results: the winners celebrate meanwhile. */
+  endDelay: 7,
 } as const;
 
 export const NET = {

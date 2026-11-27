@@ -9,7 +9,10 @@ import {
   MeshBuilder,
   PhysicsBody,
   PhysicsMotionType,
+  PhysicsShapeBox,
+  PhysicsShapeContainer,
   PhysicsShapeMesh,
+  Quaternion,
   Scene,
   ShadowGenerator,
   StandardMaterial,
@@ -55,6 +58,8 @@ export interface World {
   /** Everything that belongs to the current map; rebuilt when the map changes. */
   mapRoot: TransformNode | null;
   terrainBody: PhysicsBody | null;
+  /** Every wall and house as one static body, so the dead bounce off buildings instead of flying through. */
+  structureBody: PhysicsBody | null;
 }
 
 const EDGE_POST_SPACING = 9;
@@ -108,6 +113,7 @@ export async function createWorld(canvas: HTMLCanvasElement): Promise<World> {
     map: null,
     mapRoot: null,
     terrainBody: null,
+    structureBody: null,
   };
   loadMap(world, 'meadow');
   return world;
@@ -118,6 +124,9 @@ export function loadMap(world: World, map: MapId): void {
   if (world.map === map) return;
   world.terrainBody?.shape?.dispose();
   world.terrainBody?.dispose();
+  world.structureBody?.shape?.dispose();
+  world.structureBody?.dispose();
+  world.structureBody = null;
   world.mapRoot?.dispose();
   const theme = MAP_THEMES[map];
   const { scene } = world;
@@ -134,6 +143,7 @@ export function loadMap(world: World, map: MapId): void {
   body.shape = new PhysicsShapeMesh(terrain, scene);
   createScenery(world.parts, root, map, theme);
   for (const s of mapStructures(map)) createStructure(world.parts, root, map, s, theme);
+  world.structureBody = createStructureBody(scene, root, map);
   createEdge(scene, world.parts, root, map, world.edgeMaterial);
   if (MAPS[map].layout === 'siege') createMoat(scene, world.parts, root);
   // Scenery never moves: compute its transforms once instead of every frame.
@@ -278,6 +288,24 @@ function variant(colors: readonly string[], a: number, b: number): string | unde
 const FENCE_POST_SPACING = 1.6;
 
 /** Houses, walls, towers and ruins. Their collision boxes live in the shared simulation. */
+/** One static physics body holding a box for every structure on the map. Null on maps without any. */
+function createStructureBody(scene: Scene, root: TransformNode, map: MapId): PhysicsBody | null {
+  const structures = mapStructures(map);
+  if (structures.length === 0) return null;
+  const holder = new TransformNode('structure-colliders', scene);
+  holder.parent = root;
+  holder.rotationQuaternion = Quaternion.Identity();
+  const container = new PhysicsShapeContainer(scene);
+  for (const s of structures) {
+    const ground = terrainHeightAt(map, s.x, s.z);
+    const box = new PhysicsShapeBox(Vector3.Zero(), Quaternion.Identity(), new Vector3(s.width, s.height, s.depth), scene);
+    container.addChild(box, new Vector3(s.x, ground + s.height / 2, s.z), Quaternion.RotationYawPitchRoll(s.yaw, 0, 0));
+  }
+  const body = new PhysicsBody(holder, PhysicsMotionType.STATIC, false, scene);
+  body.shape = container;
+  return body;
+}
+
 function createStructure(parts: PartFactory, root: TransformNode, map: MapId, s: Structure, theme: MapTheme): void {
   const node = new TransformNode(s.kind, root.getScene());
   node.parent = root;

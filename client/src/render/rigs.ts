@@ -1,5 +1,5 @@
 import { type InstancedMesh, TransformNode, type Scene } from './babylon.ts';
-import { approach, lerp, meleeStatsForKind, type UnitKind, type UnitView, type Weapon } from '@tumblehorde/shared';
+import { approach, DUEL, lerp, meleeStatsForKind, type UnitKind, type UnitView, type Weapon } from '@tumblehorde/shared';
 import { ANIMATION, type ArmyPalette, COLORS, ROMAN } from '../visualConfig.ts';
 import { buildBean } from './beans.ts';
 import { buildRoman, type PersonBody } from './legionary.ts';
@@ -52,11 +52,13 @@ const MARKER_HEIGHT = 2.75;
 /** Sword held straight up: the total pitch of the blade. */
 const BLADE_UP = -3.1;
 
-export type CheerStyle = 'pump' | 'bang' | 'hop';
+export type CheerStyle = 'pump' | 'bang' | 'hop' | 'dance';
 const CHEER_STYLES: readonly CheerStyle[] = ['pump', 'bang', 'hop'];
+/** After a win everyone joins in, and some dance. */
+const VICTORY_STYLES: readonly CheerStyle[] = ['pump', 'dance', 'hop', 'dance', 'bang'];
 
-/** How a swing looks. Purely visual: the simulation only knows "a strike". */
-export type SwingStyle = 'chop' | 'swipe' | 'thrust' | 'spin' | 'slash' | 'lance';
+/** How a swing looks. Purely visual: the simulation only knows "a strike" (or a shield bash). */
+export type SwingStyle = 'chop' | 'swipe' | 'thrust' | 'spin' | 'slash' | 'lance' | 'bash';
 
 export interface PersonRig extends PersonBody {
   type: 'person';
@@ -112,6 +114,16 @@ export type Rig = PersonRig | HorseRig;
 const GLOSS = { gloss: true } as const;
 const METAL = { metal: true } as const;
 const NO_SHADOW_GLOSS = { gloss: true, castShadow: false } as const;
+/** How far the body rocks back to wind up a blow and leans into it, and how far it steps in. */
+const SWING_ROCK_BACK = 0.22;
+const SWING_ROCK_IN = 0.3;
+const SWING_LUNGE = 0.28;
+/** Leaning into a run or a sidestep: per m/s of sideways and forward speed. */
+const STRAFE_LEAN = 0.05;
+const RUN_LEAN = 0.025;
+const MAX_MOVE_LEAN = 0.35;
+/** Faster than this (a dodge) the soldier hops with the feet tucked. */
+const DODGE_SPEED = 6.5;
 
 function addBubbles(parts: PartFactory, head: TransformNode): InstancedMesh[] {
   const bubbles: InstancedMesh[] = [];
@@ -241,14 +253,20 @@ interface SwingPose {
   wrist: number;
   /** Leaning out of the saddle towards the side being struck. */
   lean: number;
+  /** Rocking back while winding up (negative), then lunging into the blow. */
+  rock: number;
+  /** Stepping the body forward into the blow (meters, in body space). */
+  lunge: number;
+  /** The shield punched forward (a bash). */
+  shove: number;
 }
 
-const NO_SWING = { sweep: 0, twist: 0, reach: 0, wrist: 0, lean: 0 } as const;
+const NO_SWING = { sweep: 0, twist: 0, reach: 0, wrist: 0, lean: 0, rock: 0, lunge: 0, shove: 0 } as const;
 
 /** Arm pitch, sideways sweep, body twist and forward reach for the current swing. */
 function swingPose(rig: PersonRig, mounted: boolean, weapon: Weapon): SwingPose | null {
   if (rig.swingAge === null) return null;
-  const windup = meleeStatsForKind(rig.unitKind, mounted, weapon)?.windup ?? 0.25;
+  const windup = rig.swingStyle === 'bash' ? DUEL.bash.windup : (meleeStatsForKind(rig.unitKind, mounted, weapon)?.windup ?? 0.25);
   const t = rig.swingAge;
   const strike = t - windup;
   if (strike > STRIKE_TIME + RECOVER_TIME) {
@@ -261,16 +279,21 @@ function swingPose(rig: PersonRig, mounted: boolean, weapon: Weapon): SwingPose 
   /** windup → strike → back to rest, for any value. */
   const phase = (rest: number, cocked: number, struck: number): number =>
     strike < 0 ? lerp(rest, cocked, back) : strike < STRIKE_TIME ? lerp(cocked, struck, hit) : lerp(struck, rest, recover);
+  // On foot the whole body tells the blow: rock back to wind up, lunge in to strike.
+  const body = mounted ? { rock: 0, lunge: 0 } : { rock: phase(0, -SWING_ROCK_BACK, SWING_ROCK_IN), lunge: phase(0, -SWING_LUNGE * 0.3, SWING_LUNGE) };
   switch (rig.swingStyle) {
     case 'chop':
-      return { ...NO_SWING, pitch: phase(ARM_REST, ARM_OVERHEAD, ARM_STRIKE_END), twist: strike < 0 ? -0.2 * back : 0.25 * (1 - recover) };
+      return { ...NO_SWING, ...body, pitch: phase(ARM_REST, ARM_OVERHEAD, ARM_STRIKE_END), twist: strike < 0 ? -0.35 * back : 0.3 * (1 - recover) };
     case 'swipe': {
-      const sweep = phase(0, -1.4, 1.1);
-      return { ...NO_SWING, pitch: -1.45 * (1 - recover), sweep, twist: sweep * 0.35 };
+      const sweep = phase(0, -1.6, 1.2);
+      return { ...NO_SWING, ...body, pitch: -1.45 * (1 - recover), sweep, twist: sweep * 0.45 };
     }
+    case 'bash':
+      // Sword hand back, shield driven forward with the shoulder behind it.
+      return { ...NO_SWING, ...body, pitch: ARM_REST + 0.3, twist: phase(0, 0.35, -0.3), shove: phase(0, -0.15, 1), lunge: phase(0, -0.1, SWING_LUNGE * 1.6) };
     case 'thrust': {
       // Overhand spear thrust over the shield rim.
-      return { ...NO_SWING, pitch: phase(ARM_SPEAR_GUARD, ARM_SPEAR_GUARD - 0.25, ARM_SPEAR_GUARD + 0.35), reach: phase(0, -0.22, 0.5), twist: phase(0, 0.15, -0.25) };
+      return { ...NO_SWING, ...body, pitch: phase(ARM_SPEAR_GUARD, ARM_SPEAR_GUARD - 0.25, ARM_SPEAR_GUARD + 0.35), reach: phase(0, -0.22, 0.5), twist: phase(0, 0.15, -0.25) };
     }
     case 'spin': {
       const spin = strike < 0 ? -0.4 * back : -0.4 + (Math.PI * 2 + 0.4) * ease(strike / (STRIKE_TIME + RECOVER_TIME));
@@ -279,6 +302,7 @@ function swingPose(rig: PersonRig, mounted: boolean, weapon: Weapon): SwingPose 
     case 'slash':
       // From the saddle: sword raised high and out, then hacked down at whoever is below.
       return {
+        ...NO_SWING,
         pitch: phase(ARM_REST, ARM_OVERHEAD - 0.2, 0.55),
         sweep: phase(0, 0.55, 0.25),
         twist: phase(0, -0.35, 0.3),
@@ -353,14 +377,23 @@ function animateArms(rig: PersonRig, view: UnitView, pose: SwingPose | null, fla
   }
 }
 
-function animateShield(rig: PersonRig, hitT: number): void {
+function animateShield(rig: PersonRig, hitT: number, shove: number): void {
   if (!rig.shield) return;
-  const s = rig.shieldAmount;
+  const s = Math.max(rig.shieldAmount, Math.min(1, Math.abs(shove) * 2));
   const { rest, raised, restYaw } = rig.shieldPose;
   // A small shove back when a blocked blow lands on the shield.
   const bump = rig.hitBlocked ? hitT * 0.12 : 0;
-  rig.shield.position.set(lerp(rest[0], raised[0], s), lerp(rest[1], raised[1], s), lerp(rest[2], raised[2], s) - bump * s);
+  rig.shield.position.set(lerp(rest[0], raised[0], s), lerp(rest[1], raised[1], s), lerp(rest[2], raised[2], s) - bump * s + shove * 0.45);
   rig.shield.rotation.y = lerp(restYaw, Math.PI / 2, s);
+}
+
+/** Leaning into a run, sideways into a sidestep, and a tucked hop for a dodge. */
+function moveLean(view: UnitView, yaw: number): { pitch: number; roll: number; hop: number } {
+  const forward = view.vx * Math.sin(yaw) + view.vz * Math.cos(yaw);
+  const side = view.vx * Math.cos(yaw) - view.vz * Math.sin(yaw);
+  const clampLean = (v: number): number => Math.max(-MAX_MOVE_LEAN, Math.min(MAX_MOVE_LEAN, v));
+  const speed = Math.hypot(view.vx, view.vz);
+  return { pitch: clampLean(forward * RUN_LEAN), roll: clampLean(-side * STRAFE_LEAN), hop: speed > DODGE_SPEED && view.onGround ? 1 : 0 };
 }
 
 /** The commander's cape streams out behind them the faster they go. */
@@ -416,7 +449,7 @@ export function animatePerson(rig: PersonRig, view: UnitView, ctx: AnimationCont
   animateArms(rig, view, pose, flail, swing, mounted, now);
 
   const hitT = Math.max(0, 1 - rig.hitAge / HIT_REACTION_TIME);
-  animateShield(rig, hitT);
+  animateShield(rig, hitT, pose?.shove ?? 0);
   animateCape(rig, groundSpeed, now);
   animateFace(rig, view, hitT, now);
 
@@ -428,13 +461,20 @@ export function animatePerson(rig: PersonRig, view: UnitView, ctx: AnimationCont
   const flinch = rig.hitBlocked ? -0.1 * hitT : -0.4 * hitT;
   const crouch = mounted ? 0 : rig.shieldAmount * 0.14;
   const lean = pose?.lean ?? 0;
-  rig.body.rotation.set(-rig.knockdown * 1.45 + flinch + crouch + Math.abs(lean) * 0.4, pose?.twist ?? 0, wobble + waddle - lean);
+  const move = mounted || stunned ? { pitch: 0, roll: 0, hop: 0 } : moveLean(view, ctx.displayYaw);
+  const rock = pose?.rock ?? 0;
+  rig.body.rotation.set(-rig.knockdown * 1.45 + flinch + crouch + Math.abs(lean) * 0.4 + rock + move.pitch, pose?.twist ?? 0, wobble + waddle - lean + move.roll);
+  rig.body.position.z = pose?.lunge ?? 0;
   const landT = Math.max(0, 1 - rig.landAge / LAND_SQUASH_TIME);
   const squash = (rig.hitBlocked ? 0.05 : 0.16) * hitT * Math.sin(rig.hitAge * 30) + landT * 0.14;
   const stretch = airborne && !flail ? 0.06 : 0;
   const breathe = Math.sin(now * 2.2 + rig.walkPhase) * 0.008;
   rig.torso.scaling.set(1 + squash, 1 - squash + stretch + breathe, 1 + squash);
-  rig.body.position.y = mounted ? 0 : Math.abs(Math.sin(rig.walkPhase)) * ANIMATION.bob * stride + rig.knockdown * 0.22 - crouch * 0.5;
+  rig.body.position.y = mounted ? 0 : Math.abs(Math.sin(rig.walkPhase)) * ANIMATION.bob * stride + rig.knockdown * 0.22 - crouch * 0.5 + move.hop * 0.18;
+  if (move.hop > 0) {
+    rig.legL.rotation.x = -0.9;
+    rig.legR.rotation.x = -0.5;
+  }
 
   // Head: comic wobble on hits; dizzy stars when stunned.
   rig.head.rotation.set(Math.sin(now * 23) * 0.15 * hitT, 0, Math.sin(now * 31) * 0.3 * hitT);
@@ -540,6 +580,18 @@ function animateCheer(rig: PersonRig, dt: number): boolean {
       rig.armL.rotation.set(lerp(-0.25, -2.5, fade), 0, -0.3);
       rig.body.position.y += Math.abs(Math.sin(t * 9)) * 0.22 * fade;
       break;
+    case 'dance': {
+      // Arms up and swinging side to side, hips wiggling, knees kicking in turn.
+      const beat = Math.sin(t * 8);
+      brandishWeapon(rig, lerp(ARM_REST, -2.6, fade), beat * 0.5 * fade);
+      rig.armL.rotation.set(lerp(-0.25, -2.6, fade), 0, -0.3 + beat * 0.5 * fade);
+      rig.body.rotation.z += beat * 0.25 * fade;
+      rig.body.rotation.y += Math.sin(t * 4) * 0.4 * fade;
+      rig.body.position.y += Math.abs(Math.sin(t * 8)) * 0.12 * fade;
+      rig.legL.rotation.x = Math.max(0, beat) * -0.9 * fade;
+      rig.legR.rotation.x = Math.max(0, -beat) * -0.9 * fade;
+      break;
+    }
   }
   rig.head.rotation.x = -0.2 * fade;
   return Math.sin(t * 6) > -0.4;
@@ -607,6 +659,14 @@ export function startCheer(rig: Rig, delay: number, id: number): void {
   rig.cheerStyle = CHEER_STYLES[id % CHEER_STYLES.length] ?? 'pump';
 }
 
+/** After a win: keeps cheering, jumping and dancing, each soldier in turn picking a new way. */
+export function keepCelebrating(rig: Rig, id: number): void {
+  if (rig.type !== 'person' || rig.cheerAge !== null) return;
+  rig.swings++;
+  rig.cheerAge = -Math.random() * 0.3;
+  rig.cheerStyle = VICTORY_STYLES[(id + rig.swings) % VICTORY_STYLES.length] ?? 'dance';
+}
+
 export function animateHorse(rig: HorseRig, view: UnitView, ctx: AnimationContext): void {
   rig.root.position.set(view.x, view.y, view.z);
   rig.root.rotation.y = view.yaw;
@@ -660,10 +720,14 @@ export function standUp(rig: PersonRig): void {
 }
 
 /** Picks a swing style: spears thrust, riders hack downwards, commanders sometimes spin. */
-export function startSwing(rig: Rig, weapon: Weapon, mounted: boolean): void {
+export function startSwing(rig: Rig, weapon: Weapon, mounted: boolean, bash = false): void {
   if (rig.type !== 'person') return;
   rig.swings++;
   rig.swingAge = 0;
+  if (bash) {
+    rig.swingStyle = 'bash';
+    return;
+  }
   if (weapon === 'spear') {
     rig.swingStyle = mounted ? 'lance' : 'thrust';
     return;

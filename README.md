@@ -53,13 +53,14 @@ npm run build        # production build of the client into client/dist
 | 2 (tap) | Hold in the current formation |
 | 2 (keep down) | Formation wheel: long line, two lines, wedge, circle around you, testudo block, pincer |
 | 4 | Split the army in two; again: pick half A, half B or the whole army |
-| 5 / 6 | Banquet (once: a very drunk, very tough army) / rally speech |
+| 5 / 6 | Banquet (once: a very drunk, very tough army) / rally speech (15 s of courage, then a 40 s rest) |
 | F | Advance: holding soldiers step forward towards where you look |
 | R | Throw spears at the enemies where you look (once per battle) |
 | Ctrl (hold) | Crouch; crouch 4× at another player's commander up close to offer an alliance |
 | Q / E | Sword or spear / mount or dismount the horse |
 | M | Sound on/off (also the speaker button, top right) |
 | V, mouse wheel | Overview camera, zoom |
+| T | First person ⇄ third person (also on the start page) |
 | Esc | Pause (local) / release the mouse |
 
 Battlefields: Green Meadow, Castle Siege (one army holds the gate behind a moat) and The City

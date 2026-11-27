@@ -39,6 +39,9 @@ export const ROMAN = {
   brow: '#3B2A20',
   mouth: '#7A3B2E',
   steel: '#A3ACB6',
+  /** A bright edge and a dark groove make the blade read as a blade, even small. */
+  bladeEdge: '#D9E0E6',
+  bladeGroove: '#6F7882',
   armorDark: '#4D545D',
   iron: '#7A828A',
   brass: '#CFA64E',
@@ -236,6 +239,28 @@ export const CAMERA = {
   zoomStep: 0.0035,
   smoothing: 14,
   overviewHeight: 42,
+  /** The camera stops this far in front of a wall between it and the commander... */
+  wallMargin: 0.35,
+  /** ...checking the line to it every this many meters. */
+  wallProbeStep: 0.2,
+  /** It never gets closer than this, even with a wall right behind the commander. */
+  wallMinDistance: 0.8,
+} as const;
+
+/** Looking through the commander's eyes: their head is hidden, the body, shield and sword stay. */
+export const FIRST_PERSON = {
+  /** Eye height above the feet (the rig is drawn 1.1× its body height). */
+  eyeHeight: 1.78,
+  /** A little in front of the face, so the inside of the head never shows... */
+  eyeForward: 0.12,
+  /** ...and further out (and a bit lower) as you look down, like a head bending over its own chest. */
+  lookDownForward: 0.3,
+  lookDownDrop: 0.2,
+  /** Looking up this far, and down far enough to see your own feet. */
+  minPitch: -1.2,
+  maxPitch: 1.45,
+  /** A slightly wider view than behind the shoulder. */
+  fov: 1.05,
 } as const;
 
 export const ANIMATION = {
@@ -314,6 +339,8 @@ export const SOUND = {
   whistleGap: 0.35,
   /** Somebody mutters every few seconds. */
   chatterEvery: 3,
+  /** After a win: a cheer or a laugh from somewhere in the crowd this often. */
+  celebrateEvery: 0.35,
   cheerVoices: 8,
   glugs: 5,
 } as const;
