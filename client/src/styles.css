@@ -935,3 +935,15 @@ kbd {
 .name-tag.foe {
   color: #ffb0a0;
 }
+
+/* Jump to any chapter of the story. */
+.chapter-select {
+  width: 100%;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(20, 24, 32, 0.85);
+  color: #fff;
+  font: inherit;
+}

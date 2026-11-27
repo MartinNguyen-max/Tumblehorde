@@ -14,8 +14,10 @@ export const CAMPAIGN = {
 } as const;
 
 export const CUTSCENE = {
-  /** Seconds Space must be held to skip the current beat. */
+  /** Seconds Space must be held to skip the current beat... */
   skipHoldTime: 0.6,
+  /** ...and, still held, each further beat goes after this much more: a long hold races through. */
+  skipRepeatTime: 0.12,
   /** A line of subtitle stays at least this long. */
   minLineTime: 1.6,
   /** Reading speed for subtitles, in characters per second; long lines stay longer. */

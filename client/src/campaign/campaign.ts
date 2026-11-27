@@ -131,6 +131,11 @@ export class Campaign {
   }
 
   /** Jumps straight to a chapter with a fresh save (for testing chapters). */
+  /** Plays from `id` on, keeping the saved gold, gear, legion and choices (or a fresh story's). */
+  jumpTo(id: ChapterId): void {
+    this.begin({ ...(loadSave() ?? newSave(Date.now())), chapter: id });
+  }
+
   startAt(id: ChapterId, changes: Partial<CampaignSave> = {}): void {
     this.begin({ ...newSave(Date.now()), ...changes, chapter: id });
   }

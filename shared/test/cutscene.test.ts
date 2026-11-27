@@ -47,14 +47,24 @@ describe('cutscene timeline', () => {
     expect(skipProgress(timeline)).toBe(0);
   });
 
-  it('holding Space skips exactly one beat per full hold, never the whole scene at once', () => {
+  it('holding Space skips the first beat after a moment, then races through the rest', () => {
     const { ended } = run(CUTSCENE.skipHoldTime + 2 * DT, BEATS, true);
     expect(ended).toEqual([{ beat: 0, skipped: true }]);
-    const longer = run(CUTSCENE.skipHoldTime * 2 + 2 * DT, BEATS, true);
+    const longer = run(CUTSCENE.skipHoldTime + CUTSCENE.skipRepeatTime * 2 + 4 * DT, BEATS, true);
     expect(longer.ended).toEqual([
       { beat: 0, skipped: true },
       { beat: 1, skipped: true },
+      { beat: 2, skipped: true },
     ]);
+    expect(CUTSCENE.skipRepeatTime).toBeLessThan(CUTSCENE.skipHoldTime);
+  });
+
+  it('letting go of Space starts the next skip from a full hold again', () => {
+    const timeline = createTimeline();
+    run(CUTSCENE.skipHoldTime + 2 * DT, BEATS, true, timeline);
+    stepTimeline(timeline, BEATS, DT, false);
+    run(CUTSCENE.skipRepeatTime * 2, BEATS, true, timeline);
+    expect(timeline.beat).toBe(1);
   });
 
   it('waits at a choice until resumed, and Space cannot skip it', () => {

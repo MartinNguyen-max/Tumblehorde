@@ -2,8 +2,9 @@ import { CUTSCENE } from './config.ts';
 
 /**
  * A cutscene is a list of beats (one shot or one line each) played in order. Holding Space fills
- * a meter; when it is full the current beat ends at once and the meter empties, so a steady hold
- * skips beat by beat and never a whole scene. A beat that waits (a choice) only ends when resumed.
+ * a meter; when it is full the current beat ends at once. Kept held, the next beats go much faster
+ * one after another, so a long hold races through a scene, while a short tap never skips anything.
+ * A beat that waits (a choice) only ends when resumed: a hold never skips a choice.
  */
 
 export interface BeatTiming {
@@ -19,6 +20,8 @@ export interface Timeline {
   elapsed: number;
   /** Seconds Space has been held towards the next skip. */
   hold: number;
+  /** Beats skipped in this one hold of Space: after the first, the next go quicker. */
+  streak: number;
   /** A waiting beat has been resumed. */
   resumed: boolean;
 }
@@ -31,7 +34,7 @@ export interface TimelineStep {
 }
 
 export function createTimeline(): Timeline {
-  return { beat: 0, elapsed: 0, hold: 0, resumed: false };
+  return { beat: 0, elapsed: 0, hold: 0, streak: 0, resumed: false };
 }
 
 export function isTimelineDone(timeline: Timeline, beats: readonly BeatTiming[]): boolean {
@@ -45,7 +48,12 @@ export function lineDuration(text: string): number {
 
 /** 0..1: how full the skip meter is, for the HUD. */
 export function skipProgress(timeline: Timeline): number {
-  return Math.min(1, timeline.hold / CUTSCENE.skipHoldTime);
+  return Math.min(1, timeline.hold / skipThreshold(timeline));
+}
+
+/** The first skip of a hold takes a moment; the ones after it come quickly. */
+function skipThreshold(timeline: Timeline): number {
+  return timeline.streak === 0 ? CUTSCENE.skipHoldTime : CUTSCENE.skipRepeatTime;
 }
 
 function endBeat(timeline: Timeline, step: TimelineStep, skipped: boolean, total: number): void {
@@ -67,12 +75,14 @@ export function stepTimeline(timeline: Timeline, beats: readonly BeatTiming[], d
   const beat = beats[timeline.beat];
   if (!beat) return step;
 
+  if (!skipHeld) timeline.streak = 0;
   if (!skipHeld || beat.waits) {
     timeline.hold = 0;
   } else {
     timeline.hold += dt;
-    if (timeline.hold >= CUTSCENE.skipHoldTime) {
+    if (timeline.hold >= skipThreshold(timeline)) {
       timeline.hold = 0;
+      timeline.streak++;
       endBeat(timeline, step, true, beats.length);
       return step;
     }

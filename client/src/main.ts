@@ -62,6 +62,11 @@ async function boot(): Promise<void> {
       enterCampaign();
       campaign.continueSaved();
     },
+    onChapter: (id) => {
+      enterCampaign();
+      campaign.stop();
+      campaign.jumpTo(id);
+    },
   });
   const clickToPlay = byId('click-to-play');
   const ctpTitle = byId('ctp-title');
