@@ -48,6 +48,17 @@ npm run smoke -w server   # online end-to-end check (server must be running)
 npm run build        # production build of the client into client/dist
 ```
 
+### The whole campaign in the browser
+
+With the dev server running (`npm run dev`) and Google Chrome installed:
+
+```
+node tools/browser-check.mjs tools/campaign-playthrough.json /tmp/tumblehorde-shots
+```
+
+It starts a new story and races through every chapter (cutscene beats skipped, battles won at
+once, choices clicked) and prints each chapter it passed, any errors, and the final save.
+
 ## Controls
 
 | Input | Action |
