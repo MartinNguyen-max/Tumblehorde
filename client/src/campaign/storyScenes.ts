@@ -24,8 +24,6 @@ export const SCENES_AFTER: Partial<Record<ChapterId, readonly string[]>> = {
   'arena-1': ['arena-won'],
   'forest-road': ['forest-road-after'],
   'burning-village': ['village-after'],
-  bridge: ['roll-call'],
-  outpost: ['roll-call'],
-  'night-raid': ['roll-call', 'letter-two'],
+  'night-raid': ['letter-two'],
   'last-battle': ['hrolf-mirror'],
 };

@@ -11,6 +11,7 @@ import { createWorld, loadMap, setShadowArea, updateWeather } from './render/wor
 import { byId } from './ui/dom.ts';
 import { Hud } from './ui/hud.ts';
 import { Landing, readStoredName } from './ui/landing.ts';
+import { storeViewMode } from './ui/viewSetting.ts';
 import { Results } from './ui/results.ts';
 import { CAMERA, MAP_NAMES } from './visualConfig.ts';
 import { AudioEngine } from './audio/engine.ts';
@@ -61,11 +62,6 @@ async function boot(): Promise<void> {
     onContinue: () => {
       enterCampaign();
       campaign.continueSaved();
-    },
-    onChapter: (id) => {
-      enterCampaign();
-      campaign.stop();
-      campaign.jumpTo(id);
     },
   });
   const clickToPlay = byId('click-to-play');
@@ -137,6 +133,7 @@ async function boot(): Promise<void> {
 
   const showPausePrompt = (paused: boolean, online: boolean, first: boolean): void => {
     clickToPlay.hidden = !paused;
+    showViewMode();
     ctpTitle.textContent = first ? 'Ready?' : 'Paused';
     ctpText.innerHTML = online
       ? 'Click to take command. <b>The battle keeps going</b> while you are here!'
@@ -222,6 +219,17 @@ async function boot(): Promise<void> {
   });
 
   byId('ctp-play').addEventListener('click', () => input.requestLock());
+  // First or third person, switchable whenever the battle is paused (T does it while playing).
+  const viewButton = byId('ctp-view', HTMLButtonElement);
+  const showViewMode = (): void => {
+    viewButton.textContent = camera.mode === 'first' ? 'View: first person' : 'View: third person';
+  };
+  viewButton.addEventListener('click', () => {
+    const mode = camera.mode === 'first' ? 'third' : 'first';
+    camera.setMode(mode);
+    storeViewMode(mode);
+    showViewMode();
+  });
   byId('ctp-quit').addEventListener('click', () => {
     if (controller?.session.online) void onlineLobby.leave();
     else showLanding();

@@ -267,6 +267,8 @@ export interface MatchSettings {
   mix?: ArmyMix;
   /** Seconds bots spend forming up before they march (story battles can start sooner). */
   prepareTime?: number;
+  /** The campaign keeps the army whole: no splitting it in two. */
+  noSplit?: boolean;
 }
 
 export type MatchPhase = 'playing' | 'ending' | 'over';

@@ -104,6 +104,8 @@ export class Campaign {
   private readonly pause: CampaignPause;
   private readonly card = new StoryCard();
   private save: CampaignSave | null = null;
+  /** One line for the next chapter's card: who fell in the battle just won. */
+  private fallenNote: string | null = null;
   private phase: Phase = { kind: 'idle' };
 
   constructor(deps: CampaignDeps) {
@@ -131,11 +133,6 @@ export class Campaign {
   }
 
   /** Jumps straight to a chapter with a fresh save (for testing chapters). */
-  /** Plays from `id` on, keeping the saved gold, gear, legion and choices (or a fresh story's). */
-  jumpTo(id: ChapterId): void {
-    this.begin({ ...(loadSave() ?? newSave(Date.now())), chapter: id });
-  }
-
   startAt(id: ChapterId, changes: Partial<CampaignSave> = {}): void {
     this.begin({ ...newSave(Date.now()), ...changes, chapter: id });
   }
@@ -156,7 +153,8 @@ export class Campaign {
     const arrived = id === FORTRESS_CHAPTER ? { ...this.save, legion: reinforceAtFortress(this.save.legion) } : this.save;
     this.store(checkpoint(arrived, id, Date.now()));
     const chapter = chapterById(id);
-    this.overlay.showLoading(chapter);
+    this.overlay.showLoading(chapter, this.fallenNote);
+    this.fallenNote = null;
     this.phase = { kind: 'loading', chapter, timer: LOADING_TIME };
   }
 
@@ -213,6 +211,8 @@ export class Campaign {
     if (!save) return;
     const { legion, fallen } = afterBattle(save.legion, outcome.fallen, chapter.id);
     this.save = { ...save, legion, fallen: [...fallen] };
+    // One short line on the next chapter's card, instead of a scene after every battle.
+    this.fallenNote = fallen.length > 0 ? `Fallen: ${fallen.join(', ')}.` : null;
     this.playScenes(scenesOf(SCENES_AFTER[chapter.id]), () => this.finishChapter(chapter.id));
   }
 

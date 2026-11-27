@@ -1,4 +1,4 @@
-import {
+import { CUTSCENE,
   type BeatTiming,
   createTimeline,
   isTimelineDone,
@@ -88,11 +88,19 @@ export class CutscenePlayer {
     this.overlay.hide();
   }
 
+  /** The reader closed a letter: its beat ends now. */
+  private letterDone = false;
+
   update(dt: number, skipHeld: boolean): void {
     const stage = this.stage;
     if (!stage) return;
     this.time += dt;
-    this.apply(stepTimeline(this.timeline, this.timings, dt, skipHeld));
+    this.overlay.onLetterDone = () => (this.letterDone = true);
+    if (this.letterDone) {
+      this.letterDone = false;
+      this.timeline.hold = CUTSCENE.skipHoldTime;
+    }
+    this.apply(stepTimeline(this.timeline, this.timings, dt, skipHeld || this.timeline.hold >= CUTSCENE.skipHoldTime));
     if (!this.stage) return;
     if (isTimelineDone(this.timeline, this.timings)) {
       const done = this.onDone;

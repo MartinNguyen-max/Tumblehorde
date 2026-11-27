@@ -22,6 +22,9 @@ export class CinematicOverlay {
   private readonly sub: HTMLDivElement;
   private readonly title: HTMLDivElement;
   private readonly letter: HTMLDivElement;
+  private readonly letterText: HTMLDivElement;
+  /** Called when the reader presses Continue under a letter. */
+  onLetterDone: (() => void) | null = null;
   private readonly choices: HTMLDivElement;
   /** Off while the story is paused, so 1–9 never pick an answer behind the pause menu. */
   choiceKeysEnabled = true;
@@ -42,6 +45,10 @@ export class CinematicOverlay {
     el('div', 'cine-bar bottom', this.root);
     this.title = el('div', 'cine-title', this.root);
     this.letter = el('div', 'cine-letter', this.root);
+    this.letterText = el('div', '', this.letter);
+    const done = el('button', 'cine-letter-done', this.letter);
+    done.textContent = 'Continue';
+    done.addEventListener('click', () => this.onLetterDone?.());
     this.sub = el('div', 'cine-sub', this.root);
     this.choices = el('div', 'cine-choices', this.root);
     this.skip = el('div', 'cine-skip', this.root);
@@ -70,6 +77,7 @@ export class CinematicOverlay {
     this.setTitle(null);
     this.setLetter(null);
     this.clearChoices();
+    this.setSkip(0, false);
     this.fade(0);
     this.talk(null, null);
     this.prompt(null);
@@ -104,7 +112,7 @@ export class CinematicOverlay {
   }
 
   setLetter(text: string | null): void {
-    if (text !== null) this.letter.textContent = text;
+    if (text !== null) this.letterText.textContent = text;
     this.letter.classList.toggle('on', text !== null);
   }
 
@@ -186,7 +194,8 @@ export class CinematicOverlay {
     if (text !== null && this.statusBox.textContent !== text) this.statusBox.textContent = text;
   }
 
-  showLoading(chapter: Chapter | null): void {
+  /** The chapter card; `note` is one short extra line (who fell in the battle before). */
+  showLoading(chapter: Chapter | null, note: string | null = null): void {
     if (!chapter) {
       this.loading.classList.remove('on');
       return;
@@ -195,6 +204,7 @@ export class CinematicOverlay {
     el('div', 'num', this.loading).textContent = chapter.number === 0 ? 'The story of Cassian' : `Chapter ${chapter.number}`;
     el('h2', '', this.loading).textContent = chapter.title;
     el('p', '', this.loading).textContent = chapter.loadingLine;
+    if (note) el('p', 'note', this.loading).textContent = note;
     this.loading.classList.add('on');
   }
 }

@@ -125,7 +125,7 @@ function army(side: Side): ArmySetup {
 }
 
 function settings(map: MatchSettings['map'], armies: ArmySetup[]): MatchSettings {
-  return { mode: 'teams', armySize: 15, armies, seed: STORY_BATTLE.seed, map, prepareTime: STORY_BATTLE.prepareTime };
+  return { mode: 'teams', armySize: 15, armies, seed: STORY_BATTLE.seed, map, prepareTime: STORY_BATTLE.prepareTime, noSplit: true };
 }
 
 /** Cassian's own army: the heroes with him first, then the living legionaries (from the Emperor on). */

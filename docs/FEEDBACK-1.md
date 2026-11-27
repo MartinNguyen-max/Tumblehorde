@@ -7,12 +7,12 @@ Livia's assault by the Mongolians is part of the new story, but it is never show
 the city falling and the aftermath, and Livia tells Cassian later.
 
 ## 1. Quick fixes
-- [ ] Remove "Play any chapter" from the Campaign card
-- [ ] No "hold Space to skip" hint in free roam
-- [ ] First/third person can be switched from the pause menus (battle and story)
-- [ ] No "split in two" anywhere in the campaign
-- [ ] The end-of-battle message is one short line (plus who fell)
-- [ ] Livia's letters can be closed with a Continue button
+- [x] Remove "Play any chapter" from the Campaign card
+- [x] No "hold Space to skip" hint in free roam
+- [x] First/third person can be switched from the pause menus (battle and story)
+- [x] No "split in two" anywhere in the campaign
+- [x] The end-of-battle message is one short line (plus who fell)
+- [x] Livia's letters can be closed with a Continue button
 - [ ] Varro is "Blacksmith" until we know his name; a yellow arrow over whoever to go to next
 
 ## 2. Looks that match between scenes and battles

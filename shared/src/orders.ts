@@ -328,6 +328,7 @@ export function applyCommand(state: MatchState, armyId: number, command: Command
     case 'order':
       return issueOrder(state, army, command.order, command.group);
     case 'split':
+      if (state.settings.noSplit) return false;
       if (command.groupCount === HALVES && isLegion(state, army)) return splitInHalves(state, army);
       return splitArmy(state, army, command.groupCount);
     case 'formation':

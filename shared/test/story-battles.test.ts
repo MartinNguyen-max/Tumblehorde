@@ -192,3 +192,13 @@ describe('veterans', () => {
     expect(veteran.maxHp).toBeCloseTo(plain.maxHp * STORY_BATTLE.veteranToughness);
   });
 });
+
+describe('the campaign keeps the army whole', () => {
+  it('refuses to split the army in two', async () => {
+    const { applyCommand } = await import('../src/orders.ts');
+    const battle = campaignBattle('bridge', saveAt('bridge'))!;
+    const state = createMatch(battle.settings);
+    expect(applyCommand(state, 0, { type: 'split', groupCount: 2 })).toBe(false);
+    expect(state.armies[0]!.groupCount).not.toBe(2);
+  });
+});
