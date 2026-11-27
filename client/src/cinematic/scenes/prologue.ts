@@ -67,17 +67,17 @@ export const prologueMorning: Cutscene = {
         narrate: 'I was raised by monks. Brother Cassian, they called me. The world was small, and it was golden.',
       },
       {
-        shot: portrait(anselm, { angle: -0.5, push: 0.3 }),
+        shot: () => portrait(anselm, { angle: -0.5, push: 0.3 }),
         say: { who: 'Anselm', text: 'Slowly. The wood already knows its shape. You only help it out.', mood: 'warm' },
       },
       {
         duration: 3,
         sound: 'chisel',
-        shot: portrait(cassian, { angle: 0.3, distance: 2.2, rise: 0.25, push: 0.4 }),
+        shot: () => portrait(cassian, { angle: 0.3, distance: 2.2, rise: 0.25, push: 0.4 }),
         run: () => cassian.setMood('angry'),
       },
       {
-        shot: portrait(cassian, { angle: 0.5, distance: 2.6 }),
+        shot: () => portrait(cassian, { angle: 0.5, distance: 2.6 }),
         run: () => {
           block.setEnabled(false);
           cross.setEnabled(true);
@@ -86,17 +86,17 @@ export const prologueMorning: Cutscene = {
         say: { who: 'Cassian', text: 'Look! Is it good?', mood: 'happy' },
       },
       {
-        shot: portrait(anselm, { angle: -0.6 }),
+        shot: () => portrait(anselm, { angle: -0.6 }),
         run: () => anselm.lookAt(cassian.headPosition()),
         say: { who: 'Anselm', text: 'It is crooked.', mood: 'happy' },
       },
       {
         duration: 1.6,
-        shot: portrait(cassian, { angle: 0.4, distance: 2.4, fov: FOV.extreme }),
+        shot: () => portrait(cassian, { angle: 0.4, distance: 2.4, fov: FOV.extreme }),
         run: () => cassian.setMood('sad'),
       },
       {
-        shot: portrait(anselm, { angle: -0.6, push: 0.5 }),
+        shot: () => portrait(anselm, { angle: -0.6, push: 0.5 }),
         say: { who: 'Anselm', text: 'And it is perfect. Keep it close, little brother. It will always know the way home.', mood: 'warm' },
       },
       {

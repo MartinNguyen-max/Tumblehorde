@@ -23,6 +23,9 @@ const WEATHER = {
 
 const FLAME_COLORS = ['#FFD24A', '#FF9A2E', '#FF5A1E'] as const;
 const FIRE_FLICKER = 11;
+const FIRE_RANGE = 9;
+/** Even a torch lights up the people next to it. */
+const FIRE_MIN_RANGE = 6;
 const CAMERA_FOV = 0.7;
 
 interface Flake {
@@ -164,7 +167,7 @@ export class Stage {
     const light = new PointLight(`fire-${this.fires.length}`, new Vector3(x, y + size * 1.2, z), this.scene);
     light.diffuse = Color3.FromHexString('#FF9A4A');
     light.specular = Color3.Black();
-    light.range = 9 * size;
+    light.range = Math.max(FIRE_MIN_RANGE, FIRE_RANGE * size);
     light.intensity = 1.2;
     light.parent = this.root;
     this.fires.push({ flames, light, base: light.intensity, size });

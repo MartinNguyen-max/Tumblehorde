@@ -61,7 +61,7 @@ export interface PortraitOptions {
  */
 export function portrait(actor: Actor, options: PortraitOptions = {}): Shot {
   const { angle = 0.45, distance = 2.6, rise = -0.05, fov = FOV.close, push = 0 } = options;
-  const head = actor.headPosition();
+  const head = actor.settle().headPosition();
   const yaw = actor.yaw + angle;
   const at = (d: number): Point => [head.x + Math.sin(yaw) * d, head.y + rise, head.z + Math.cos(yaw) * d];
   const shot: Shot = { from: at(distance), at: { actor, offset: [0, -0.06, 0] }, fov };

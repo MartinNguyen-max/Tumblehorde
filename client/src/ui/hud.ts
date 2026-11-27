@@ -8,7 +8,7 @@ import {
   type RefusedReason,
   wrapAngle,
   HORSE,
-  MATCH,
+  prepareTimeFor,
   RALLY,
   type MatchView,
   type Order,
@@ -167,7 +167,11 @@ export class Hud {
     this.mapName.textContent = name;
   }
 
+  /** The current battlefield; the form-up countdown depends on it. */
+  private map: MapId = 'meadow';
+
   setMap(map: MapId): void {
+    this.map = map;
     this.minimap.setMap(map);
   }
 
@@ -443,7 +447,7 @@ export class Hud {
 
   /** The form-up phase: bots plan and hold, giving the player time to set up. */
   private updatePrepare(view: MatchView): void {
-    const left = MATCH.prepareTime - view.time;
+    const left = prepareTimeFor(this.map) - view.time;
     const hasBots = view.armies.some((a) => a.isBot);
     const html = left > 0 && hasBots && view.phase === 'playing' ? `Form up! ${Math.ceil(left)}<small>The enemy marches when the timer runs out</small>` : '';
     if (this.prepare.innerHTML !== html) this.prepare.innerHTML = html;

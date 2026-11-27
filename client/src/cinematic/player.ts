@@ -129,11 +129,11 @@ export class CutscenePlayer {
   }
 
   private startBeat(stage: Stage, beat: Beat): void {
-    if (beat.shot) this.shot = beat.shot;
     if (beat.fade) this.overlay.fade(beat.fade.to, beat.fade.color, beat.fade.time, beat.fade.from);
     if (beat.music) this.sound?.music(beat.music);
     if (beat.sound) this.sound?.effect(beat.sound);
     beat.run?.(stage);
+    if (beat.shot) this.shot = typeof beat.shot === 'function' ? beat.shot() : beat.shot;
     this.overlay.setTitle(beat.title ?? null);
     this.overlay.setLetter(beat.letter ?? null);
     if (beat.say) {

@@ -1,4 +1,5 @@
-import type { MapDefinition, Structure } from '../maps.ts';
+import { MATCH } from '../config.ts';
+import type { MapDefinition, MapId, Structure } from '../maps.ts';
 import type { ArmySetup, MatchSettings } from '../types.ts';
 
 /**
@@ -13,6 +14,8 @@ export const ARENA = {
   wallHeight: 3.4,
   wallThickness: 1.4,
   spawnRadius: 9,
+  /** Seconds the bots hold before charging: arena fighters do not need to form up. */
+  prepareTime: 3,
   /** Battles in the arena are small; the army size setting is not used. */
   armySize: 15,
 } as const;
@@ -69,4 +72,9 @@ export function arenaSettings(player: FighterKit, opponents: readonly ArenaFight
   const you: ArmySetup = { name: 'You', team: 0, isBot: false, soldiers: 0, kit: player };
   const others: ArmySetup[] = opponents.map((o, i) => ({ name: o.name, team: i + 1, isBot: true, soldiers: 1, kit: o.kit }));
   return { mode: 'ffa', armySize: ARENA.armySize, armies: [you, ...others], seed, map: 'arena', arena: true };
+}
+
+/** How long bots form up before they march: short in the arena, the usual time elsewhere. */
+export function prepareTimeFor(map: MapId): number {
+  return map === 'arena' ? ARENA.prepareTime : MATCH.prepareTime;
 }

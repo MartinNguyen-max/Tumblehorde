@@ -24,7 +24,8 @@ export type SoundCue = 'bell' | 'thunder' | 'fire' | 'door' | 'crowd' | 'horn' |
 export interface Beat {
   /** Seconds; defaults to the time needed to read the line, or a short pause. */
   duration?: number;
-  shot?: Shot;
+  /** A shot, or a function that plans it when the beat starts (after `run`), from where actors are then. */
+  shot?: Shot | (() => Shot);
   /** An actor (by stage name) speaks. `as` is the name shown, if not the actor's. */
   say?: { who: string; text: string; mood?: Mood; as?: string };
   /** Old Cassian, telling the story. */

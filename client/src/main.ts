@@ -35,7 +35,21 @@ async function boot(): Promise<void> {
   const audio = new AudioEngine();
   const battleAudio = new BattleAudio(audio);
   setupSoundToggle(audio);
-  const campaign = new Campaign({ world, input, canvas, sound: new CinematicAudio(audio), onExit: () => showLanding() });
+  const campaign = new Campaign({
+    world,
+    input,
+    canvas,
+    sound: new CinematicAudio(audio),
+    onExit: () => showLanding(),
+    startBattle: (settings, onEnd) => {
+      startSession(new LocalSession(settings, 0), () => undefined, (view) => {
+        stopBattle();
+        onEnd(view);
+      });
+      input.requestLock();
+    },
+    stopBattle: () => stopBattle(),
+  });
   const campaignMenu = new CampaignMenu({
     onNew: () => {
       enterCampaign();
@@ -112,7 +126,7 @@ async function boot(): Promise<void> {
       : 'Click to take command. Press <kbd>Esc</kbd> to pause.';
   };
 
-  const startSession = (session: Session, again: () => void): void => {
+  const startSession = (session: Session, again: () => void, finished?: (view: MatchView) => void): void => {
     demo = null;
     stopBattle();
     useMap(session.map);
@@ -125,7 +139,8 @@ async function boot(): Promise<void> {
     controller = new GameController(session, { world, renderer, camera, input, hud, audio: battleAudio, listener: audio }, {
       onFinished: (view: MatchView) => {
         clickToPlay.hidden = true;
-        results.show(view, session.myArmyId, session.online ? 'Back to lobby' : 'Rematch');
+        if (finished) finished(view);
+        else results.show(view, session.myArmyId, session.online ? 'Back to lobby' : 'Rematch');
       },
       onPauseChange: (paused) => showPausePrompt(paused, session.online, false),
     });
@@ -196,11 +211,10 @@ async function boot(): Promise<void> {
   world.engine.runRenderLoop(() => {
     const dt = Math.min(world.engine.getDeltaTime() / 1000, MAX_FRAME_TIME);
     const now = performance.now() / 1000;
+    if (controller) controller.frame(dt, now);
     if (campaign.active) {
       campaign.frame(dt);
-    } else if (controller) {
-      controller.frame(dt, now);
-    } else if (demo) {
+    } else if (!controller && demo) {
       demo.update(dt);
       renderer.handleEvents(demo.takeEvents(), now);
       const view = demo.view();
