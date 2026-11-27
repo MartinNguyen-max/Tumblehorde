@@ -79,14 +79,34 @@ describe('the story battles', () => {
     expect(result.warlordDefeated).toBe(true);
   });
 
-  it('the second wave waits before it comes', () => {
+  it("the story's raiders come as a horde: many, weak, and all at once", () => {
     const battle = campaignBattle('bridge', saveAt('bridge'))!;
     const state = createMatch(battle.settings);
-    const wave = state.armies[2]!;
-    const start = livingSoldiers(state, wave).map((u) => ({ ...u.pos }));
-    run(state, STORY_BATTLE.bridgeSecondWaveAt * 0.5);
-    const moved = livingSoldiers(state, wave).map((u, i) => Math.hypot(u.pos.x - start[i]!.x, u.pos.z - start[i]!.z));
-    expect(Math.max(...moved)).toBeLessThan(4);
+    const legion = livingSoldiers(state, state.armies[0]!).length;
+    const vikings = livingSoldiers(state, state.armies[1]!).length + livingSoldiers(state, state.armies[2]!).length;
+    expect(vikings).toBeGreaterThan(legion * 2);
+    const viking = livingSoldiers(state, state.armies[1]!)[0]!;
+    const legionary = livingSoldiers(state, state.armies[0]!).find((u) => u.hero === null)!;
+    expect(viking.maxHp).toBeLessThan(legionary.maxHp);
+    expect(state.armies[1]!.bot.style).toBe('rush');
+    expect(state.armies[2]!.bot.style).toBe('rush');
+    expect(battle.settings.armies[2]!.arriveAt ?? 0).toBe(0);
+  });
+
+  it('teaches as it goes: the bridge starts with the men out of order until two lines are picked', async () => {
+    const { tutorialStepDone } = await import('../src/campaign/battles.ts');
+    const { applyCommand } = await import('../src/orders.ts');
+    const battle = campaignBattle('bridge', saveAt('bridge'))!;
+    const state = createMatch(battle.settings);
+    expect(state.armies[0]!.formation).toBe('swarm');
+    const step = battle.tutorial[0]!;
+    expect(step.points).toBe('hold');
+    expect(tutorialStepDone(step, state, 0)).toBe(false);
+    applyCommand(state, 0, { type: 'formation', formation: 'double' });
+    expect(tutorialStepDone(step, state, 0)).toBe(true);
+    const forest = campaignBattle('forest-road', saveAt('forest-road'))!;
+    expect(forest.tutorial[0]!.done).toEqual({ order: 'follow' });
+    expect(forest.settings.prepareTime).toBe(0);
   });
 
   it('the dead keep coming on the last night, and never break', () => {

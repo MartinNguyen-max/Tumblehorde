@@ -273,11 +273,13 @@ const SOUTH_FACING = Math.PI;
  */
 export const FOREST_POINTS = {
   arrival: { x: -40, z: -2, yaw: EAST },
-  bandits: { x: -14, z: 0, yaw: WEST },
-  villagers: { x: -22, z: 1, yaw: EAST },
+  // The bandits are already on the villagers, further up the road than Cassian.
+  bandits: { x: 6, z: 0, yaw: WEST },
+  villagers: { x: 2, z: 1, yaw: EAST },
   column: { x: 0, z: 0, yaw: EAST },
-  ambushNorth: { x: 6, z: 46, yaw: SOUTH_FACING },
-  ambushSouth: { x: -6, z: -46, yaw: NORTH_FACING },
+  // Close by in the trees: the scene before has already shown them coming.
+  ambushNorth: { x: 6, z: 24, yaw: SOUTH_FACING },
+  ambushSouth: { x: -6, z: -24, yaw: NORTH_FACING },
 } satisfies Record<string, MapPoint>;
 
 /** A Roman village of plastered houses round a small square, a road coming in from the west. */

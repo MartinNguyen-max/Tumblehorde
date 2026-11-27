@@ -99,7 +99,7 @@ function createArmy(
   }
 
   const kinds = setup?.soldiers === undefined ? soldierKindsFor(settings.armySize, settings.mix) : Array<SoldierKind>(setup.soldiers).fill('swordsman');
-  const slots = startingSlots(kinds, spawn.position, spawn.yaw).map((slot) => nearestWalkable(settings.map, slot));
+  const slots = (setup?.startFormation ? holdSlots(setup.startFormation, kinds.length, spawn.position, spawn.yaw, false) : startingSlots(kinds, spawn.position, spawn.yaw)).map((slot) => nearestWalkable(settings.map, slot));
   const soldierIds: number[] = [];
   const soldiers: Unit[] = [];
   kinds.forEach((kind, i) => {
@@ -107,7 +107,7 @@ function createArmy(
     const soldier = addUnit(state, (id) => createUnit(id, kind, armyId, groundPos(settings, slot.x, slot.z), spawn.yaw, faction));
     soldier.group = groupForKind(kind, ARMY_GROUPS);
     soldier.hero = setup?.heroes?.[i] ?? null;
-    const toughness = (soldier.hero !== null ? HERO.toughness : 1) * (setup?.toughness?.[i] ?? 1);
+    const toughness = (soldier.hero !== null ? HERO.toughness : setup?.horde?.hp ?? 1) * (setup?.toughness?.[i] ?? 1);
     soldier.maxHp *= toughness;
     soldier.hp = soldier.maxHp;
     soldierIds.push(soldier.id);
@@ -135,13 +135,13 @@ function createArmy(
     soldierIds,
     groupCount: ARMY_GROUPS,
     groupOrders: Array.from({ length: ARMY_GROUPS }, (_, g) => ({
-      order: 'hold' as const,
+      order: setup?.startOrder ?? 'hold',
       anchor: centroid(soldiers.filter((s) => s.group === g)) ?? { ...spawn.position },
       anchorYaw: spawn.yaw,
       aroundCommander: false,
-      formation: FORMATION.defaultFormation,
+      formation: setup?.startFormation ?? FORMATION.defaultFormation,
     })),
-    formation: FORMATION.defaultFormation,
+    formation: setup?.startFormation ?? FORMATION.defaultFormation,
     banquet: 'ready',
     intel: null,
     searchPoint: null,

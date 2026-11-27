@@ -54,6 +54,9 @@ export function styledStance(state: MatchState, army: Army, stance: BotStance, d
     case 'flank':
       if (stance === 'march') return 'march';
       return army.bot.flankTimer > BOT.flankTime ? 'engage' : 'flank';
+    case 'rush':
+      // Raiders do not march in step or wait: they all run at the enemy at once.
+      return 'engage';
   }
 }
 
@@ -151,7 +154,7 @@ function pushForward(state: MatchState, army: Army, enemyCenter: Vec2, distance:
  * when they mean to charge, or a swarm when they wait for you.
  */
 export function botFormation(army: Army): Formation {
-  if (army.faction === 'zombie') return 'swarm';
+  if (army.faction === 'zombie' || army.bot.style === 'rush') return 'swarm';
   if (army.faction !== 'viking') return FORMATION.defaultFormation;
   if (army.bot.style === 'charge') return 'boar';
   return army.bot.style === 'patient' ? 'swarm' : 'double';
@@ -315,8 +318,8 @@ function planArmy(state: MatchState, army: Army, dt: number, leaderless: boolean
     return null;
   }
   const distance = distanceXZ(own, enemy.center);
-  // The dead never fall back.
-  const fearless = army.faction === 'zombie';
+  // The dead never fall back, and neither does a rushing horde.
+  const fearless = army.faction === 'zombie' || army.bot.style === 'rush';
   const beaten = fearless ? 'engage' : chooseStance(state, army, distance, livingSoldiers(state, army).length, enemy.soldiers);
   army.bot.regroupTimer = beaten === 'regroup' ? army.bot.regroupTimer + dt : army.bot.regroupTimer;
   // Nobody falls back forever: after a while it is a last stand.

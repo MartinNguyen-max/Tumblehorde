@@ -142,9 +142,10 @@ export interface ArmyStats {
  * - charge: no waiting, straight at you with swords;
  * - phalanx: push forward in formation with spears and never break ranks;
  * - patient: wait behind a shield wall for you to come, and only then fight;
- * - flank: hold a pincer, send the wings round behind the enemy, then charge.
+ * - flank: hold a pincer, send the wings round behind the enemy, then charge;
+ * - rush: the story's raiders and bandits: everyone runs at the enemy at once, no formation.
  */
-export type BotStyle = 'steady' | 'charge' | 'phalanx' | 'patient' | 'flank';
+export type BotStyle = 'steady' | 'charge' | 'phalanx' | 'patient' | 'flank' | 'rush';
 
 export interface BotBrain {
   style: BotStyle;
@@ -254,6 +255,14 @@ export interface ArmySetup {
   onFoot?: boolean;
   /** Story battles: each soldier's hit points, times this (veterans are tougher); missing means 1. */
   toughness?: readonly number[];
+  /**
+   * Story battles: a horde of many weak soldiers. Their hit points and the damage they deal,
+   * times these (the commander is not affected).
+   */
+  horde?: { hp: number; damage: number };
+  /** Story battles: the army's first order and formation (the default is holding in two lines). */
+  startOrder?: Order;
+  startFormation?: Formation;
   /** Story battles: the army's cloth color (the legion's red), instead of the team's. */
   color?: string;
   /**

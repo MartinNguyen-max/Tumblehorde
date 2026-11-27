@@ -1,6 +1,6 @@
 import { FOREST_POINTS, FORTRESS_POINTS, type MapPoint, NORTH_POINTS, OLD_FRIENDS_POINTS, RIVER_POINTS, VILLAGE_POINTS } from '../maps.ts';
 import { declareVictory } from '../match.ts';
-import type { ArmySetup, BotStyle, Faction, MatchSettings, MatchState } from '../types.ts';
+import type { ArmySetup, BotStyle, Faction, Formation, MatchSettings, MatchState, Order } from '../types.ts';
 import { type ChapterId, isAtOrAfter } from './chapters.ts';
 import { heroesIn, type HeroId, livingLegion } from './roster.ts';
 import type { CampaignSave } from './save.ts';
@@ -18,8 +18,21 @@ export type TimeOfDay = 'day' | 'dusk' | 'night';
 /** What happens when the battle is lost: try again, choose between trying again and leaving, or the story goes on. */
 export type OnLoss = 'retry' | 'retryOrLeave' | 'continue';
 
+/**
+ * The campaign teaches as it goes: a hint (with an arrow on the command it names) that stays up
+ * until the player does what it says, or for a while.
+ */
+export interface TutorialStep {
+  text: string;
+  /** The HUD command the arrow points at. */
+  points: 'follow' | 'hold' | 'attack' | 'rally' | null;
+  done: { order: Order } | { formation: Formation } | { seconds: number };
+}
+
 export interface CampaignBattle {
   chapter: ChapterId;
+  /** Hints shown one after another at the start (an empty list once the player knows it all). */
+  tutorial: readonly TutorialStep[];
   /** What to do, shown at the top of the screen. */
   objective: string;
   settings: MatchSettings;
@@ -47,21 +60,24 @@ export const STORY_BATTLE = {
   seed: 7,
   /** Story battles start sooner than skirmishes: the enemy is already on its way. */
   prepareTime: 6,
-  bandits: 5,
-  villageRaiders: 9,
+  /**
+   * The story's enemies come in hordes: many more of them than the legion, each far weaker. Their
+   * soldiers' hit points and damage, times these.
+   */
+  weakling: { hp: 0.35, damage: 0.3 },
+  bandits: 10,
+  villageRaiders: 24,
   galbasMen: 3,
-  bridgeWave: 18,
-  bridgeSecondWave: 24,
-  bridgeSecondWaveAt: 55,
+  bridgeWave: 40,
+  bridgeSecondWave: 45,
   bridgeHold: 150,
-  ambushSide: 15,
-  outpost: 24,
-  nightRaidFirst: 18,
-  nightRaidSecond: 20,
-  nightRaidSecondAt: 30,
+  ambushSide: 32,
+  outpost: 60,
+  nightRaidFirst: 32,
+  nightRaidSecond: 32,
   nightRaidHold: 150,
   alliedArmy: 20,
-  horde: 66,
+  horde: 130,
   hrolfToughness: 3,
   /** A veteran legionary's hit points, times this. */
   veteranToughness: 1.2,
@@ -71,6 +87,8 @@ export const STORY_BATTLE = {
   lastStandMax: 240,
   /** Seconds the dead keep coming after Cassian falls, before the story moves on. */
   lastStandAftermath: 3,
+  /** Seconds between the ambush scene and the charge: just enough to form a ring. */
+  ambushWarning: 4,
   zombiesFirst: 40,
   zombieWave: { every: 6, count: 9 },
 } as const;
@@ -104,6 +122,9 @@ interface Side {
   style?: BotStyle;
   commanderToughness?: number;
   reinforce?: { every: number; count: number };
+  horde?: { hp: number; damage: number };
+  startOrder?: Order;
+  startFormation?: Formation;
   /** Named people's looks (see `ArmySetup.looks`). */
   looks?: Record<string, string>;
 }
@@ -177,11 +198,46 @@ function army(side: Side): ArmySetup {
   if (side.style) setup.style = side.style;
   if (side.commanderToughness) setup.commanderToughness = side.commanderToughness;
   if (side.reinforce) setup.reinforce = side.reinforce;
+  if (side.horde) setup.horde = side.horde;
+  if (side.startOrder) setup.startOrder = side.startOrder;
+  if (side.startFormation) setup.startFormation = side.startFormation;
   return setup;
 }
 
-function settings(map: MatchSettings['map'], armies: ArmySetup[]): MatchSettings {
-  return { mode: 'teams', armySize: 15, armies, seed: STORY_BATTLE.seed, map, prepareTime: STORY_BATTLE.prepareTime, noSplit: true };
+function settings(map: MatchSettings['map'], armies: ArmySetup[], prepareTime: number = STORY_BATTLE.prepareTime): MatchSettings {
+  return { mode: 'teams', armySize: 15, armies, seed: STORY_BATTLE.seed, map, prepareTime, noSplit: true };
+}
+
+/** A raiding horde: many, weak, and all running at you at once. */
+function raiders(name: string, faction: Faction, soldiers: number, spawn: MapPoint, extra: Partial<Side> = {}): ArmySetup {
+  return army({ name, team: 1, faction, soldiers, spawn, style: 'rush', horde: STORY_BATTLE.weakling, ...extra });
+}
+
+/** The hints of each battle: the first fights teach the orders the story needs. */
+const TUTORIALS: Partial<Record<ChapterId, readonly TutorialStep[]>> = {
+  'forest-road': [
+    { text: 'Press 1: Follow. Varro comes with you wherever you go.', points: 'follow', done: { order: 'follow' } },
+    { text: 'Run to the villagers! Left click strikes, right click raises your shield.', points: null, done: { seconds: 9 } },
+  ],
+  'burning-village': [{ text: 'Press 3: Attack. Your friends go for the raiders on their own.', points: 'attack', done: { order: 'attack' } }],
+  bridge: [
+    { text: 'Your men are all over the place. Keep 2 held down and pick Two lines.', points: 'hold', done: { formation: 'double' } },
+    { text: 'Hold the bridge. Your men thrust their spears over their shields; R throws a volley.', points: null, done: { seconds: 9 } },
+  ],
+  'dark-forest': [{ text: 'Ambush! They are all around you. Keep 2 held down and pick Circle around me.', points: 'hold', done: { formation: 'circle' } }],
+  'last-battle': [{ text: 'Press 6 for a rally speech: your legion fights with courage.', points: 'rally', done: { seconds: 10 } }],
+};
+
+/** True once the player has done what a hint asks (or it has been up long enough). */
+export function tutorialStepDone(step: TutorialStep, state: MatchState, shownFor: number): boolean {
+  const mine = state.armies[0];
+  if (!mine) return true;
+  if ('seconds' in step.done) return shownFor >= step.done.seconds;
+  if ('order' in step.done) {
+    const wanted = step.done.order;
+    return mine.groupOrders.some((g) => g.order === wanted);
+  }
+  return mine.formation === step.done.formation && mine.groupOrders.some((g) => g.order === 'hold');
 }
 
 /** Cassian's own army: the heroes with him first, then the living legionaries (from the Emperor on). */
@@ -224,43 +280,47 @@ export function campaignBattle(chapter: ChapterId, save: CampaignSave): Campaign
   const heroes = heroesFor(save, chapter);
   const rout: BattleGoal = { kind: 'rout' };
   const objective = BATTLE_OBJECTIVES[chapter] ?? 'Win the battle';
-  const base = { chapter, objective, goal: rout, time: 'day' as TimeOfDay, onLoss: 'retry' as OnLoss, commanders: {}, warlordArmy: null };
+  const tutorial = TUTORIALS[chapter] ?? [];
+  const base = { chapter, objective, tutorial, goal: rout, time: 'day' as TimeOfDay, onLoss: 'retry' as OnLoss, commanders: {}, warlordArmy: null };
   switch (chapter) {
     case 'forest-road': {
       // Varro rides with Cassian; Felix and Rufus are the villagers fighting for their lives up the road.
       const me = cassian(save, chapter, FOREST_POINTS.arrival, heroes.filter((h) => h === 'varro'), false);
       const villagers = army({ name: 'Villagers', team: 0, faction: 'bandit', soldiers: 2, spawn: FOREST_POINTS.villagers, heroes: [HERO_NAMES.felix, HERO_NAMES.rufus], looks: { [HERO_NAMES.felix]: STORY_LOOKS.felix, [HERO_NAMES.rufus]: STORY_LOOKS.rufus } });
-      const bandits = army({ name: 'Bandits', team: 1, faction: 'bandit', soldiers: STORY_BATTLE.bandits, spawn: FOREST_POINTS.bandits, style: 'charge' });
-      return { ...base, settings: settings('forest', [me.setup, villagers, bandits]), legionNames: me.legionNames };
+      const bandits = raiders('Bandits', 'bandit', STORY_BATTLE.bandits, FOREST_POINTS.bandits);
+      // The fight is on before Cassian gets there: no forming up.
+      return { ...base, settings: settings('forest', [me.setup, villagers, bandits], 0), legionNames: me.legionNames };
     }
     case 'burning-village': {
       const me = cassian(save, chapter, VILLAGE_POINTS.arrival, heroes, false);
       const galba = army({ name: 'Galba', team: 0, faction: 'roman', soldiers: STORY_BATTLE.galbasMen, spawn: VILLAGE_POINTS.defenders, commander: true, looks: { commander: STORY_LOOKS.galba } });
-      const raiders = army({ name: 'Raiders', team: 1, faction: 'viking', soldiers: STORY_BATTLE.villageRaiders, spawn: VILLAGE_POINTS.raiders, style: 'charge' });
-      return { ...base, time: 'night', settings: settings('village', [me.setup, galba, raiders]), legionNames: me.legionNames, commanders: { 1: 'Galba' } };
+      const horde = raiders('Raiders', 'viking', STORY_BATTLE.villageRaiders, VILLAGE_POINTS.raiders);
+      return { ...base, time: 'night', settings: settings('village', [me.setup, galba, horde], 0), legionNames: me.legionNames, commanders: { 1: 'Galba' } };
     }
     case 'bridge': {
       const me = cassian(save, chapter, RIVER_POINTS.bridgehead, heroes, true);
-      const first = army({ name: 'Vikings', team: 1, faction: 'viking', soldiers: STORY_BATTLE.bridgeWave, spawn: RIVER_POINTS.firstWave, style: 'charge' });
-      const second = army({ name: 'More Vikings', team: 1, faction: 'viking', soldiers: STORY_BATTLE.bridgeSecondWave, spawn: RIVER_POINTS.secondWave, arriveAt: STORY_BATTLE.bridgeSecondWaveAt, style: 'steady' });
+      // The men mill about until Cassian forms them up.
+      me.setup.startFormation = 'swarm';
+      const first = raiders('Vikings', 'viking', STORY_BATTLE.bridgeWave, RIVER_POINTS.firstWave);
+      const second = raiders('More Vikings', 'viking', STORY_BATTLE.bridgeSecondWave, RIVER_POINTS.secondWave);
       const goal: BattleGoal = { kind: 'hold', seconds: STORY_BATTLE.bridgeHold, label: 'last cart over in' };
       return { ...base, goal, settings: settings('river', [me.setup, first, second]), legionNames: me.legionNames };
     }
     case 'dark-forest': {
       const me = cassian(save, chapter, FOREST_POINTS.column, heroes, true);
-      const north = army({ name: 'Vikings', team: 1, faction: 'viking', soldiers: STORY_BATTLE.ambushSide, spawn: FOREST_POINTS.ambushNorth, style: 'charge' });
-      const south = army({ name: 'Vikings', team: 1, faction: 'viking', soldiers: STORY_BATTLE.ambushSide, spawn: FOREST_POINTS.ambushSouth, style: 'charge' });
-      return { ...base, time: 'night', settings: settings('forest', [me.setup, north, south]), legionNames: me.legionNames };
+      const north = raiders('Vikings', 'viking', STORY_BATTLE.ambushSide, FOREST_POINTS.ambushNorth);
+      const south = raiders('Vikings', 'viking', STORY_BATTLE.ambushSide, FOREST_POINTS.ambushSouth);
+      return { ...base, time: 'night', settings: settings('forest', [me.setup, north, south], STORY_BATTLE.ambushWarning), legionNames: me.legionNames };
     }
     case 'outpost': {
       const me = cassian(save, chapter, NORTH_POINTS.outpostApproach, heroes, true);
-      const outpost = army({ name: 'The Outpost', team: 1, faction: 'viking', soldiers: STORY_BATTLE.outpost, spawn: NORTH_POINTS.outpost, style: 'patient' });
+      const outpost = raiders('The Outpost', 'viking', STORY_BATTLE.outpost, NORTH_POINTS.outpost);
       return { ...base, settings: settings('north', [me.setup, outpost]), legionNames: me.legionNames };
     }
     case 'night-raid': {
       const me = cassian(save, chapter, NORTH_POINTS.camp, heroes, true);
-      const first = army({ name: 'Raiders', team: 1, faction: 'viking', soldiers: STORY_BATTLE.nightRaidFirst, spawn: NORTH_POINTS.raidNorth, style: 'charge' });
-      const second = army({ name: 'Raiders', team: 1, faction: 'viking', soldiers: STORY_BATTLE.nightRaidSecond, spawn: NORTH_POINTS.raidEast, arriveAt: STORY_BATTLE.nightRaidSecondAt, style: 'charge' });
+      const first = raiders('Raiders', 'viking', STORY_BATTLE.nightRaidFirst, NORTH_POINTS.raidNorth);
+      const second = raiders('Raiders', 'viking', STORY_BATTLE.nightRaidSecond, NORTH_POINTS.raidEast);
       const goal: BattleGoal = { kind: 'hold', seconds: STORY_BATTLE.nightRaidHold, label: 'dawn in' };
       return { ...base, goal, time: 'night', settings: settings('north', [me.setup, first, second]), legionNames: me.legionNames };
     }
@@ -276,7 +336,8 @@ export function campaignBattle(chapter: ChapterId, save: CampaignSave): Campaign
         spawn: FORTRESS_POINTS.horde,
         commander: true,
         commanderToughness: STORY_BATTLE.hrolfToughness,
-        style: 'steady',
+        style: 'rush',
+        horde: STORY_BATTLE.weakling,
         looks: { commander: STORY_LOOKS.hrolf },
       });
       return {

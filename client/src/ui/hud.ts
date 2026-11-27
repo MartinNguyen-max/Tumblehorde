@@ -116,6 +116,7 @@ export class Hud {
   private readonly cmds = byId('hud-cmds');
   private readonly splitLabel = byId('hud-split-label');
   private readonly splitCmd = byId('hud-split');
+  private readonly splitCheat = byId('cheat-split');
   private readonly advanceCmd = byId('hud-advance');
   private readonly volleyCmd = byId('hud-volley');
   private readonly volleyLabel = byId('hud-volley-label');
@@ -192,6 +193,7 @@ export class Hud {
     this.prepareTime = prepareTime;
     // The campaign keeps the army whole.
     this.splitCmd.hidden = story !== null;
+    this.splitCheat.hidden = story !== null;
     this.objective.hidden = true;
     for (const tag of this.nameTags.values()) tag.remove();
     this.nameTags.clear();

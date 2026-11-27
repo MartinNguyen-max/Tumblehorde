@@ -935,3 +935,53 @@ kbd {
 .name-tag.foe {
   color: #ffb0a0;
 }
+
+/* Battle hints in the campaign: a line under the objective, an arrow on the command. */
+.tutorial-hint {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 10px 18px;
+  border-radius: 12px;
+  background: rgba(20, 16, 10, 0.82);
+  border: 2px solid #ffd23a;
+  color: #fff6d8;
+  font-weight: 700;
+  font-size: 15px;
+  text-align: center;
+  z-index: 40;
+  pointer-events: none;
+  animation: tutorial-in 0.35s ease-out;
+}
+.tutorial-hint.done {
+  border-color: #6ad06a;
+  color: #d8ffd8;
+}
+.tutorial-hint.done::before {
+  content: '✔ ';
+}
+.tutorial-arrow {
+  position: fixed;
+  transform: translate(-50%, -100%);
+  color: #ffd23a;
+  font-size: 34px;
+  line-height: 1;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+  z-index: 40;
+  pointer-events: none;
+  animation: tutorial-bob 0.7s ease-in-out infinite alternate;
+}
+.cmd.tutorial-target {
+  border-color: #ffd23a;
+  box-shadow: 0 0 0 3px rgba(255, 210, 58, 0.55), 0 0 18px rgba(255, 210, 58, 0.7);
+}
+@keyframes tutorial-bob {
+  from { margin-top: -14px; }
+  to { margin-top: -2px; }
+}
+@keyframes tutorial-in {
+  from { opacity: 0; transform: translate(-50%, -8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}

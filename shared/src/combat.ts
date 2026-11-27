@@ -107,12 +107,13 @@ export function applyHit(
   // A drunk's blow still glances off the shield, but no shield wall holds against it.
   const drunkBlow = source.attacker?.drunk === true;
   const brave = source.attacker !== null && courageous(state, source.attacker);
+  const horde = source.attacker !== null && source.attacker.kind !== 'commander' ? (state.settings.armies[source.attacker.armyId]?.horde?.damage ?? 1) : 1;
   const steady = courageous(state, target);
   const wall = blocked && !drunkBlow && inShieldWall(state, target);
   const block = shieldBlock(target);
   const blockFraction = (wall ? block.wall : block.alone) * kitOf(state, target.armyId).block;
   const strength =
-    damage * (drunkBlow ? BANQUET.damageDealtFactor : 1) * (target.drunk ? BANQUET.damageTakenFactor : 1) * (brave ? RALLY.damageFactor : 1) * kitOf(state, source.armyId).damage;
+    damage * (drunkBlow ? BANQUET.damageDealtFactor : 1) * (target.drunk ? BANQUET.damageTakenFactor : 1) * (brave ? RALLY.damageFactor : 1) * kitOf(state, source.armyId).damage * horde;
   const dealt = blocked ? strength * Math.max(1 - blockFraction, source.pierce ?? 0) : strength;
   let factor = source.shovesThroughShield ? 1 : wall ? 0 : blocked ? SHIELD.blockedKnockbackFactor : 1;
   if (drunkBlow) factor *= BANQUET.strikeKnockbackFactor;

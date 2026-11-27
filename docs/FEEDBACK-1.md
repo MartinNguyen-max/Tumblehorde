@@ -27,9 +27,9 @@ the city falling and the aftermath, and Livia tells Cassian later.
 - [x] Fights a bit longer but still easy; a livelier crowd
 
 ## 4. Battles
-- [ ] Many more enemies in the campaign, each weaker; they rush together, disorganized
-- [ ] Forest road: the fight is already on when it starts, Cassian starts further away and runs over
-- [ ] Tutorial hints with arrows on the commands: Follow in the first fight with Varro; at the bridge the men start out of order and Cassian is told to hold 2 and pick Two lines; in the ambush, hold 2 and pick Circle around me
+- [x] Many more enemies in the campaign, each weaker; they rush together, disorganized
+- [x] Forest road: the fight is already on when it starts, Cassian starts further away and runs over
+- [x] Tutorial hints with arrows on the commands: Follow in the first fight with Varro; at the bridge the men start out of order and Cassian is told to hold 2 and pick Two lines; in the ambush, hold 2 and pick Circle around me
 
 ## 5. The capital
 - [ ] Cobblestones, narrow streets, one big busy square, better houses (whole, with roofs and doors), soldiers on patrol, more people and life

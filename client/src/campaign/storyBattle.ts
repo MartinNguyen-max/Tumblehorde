@@ -10,6 +10,7 @@ import {
 import type { LocalSession } from '../game/session.ts';
 import type { World } from '../render/world.ts';
 import { BattleSet } from './battleSet.ts';
+import { TutorialHint } from './tutorialHint.ts';
 
 /** The campaign's battle host (main.ts): runs a battle on the battle screen and calls back once it is over. */
 export interface StoryBattleHost {
@@ -38,6 +39,7 @@ export class StoryBattle {
   private readonly battle: CampaignBattle;
   private readonly set: BattleSet;
   private readonly session: LocalSession;
+  private readonly hint: TutorialHint;
   private ended = false;
   /** The result at the moment a goal decided the battle: nobody who falls after the clock ran out counts. */
   private decided: BattleResult | null = null;
@@ -57,6 +59,7 @@ export class StoryBattle {
       burning: battle.chapter === 'burning-village',
       torches: TORCHES[battle.chapter] ?? [],
     });
+    this.hint = new TutorialHint(battle.tutorial);
   }
 
   private objective(view: MatchView): string {
@@ -68,6 +71,7 @@ export class StoryBattle {
   /** Called every frame; the battle itself is run by the battle screen. */
   update(dt: number): void {
     this.set.update(dt);
+    if (!this.ended) this.hint.update(dt, this.session.match);
     this.checkGoal();
   }
 
@@ -83,5 +87,6 @@ export class StoryBattle {
   /** Takes down the light, fire and torches; the battle screen is closed by the host. */
   dispose(): void {
     this.set.dispose();
+    this.hint.dispose();
   }
 }
