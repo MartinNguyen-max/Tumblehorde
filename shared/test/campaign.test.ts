@@ -98,3 +98,14 @@ describe('save', () => {
     expect(parseSave({ ...good, choices: { eirikSpared: null, hrolfSpared: null, lastStand: 'roof' } })).toBeNull();
   });
 });
+
+describe('save of the fallen', () => {
+  it('keeps the last battle\'s fallen for the roll call, and reads older saves without them', () => {
+    const save = { ...newSave(0), fallen: ['Titus', 'Gaius'] };
+    expect(parseSave(JSON.parse(JSON.stringify(save)))?.fallen).toEqual(['Titus', 'Gaius']);
+    const older = JSON.parse(JSON.stringify(newSave(0))) as Record<string, unknown>;
+    delete older.fallen;
+    expect(parseSave(older)?.fallen).toEqual([]);
+    expect(parseSave({ ...older, fallen: [3] })).toBeNull();
+  });
+});

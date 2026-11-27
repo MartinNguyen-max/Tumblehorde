@@ -119,7 +119,7 @@ export class CutscenePlayer {
     for (const { beat: index, skipped } of step.ended) {
       const beat = this.beats[index];
       if (!beat) continue;
-      if (skipped) {
+      if (skipped && !this.unseen.has(index)) {
         beat.during?.(stage, 1);
         stage.finishMoves();
       }

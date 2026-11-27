@@ -35,6 +35,8 @@ export interface CampaignSave {
   gear: CampaignGear;
   choices: CampaignChoices;
   legion: Legionary[];
+  /** Legionaries who fell in the last battle, read out at the next roll call. */
+  fallen: string[];
   /** Livia's letters read so far. */
   letters: number;
   /** Wall-clock time of the save (ms since 1970), for the "Continue" button. */
@@ -51,6 +53,7 @@ export function newSave(now: number): CampaignSave {
     gear: { armor: false, shield: false, sword: false, dracoSword: false },
     choices: { eirikSpared: null, hrolfSpared: null, lastStand: null },
     legion: createLegion(),
+    fallen: [],
     letters: 0,
     savedAt: now,
   };
@@ -117,5 +120,14 @@ export function parseSave(value: unknown): CampaignSave | null {
   const choices = parseChoices(value.choices);
   const legion = parseLegion(value.legion);
   if (!gear || !choices || !legion) return null;
-  return { version: CAMPAIGN.saveVersion, chapter, gold, strength, workouts, gear, choices, legion, letters, savedAt };
+  const fallen = parseNames(value.fallen);
+  if (!fallen) return null;
+  return { version: CAMPAIGN.saveVersion, chapter, gold, strength, workouts, gear, choices, legion, fallen, letters, savedAt };
+}
+
+/** A list of names; saves from before the roll call was kept have none. */
+function parseNames(value: unknown): string[] | null {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || !value.every((v): v is string => typeof v === 'string')) return null;
+  return [...value];
 }

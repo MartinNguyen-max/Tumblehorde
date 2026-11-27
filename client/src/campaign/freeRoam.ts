@@ -37,6 +37,7 @@ import type { Actor, ActorLook } from '../cinematic/actor.ts';
 import type { CinematicOverlay } from '../cinematic/overlay.ts';
 import type { CinematicSound } from '../cinematic/script.ts';
 import { Stage } from '../cinematic/stage.ts';
+import { CAST } from '../cinematic/cast.ts';
 import { SMALL_TALK } from './dialogues.ts';
 import type { DistrictSet, Spot } from './districts.ts';
 
@@ -62,6 +63,8 @@ const VIEW = {
   fov: 0.8,
 } as const;
 const PUNCH_TIME = 0.32;
+/** How long a line of talk is voiced: by its length, up to a few seconds. */
+const TALK_VOICE = { maxSeconds: 3, charsPerSecond: 14 } as const;
 const NPC_TURN_RATE = 8;
 const PLAYER_NAME = 'Cassian';
 /** Idle townsfolk turn their heads to the player when this close. */
@@ -142,7 +145,7 @@ export class FreeRoam {
     this.walker = { pos: { x: set.start.x, z: set.start.z }, yaw: set.start.yaw, speed: 0 };
     this.yaw = set.start.yaw;
     this.player = stage.actor(PLAYER_NAME, playerLook);
-    this.player.voice = { pitch: 175, rate: 0.12 };
+    this.player.voice = CAST.cassianPrisoner.voice;
     this.npcs = set.people.map((spec, i) => createNpc(i, spec));
     this.npcActors = set.people.map((spec, i) => {
       const actor = stage.actor(`${spec.name}#${i}`, spec.look);
@@ -307,7 +310,7 @@ export class FreeRoam {
     if (!actor) return;
     actor.setMood(line.mood ?? 'neutral');
     actor.talking = true;
-    this.deps.sound?.speak(actor.voice, line.mood ?? 'neutral', Math.min(3, line.text.length / 14));
+    this.deps.sound?.speak(actor.voice, line.mood ?? 'neutral', Math.min(TALK_VOICE.maxSeconds, line.text.length / TALK_VOICE.charsPerSecond));
   }
 
   private closeTalk(): void {

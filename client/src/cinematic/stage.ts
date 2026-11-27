@@ -181,11 +181,8 @@ export class Stage {
   flame(parent: TransformNode, size = 0.22): void {
     const parts = this.world.parts;
     const flames = FLAME_COLORS.map((color, i) => {
-      const material = parts.material(color);
-      material.emissiveColor = Color3.FromHexString(color);
-      material.disableLighting = true;
       const s = size * (1 - i * 0.25);
-      return parts.part('box', color, parent, [s, s * 1.5, s], [0, size * 0.6 + i * size * 0.35, 0], { castShadow: false });
+      return parts.part('box', color, parent, [s, s * 1.5, s], [0, size * 0.6 + i * size * 0.35, 0], { castShadow: false, glow: true });
     });
     this.animate((_dt, time) => {
       flames.forEach((f, i) => {
@@ -200,12 +197,9 @@ export class Stage {
     const flames: InstancedMesh[] = [];
     const parts = this.world.parts;
     FLAME_COLORS.forEach((color, i) => {
-      const material = parts.material(color);
-      material.emissiveColor = Color3.FromHexString(color);
-      material.disableLighting = true;
       for (let k = 0; k < 3; k++) {
         const s = size * (0.5 - i * 0.12) * (0.8 + k * 0.15);
-        const mesh = parts.part('box', color, this.root, [s, s * 1.4, s], [x + (k - 1) * size * 0.18, y + s * 0.6 + i * size * 0.2, z + ((k * 7) % 3 - 1) * size * 0.12], { castShadow: false });
+        const mesh = parts.part('box', color, this.root, [s, s * 1.4, s], [x + (k - 1) * size * 0.18, y + s * 0.6 + i * size * 0.2, z + ((k * 7) % 3 - 1) * size * 0.12], { castShadow: false, glow: true });
         mesh.rotation.y = k * 0.7 + i;
         flames.push(mesh);
       }
@@ -225,13 +219,9 @@ export class Stage {
     this.weatherKind = kind;
     if (kind === 'none') return;
     const spec = WEATHER[kind];
-    const material = this.world.parts.material(spec.color);
-    if (kind === 'embers' || kind === 'motes') {
-      material.emissiveColor = Color3.FromHexString(spec.color);
-      material.disableLighting = true;
-    }
+    const glow = kind === 'embers' || kind === 'motes';
     for (let i = 0; i < spec.count; i++) {
-      const mesh = this.world.parts.part('box', spec.color, this.root, spec.size, [0, 0, 0], { castShadow: false });
+      const mesh = this.world.parts.part('box', spec.color, this.root, spec.size, [0, 0, 0], { castShadow: false, glow });
       mesh.position.set((Math.random() - 0.5) * spec.spread * 2, Math.random() * spec.height, (Math.random() - 0.5) * spec.spread * 2);
       this.flakes.push({ mesh, phase: Math.random() * Math.PI * 2 });
     }
