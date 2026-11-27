@@ -162,7 +162,7 @@ describe('the story battles', () => {
     const marcus = campaignBattle('brothers', { ...saveAt('brothers'), choices: { eirikSpared: null, hrolfSpared: null, son: 'marcus' } })!;
     expect(marcus.settings.armies[0]!.name).toBe('Marcus');
     expect(marcus.tutorial[0]!.points).toBe('attack');
-    expect(lucius.tutorial[0]!.done).toEqual({ formation: 'square' });
+    expect(lucius.tutorial.some((step) => 'formation' in step.done)).toBe(false);
     expect(marcus.settings.armies[0]!.isBot).toBe(false);
     const dead = marcus.settings.armies.find((a) => a.faction === 'zombie')!;
     expect(dead.team).toBe(marcus.settings.armies[0]!.team);

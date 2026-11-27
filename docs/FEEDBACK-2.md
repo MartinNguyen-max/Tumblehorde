@@ -12,10 +12,10 @@ The player played again after round 1. Work list; items are ticked as they land.
 
 ## Battles
 - [ ] The burning village: smoke seen from afar, the Vikings surrounding the Romans, then Cassian joins; Vikings and Romans easy to tell apart
-- [ ] More time to form the circle in the ambush
+- [x] More time to form the circle in the ambush
 - [ ] Scenes before each fight (bridge, outpost, the night camp...) with a reason and a transition
-- [ ] The last battle against Hrolf is hard: the legion loses many men
-- [ ] The formation hint only the first time it is taught
+- [x] The last battle against Hrolf is hard: the legion loses many men
+- [x] The formation hint only the first time it is taught
 - [ ] The Mongols fought on a truly open field (no fences)
 - [ ] Holding the capital is hard: almost everyone dies; Marcus and his riders do not get stuck
 

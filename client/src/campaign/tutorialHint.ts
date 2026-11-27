@@ -29,6 +29,7 @@ export class TutorialHint {
   private wait: number = TUTORIAL_HINT.firstDelay;
   private finishing = 0;
   private target: HTMLElement | null = null;
+  private readonly formationTip: HTMLElement | null;
 
   constructor(steps: readonly TutorialStep[]) {
     this.steps = steps;
@@ -40,6 +41,9 @@ export class TutorialHint {
     this.arrow.textContent = '▼';
     this.arrow.hidden = true;
     document.body.append(this.box, this.arrow);
+    // "Keep down: formations" is only spelled out in the battle that teaches it.
+    this.formationTip = document.querySelector<HTMLElement>('.cmd[data-order="hold"] .sub');
+    if (this.formationTip) this.formationTip.hidden = !steps.some((step) => 'formation' in step.done);
   }
 
   update(dt: number, state: MatchState): void {
@@ -96,6 +100,7 @@ export class TutorialHint {
   }
 
   dispose(): void {
+    if (this.formationTip) this.formationTip.hidden = false;
     this.hideArrow();
     this.box.remove();
     this.arrow.remove();

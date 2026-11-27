@@ -77,12 +77,14 @@ export const STORY_BATTLE = {
   nightRaidSecond: 32,
   nightRaidHold: 150,
   alliedArmy: 20,
-  horde: 130,
+  horde: 150,
+  /** Hrolf's own warriors are no raiders: the last battle costs the legion dearly. */
+  hrolfsHost: { hp: 0.4, damage: 0.4 },
   hrolfToughness: 3,
   /** A veteran legionary's hit points, times this. */
   veteranToughness: 1.2,
-  /** Seconds between the ambush scene and the charge: just enough to form a ring. */
-  ambushWarning: 4,
+  /** Seconds between the ambush scene and the charge: time to read the hint and form a ring. */
+  ambushWarning: 12,
   /** The Mongols: riders, fewer than the Vikings but tougher than raiders on foot, and a second band on the flank. */
   mongolRiders: 28,
   mongolFlank: 16,
@@ -262,7 +264,6 @@ const TUTORIALS: Partial<Record<ChapterId, readonly TutorialStep[]>> = {
   ],
   'dark-forest': [{ text: 'Ambush! They are all around you. Keep 2 held down and pick Circle around me.', points: 'hold', done: { formation: 'circle' } }],
   'last-battle': [{ text: 'Press 6 for a rally speech: your legion fights with courage.', points: 'rally', done: { seconds: 10 } }],
-  'open-field': [{ text: 'Riders! Keep 2 held down and pick Square: horses will not charge into a hedge of spears.', points: 'hold', done: { formation: 'square' } }],
 };
 
 /** True once the player has done what a hint asks (or it has been up long enough). */
@@ -387,7 +388,7 @@ function buildBattle(chapter: ChapterId, save: CampaignSave): CampaignBattle | n
         commander: true,
         commanderToughness: STORY_BATTLE.hrolfToughness,
         style: 'rush',
-        horde: STORY_BATTLE.weakling,
+        horde: STORY_BATTLE.hrolfsHost,
         looks: { commander: STORY_LOOKS.hrolf },
       });
       return {
@@ -453,10 +454,7 @@ const BROTHERS_HINTS: Record<'marcus' | 'lucius', readonly TutorialStep[]> = {
     { text: 'The dead fight on their own. Your riders are yours: press 3 to send them in.', points: 'attack', done: { order: 'attack' } },
     { text: 'Find Lucius. When the emperor falls, the city is yours.', points: null, done: { seconds: 8 } },
   ],
-  lucius: [
-    { text: 'Riders from the south, the dead from the east. Keep 2 held down and pick Square: shields on every side.', points: 'hold', done: { formation: 'square' } },
-    { text: 'When the dead reach you, press 6 for a rally speech.', points: 'rally', done: { seconds: 10 } },
-  ],
+  lucius: [{ text: 'When the dead reach you, press 6 for a rally speech.', points: 'rally', done: { seconds: 10 } }],
 };
 
 /**
