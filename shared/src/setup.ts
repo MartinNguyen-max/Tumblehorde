@@ -1,6 +1,6 @@
 import type { FighterKit } from './campaign/arena.ts';
 import { staggerThinking } from './ai.ts';
-import { ARMY, FORMATION, MAP, BODY } from './config.ts';
+import { ARMY, FORMATION, HERO, MAP, BODY } from './config.ts';
 import { formationSlots, holdSlots } from './formation.ts';
 import { centroid, groupForKind } from './orders.ts';
 import { yawToDir, type Vec2, type Vec3 } from './math.ts';
@@ -107,6 +107,10 @@ function createArmy(
     const soldier = addUnit(state, (id) => createUnit(id, kind, armyId, groundPos(settings, slot.x, slot.z), spawn.yaw, faction));
     soldier.group = groupForKind(kind, ARMY_GROUPS);
     soldier.hero = setup?.heroes?.[i] ?? null;
+    if (soldier.hero !== null) {
+      soldier.maxHp *= HERO.toughness;
+      soldier.hp = soldier.maxHp;
+    }
     soldierIds.push(soldier.id);
     soldiers.push(soldier);
     if (kind === 'rider') {

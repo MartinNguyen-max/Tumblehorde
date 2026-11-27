@@ -328,6 +328,8 @@ export const HERO = {
   getUpTime: 9,
   /** They come back with this share of their hit points. */
   getUpHealth: 0.6,
+  /** Heroes are tougher than the soldiers around them: their hit points, times this. */
+  toughness: 1.5,
 } as const;
 
 export const ARCHER = {

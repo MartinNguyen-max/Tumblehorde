@@ -276,6 +276,8 @@ async function boot(): Promise<void> {
         campaign,
         chapter: (id: Parameters<Campaign['startAt']>[0]) => {
           enterCampaign();
+          // Jumping chapters mid-scene: whatever was playing stops first.
+          campaign.stop();
           campaign.startAt(id);
         },
         fps: () => world.engine.getFps(),
