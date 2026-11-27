@@ -22,6 +22,7 @@ Updated as work progresses. ✅ done · 🚧 in progress · ⬜ not started.
 | M12 The capital | ✅ | Walkable capital district (forum, forge, bakery, training yard, festival street, skyline and Colosseum beyond) with 21 townsfolk; Varro's job and shop (armor, shield, sword); workout at the stone (+1 strength, 3 times); three arena fights in the Colosseum (3 poor men, 3 trained fighters, optional Draco) with a crowd, purses 25/40/60 and Draco's sword |
 | M13 Campaign chapters | ✅ | All 21 chapters playable from the prologue to the end: 22 cutscenes (the prologue in four parts, the arena, the forge, the forest road, the campfire, roll calls of the fallen, the burning village with Eirik's choice, the Emperor, the ruins, Varro's death, Livia's two letters, the rally speech, Hrolf's mirror and choice, peace, the last night with the last-stand choice, the end) and the story battles (session 1) |
 | M14 Polish | 🚧 | Full play-through, balance, independent review, docs |
+| M14 Polish | 🚧 | Done: independent reviews of both sessions' code with fixes, full campaign play-through in the browser passes (tools/campaign-playthrough.json). Left: the player listens to music and voices and plays it through; balance and camera tweaks from that feedback |
 
 The simulation for all unit types lives in `/shared` and is covered by Vitest
 (`npm test`). The online flow is covered by `npm run smoke -w server` against a

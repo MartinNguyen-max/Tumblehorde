@@ -76,3 +76,31 @@ reuse the existing part builders in `client/src/render/parts.ts` from new files 
 with `git fetch && git show origin/<your branch>:docs/BOARD.md`. Read the other branch's board at the
 start of every step; append a dated line to yours when you finish a milestone, need something from
 the other session, or edited one of its files. Keep entries short.
+
+## Status for the next session (2026-11-27, written by session 2)
+
+**Where things stand:** M9–M13 are done and M14 is mostly done. Both branches are pushed: `campaign` (session 2) has merged everything in `main`. Session 1 merges `campaign` into `main` when it gets there.
+
+**Checks that must pass before a commit:**
+- `npm run check`: typecheck and 262 tests.
+- With `npm run dev` running: `CHROME="<path to chrome>" node tools/browser-check.mjs tools/campaign-playthrough.json <outdir>`. This plays the whole campaign headless; it must end at `the-end:idle` with `errors: []`. `CHROME` defaults to `google-chrome` (Linux); on Windows use `C:/Program Files/Google/Chrome/Application/chrome.exe`.
+
+**Where to look:**
+- Story order and chapters: `shared/src/campaign/chapters.ts`.
+- Scenes played per chapter: `client/src/campaign/storyScenes.ts`.
+- The scenes themselves: `client/src/cinematic/scenes/*.ts`.
+- Who looks like what: `client/src/cinematic/cast.ts`.
+- Battles (session 1): `shared/src/campaign/battles.ts` and `client/src/campaign/storyBattle.ts`.
+- Flow, saving and cards: `client/src/campaign/campaign.ts`.
+- Decisions so far: `docs/DECISIONS.md`. The newest sections are at the bottom.
+
+**Debug tools:** open the game with `?debug`. Then `tumblehorde.chapter('<id>')` jumps to a chapter, and `tumblehorde.cutscene('<scene id>')` plays one scene.
+
+**What is left (M14):**
+1. The player listens to the cutscene music, the voices and the effects (Claude cannot hear them) and gives feedback.
+2. The player plays the campaign and reports camera shots that look wrong. Close-ups are automatic (`portrait`, `overShoulder`, `unblock` in `client/src/cinematic/shot.ts`); a bad one is fixed in its scene file.
+3. Balance arena fights from play (`shared/src/campaign/economy.ts`: opponents' kits, prices, workout) and battles (session 1).
+4. Known small gap: `client/src/campaign/battleSet.ts:80` changes shared matte materials to glow, the same mistake the review found in the cutscene code. Fix it with the `glow` part option.
+5. Final pass on docs (README, GDD) once feedback is in.
+
+**Working rules the player gave:** work autonomously through milestones without asking about design details. Record judgement calls as new lines in `DECISIONS.md`. Commit and push after each step. Use the board for notes to the other session.
