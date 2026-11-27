@@ -1,7 +1,7 @@
 import { type InstancedMesh, type Scene, TransformNode, Vector3 } from '../render/babylon.ts';
 import { childNode, type PartFactory, type PartOptions } from '../render/parts.ts';
 import type { Mood } from '@tumblehorde/shared';
-import { ACTOR, CLOTH, FACE, HAIR, SKIN } from './config.ts';
+import { ACTOR, CLOTH, DRESS, FACE, HAIR, SKIN } from './config.ts';
 import type { VoiceSpec } from './script.ts';
 
 /**
@@ -504,6 +504,11 @@ function isRobed(outfit: Outfit): boolean {
   return outfit === 'monk' || outfit === 'abbot' || outfit === 'emperor' || outfit === 'healer';
 }
 
+/** Women wear the healer's dress; their faces and hair get a woman's touches. */
+export function isFeminine(look: ActorLook): boolean {
+  return look.outfit === 'healer';
+}
+
 export function clothOf(look: ActorLook): { main: string; dark: string; sleeve: string } {
   switch (look.outfit) {
     case 'monk':
@@ -603,8 +608,12 @@ function addTorso(parts: PartFactory, torso: TransformNode, look: ActorLook): vo
       parts.part('box', CLOTH.gold, torso, [0.82, 0.06, 0.56], [0, -0.34, 0], METAL);
       return;
     case 'healer':
-      parts.part('box', cloth.main, torso, [0.8, 0.5, 0.54], [0, -0.12, 0], GLOSS);
-      parts.part('box', cloth.dark, torso, [0.5, 0.8, 0.03], [0, 0.08, 0.27], GLOSS);
+      // A long dress: fitted at the waist with a sash, the skirt flaring down to the ankles.
+      parts.part('box', cloth.main, torso, [0.86, 0.36, 0.6], [0, -0.1, 0], GLOSS);
+      parts.part('box', cloth.main, torso, [0.98, 0.42, 0.7], [0, -0.46, 0], GLOSS);
+      parts.part('box', DRESS.sash, torso, [0.8, 0.09, 0.54], [0, 0.12, 0], GLOSS);
+      parts.part('box', DRESS.sash, torso, [0.12, 0.3, 0.04], [0.22, -0.04, 0.28], SMALL);
+      parts.part('box', cloth.dark, torso, [0.42, 0.18, 0.03], [0, 0.66, 0.26], SMALL);
       return;
     case 'villager':
       parts.part('box', cloth.main, torso, [0.8, 0.2, 0.52], [0, 0.02, 0], GLOSS);
@@ -657,6 +666,13 @@ function addFace(parts: PartFactory, head: TransformNode, skin: string, look: Ac
   const corners: InstancedMesh[] = [];
   parts.part('box', FACE.mouth, head, [0.08, 0.03, 0.02], [0, MOUTH_Y, FZ + 0.03], SMALL);
   for (const side of [-1, 1]) corners.push(parts.part('box', FACE.mouth, head, [0.05, 0.03, 0.02], [side * 0.06, MOUTH_Y, FZ + 0.03], SMALL));
+  if (isFeminine(look)) {
+    for (const side of [-1, 1]) {
+      parts.part('box', FACE.lashes, head, [0.05, 0.03, 0.02], [side * (EYE_X + 0.075), EYE_Y + 0.07, FZ + 0.02], SMALL).rotation.z = side * -0.5;
+      parts.part('box', FACE.earring, head, [0.05, 0.08, 0.05], [side * (HEAD / 2 + 0.02), -0.1, 0.02], { metal: true, castShadow: false });
+    }
+    parts.part('box', FACE.lips, head, [0.12, 0.035, 0.02], [0, MOUTH_Y, FZ + 0.032], SMALL);
+  }
   const mouthOpen = parts.part('box', FACE.mouthInside, head, [0.14, 1, 0.02], [0, MOUTH_Y, FZ + 0.035], SMALL);
   mouthOpen.setEnabled(false);
   addBeard(parts, head, look);
@@ -697,6 +713,12 @@ function addHair(parts: PartFactory, head: TransformNode, look: ActorLook): void
       parts.part('box', color, head, [HEAD + 0.06, 0.62, 0.1], [0, -0.05, -half - 0.03], GLOSS);
       for (const side of [-1, 1]) parts.part('box', color, head, [0.08, 0.5, 0.3], [side * (half + 0.03), -0.02, -0.12], GLOSS);
       if (style === 'braids') for (const side of [-1, 1]) parts.part('box', color, head, [0.08, 0.42, 0.08], [side * (half + 0.03), -0.42, 0.06], GLOSS);
+      if (isFeminine(look)) {
+        // Hair down past the shoulders, a bun on top, a flower over one ear.
+        parts.part('box', color, head, [HEAD + 0.02, 0.4, 0.12], [0, -0.52, -half - 0.02], GLOSS);
+        parts.part('box', color, head, [0.26, 0.2, 0.24], [0, half + 0.12, -0.12], GLOSS);
+        parts.part('box', DRESS.flower, head, [0.12, 0.12, 0.08], [half + 0.04, 0.12, 0.06], SMALL);
+      }
       return;
   }
 }

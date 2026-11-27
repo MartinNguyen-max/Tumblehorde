@@ -181,7 +181,7 @@ const PEOPLE: readonly Townsperson[] = [
   seller(24, STALLS[5]),
   {
     role: 'citizen', name: 'Priest', home: { x: 0, z: -E + 7.5 }, yaw: 0, stationary: true,
-    look: { outfit: 'healer', color: '#EDE8DC', hair: HAIR.grey, hairStyle: 'bald', beard: 'short', beardColor: HAIR.grey, age: 'old' }, voice: { pitch: 120, rate: 0.13 },
+    look: { outfit: 'abbot', hair: HAIR.grey, hairStyle: 'bald', beard: 'short', beardColor: HAIR.grey, age: 'old' }, voice: { pitch: 120, rate: 0.13 },
   },
   guard('Guard', 0, { x: -1.8, z: E - 6.5 }, undefined, Math.PI),
   guard('Guard', 1, { x: 1.8, z: E - 6.5 }, undefined, Math.PI),

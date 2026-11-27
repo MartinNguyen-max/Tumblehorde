@@ -56,7 +56,14 @@ export const FACE = {
   blush: '#F08A8A',
   blood: '#9C1E1E',
   scar: '#B0685A',
+  /** Women's faces: lashes, rosy lips and gold earrings. */
+  lashes: '#1B1B22',
+  lips: '#C2525E',
+  earring: '#E0B040',
 } as const;
+
+/** A woman's dress: a sash at the waist, a hair flower. */
+export const DRESS = { sash: '#E8DCC4', flower: '#F06A8A' } as const;
 
 /** How fast faces and limbs move to their targets (per second, exponential). */
 export const ACTOR = {

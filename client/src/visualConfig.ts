@@ -392,6 +392,9 @@ export const FIRE = {
   torchHeight: 2.2,
   /** Flames on a burning house start this big, and smoke rises above them. */
   houseFlame: 2.2,
+  /** Fires on the ground next to burning houses: how big, and how far from the wall. */
+  groundFlame: 1.3,
+  groundFireGap: 1.6,
   smokeLife: 4,
   smokeRise: 9,
   smokeDrift: 3,

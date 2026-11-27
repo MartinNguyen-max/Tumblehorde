@@ -115,6 +115,8 @@ const LETTER_ONE = `Cassian,
 
 The city is quiet without your army in it. Today I bandaged a baker who swore he had fought beside you. I let him keep the lie.
 
+Is the ribbon still on your wrist? Tell Rufus his splinter has become a legend at the infirmary.
+
 Eat. Sleep. Come back.
 
 Livia`;

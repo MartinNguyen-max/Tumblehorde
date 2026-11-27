@@ -23,11 +23,16 @@ export class BattleSet {
     for (const t of options.torches) this.addTorch(map, t.x, t.z);
   }
 
-  /** Flames on the roof of every other house, licking up and down. */
+  /** Flames on the roof of every house and fires on the ground beside them, licking up and down. */
   private setHousesAlight(map: MapId): void {
     mapStructures(map)
-      .filter((s, i) => s.kind === 'house' && i % 2 === 0)
+      .filter((s) => s.kind === 'house')
       .forEach((s, i) => {
+        // A burning heap (hay, a cart, a fence) beside the house.
+        const side = i % 2 === 0 ? 1 : -1;
+        const gx = s.x + side * (s.width / 2 + FIRE.groundFireGap) * Math.cos(s.yaw);
+        const gz = s.z - side * (s.width / 2 + FIRE.groundFireGap) * Math.sin(s.yaw);
+        this.addFlame(gx, terrainHeightAt(map, gx, gz), gz, FIRE.groundFlame);
         const ground = terrainHeightAt(map, s.x, s.z);
         for (let k = 0; k < 3; k++) {
           const offset = (k - 1) * Math.min(s.width, s.depth) * 0.3;

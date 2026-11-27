@@ -36,13 +36,13 @@ the city falling and the aftermath, and Livia tells Cassian later.
 - [x] Moving around feels like the battle game
 
 ## 6. Scenes
-- [ ] No plain backgrounds and no visible edge of the world: backdrops, dense forests, horizons
-- [ ] Bigger, more dramatic, more exaggerated and funny
-- [ ] The raid: many ships in waves, the monastery smashed and burned, monks killed
-- [ ] The ride out through a dense forest; the nine days and the prison much more miserable, time passing
-- [ ] Bandits: more scenes, name labels on who is coming; the forest walk before the bandits; the ambush (a soldier calls Cassian and points, they burst from the trees)
-- [ ] The burning village: more detail, more fire; the Emperor: a whole huge city cheering, many soldiers; the ruins: much better
-- [ ] Livia: looks like a woman, much more story with Cassian
+- [x] No plain backgrounds and no visible edge of the world: backdrops, dense forests, horizons
+- [x] Bigger, more dramatic, more exaggerated and funny
+- [x] The raid: many ships in waves, the monastery smashed and burned, monks killed
+- [x] The ride out through a dense forest; the nine days and the prison much more miserable, time passing
+- [x] Bandits: more scenes, name labels on who is coming; the forest walk before the bandits; the ambush (a soldier calls Cassian and points, they burst from the trees)
+- [x] The burning village: more detail, more fire; the Emperor: a whole huge city cheering, many soldiers; the ruins: much better
+- [x] Livia: looks like a woman, much more story with Cassian
 
 ## 7. The new story after Hrolf
 - [ ] Hrolf tells his story; spare (he leaves) or kill; a celebration in the castle, interrupted
