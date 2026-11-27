@@ -38,22 +38,22 @@ export const varroDeath: Cutscene = {
         say: { who: 'Cassian', text: 'Varro. Varro, look at me. Rufus! Get a healer! Now!', mood: 'crying' },
       },
       {
-        shot: () => lyingFace(varro, 1.3, FOV.close),
+        shot: () => lyingFace(varro, 2.2, FOV.normal),
         run: () => varro.lookAt(cassian.headPosition()),
         say: { who: 'Varro', text: 'No healer for this one, son. Stay. Just... stay a moment.', mood: 'sad' },
       },
       {
-        shot: () => lyingFace(varro, 1.15, FOV.close),
+        shot: () => lyingFace(varro, 2.0, FOV.normal),
         run: () => varro.setMood('crying'),
         say: { who: 'Varro', text: 'I had a boy once. Lucius. A fight in the street, over nothing at all. He was nineteen.', mood: 'crying' },
       },
       {
-        shot: () => lyingFace(varro, 1.0, FOV.extreme),
+        shot: () => lyingFace(varro, 1.8, FOV.close),
         run: () => varro.setMood('warm'),
         say: { who: 'Varro', text: 'I never thought I would get another. And then you walked into my square in rags.', mood: 'warm' },
       },
       {
-        shot: () => lyingFace(varro, 0.9, FOV.extreme),
+        shot: () => lyingFace(varro, 1.6, FOV.close),
         say: { who: 'Varro', text: 'You were the gift, Cassian. You were the gift.', mood: 'warm' },
       },
       {
@@ -293,15 +293,15 @@ export const rallySpeech: Cutscene = {
         shot: () => portrait(cassian, { angle: 0.3, distance: 3, rise: -0.4 }),
         run: () => {
           for (const v of horde) v.setPose('stand');
-          horse.runTo(0, 2.2, 1.2);
+          horse.place(0, 2.2, 0);
           cassian.setPose('clutch').setMood('neutral');
         },
         say: { who: 'Cassian', text: 'Brothers! I was raised by monks. They taught me that every life is a gift.', mood: 'warm' },
       },
       {
-        shot: { from: [-4, 2.2, 8], at: [0, 2.2, 2], fov: FOV.normal },
+        shot: { from: [-3, 2.4, 6.5], at: [0, 2.0, 2.2], fov: FOV.normal },
         run: () => {
-          horse.place(0, 2.2, Math.PI);
+          horse.place(0, 2.2, 0);
           cassian.setPose('point').setMood('angry');
         },
         say: { who: 'Cassian', text: 'The men across that field want to take everything we were ever given.', mood: 'angry' },
@@ -447,5 +447,5 @@ export const hrolfMirror: Cutscene = {
 /** Looking down into the face of someone lying on their back, from just beside their head. */
 function lyingFace(actor: Actor, height: number, fov: number): Shot {
   const h = actor.settle().headPosition();
-  return { from: [h.x - 0.35, h.y + height, h.z + 0.45], at: { actor, offset: [0, 0, 0] }, fov };
+  return { from: [h.x - height * 0.25, h.y + height, h.z + height * 0.45], at: { actor, offset: [0, 0, 0] }, fov };
 }
