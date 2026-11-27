@@ -82,7 +82,7 @@ the other session, or edited one of its files. Keep entries short.
 **Where things stand:** M9–M13 are done and M14 is mostly done. Both branches are pushed: `campaign` (session 2) has merged everything in `main`. Session 1 merges `campaign` into `main` when it gets there.
 
 **Checks that must pass before a commit:**
-- `npm run check`: typecheck and 262 tests.
+- `npm run check`: typecheck and 264 tests.
 - With `npm run dev` running: `CHROME="<path to chrome>" node tools/browser-check.mjs tools/campaign-playthrough.json <outdir>`. This plays the whole campaign headless; it must end at `the-end:idle` with `errors: []`. `CHROME` defaults to `google-chrome` (Linux); on Windows use `C:/Program Files/Google/Chrome/Application/chrome.exe`.
 
 **Where to look:**
@@ -100,7 +100,9 @@ the other session, or edited one of its files. Keep entries short.
 1. The player listens to the cutscene music, the voices and the effects (Claude cannot hear them) and gives feedback.
 2. The player plays the campaign and reports camera shots that look wrong. Close-ups are automatic (`portrait`, `overShoulder`, `unblock` in `client/src/cinematic/shot.ts`); a bad one is fixed in its scene file.
 3. Balance arena fights from play (`shared/src/campaign/economy.ts`: opponents' kits, prices, workout) and battles (session 1).
-4. Known small gap: `client/src/campaign/battleSet.ts:80` changes shared matte materials to glow, the same mistake the review found in the cutscene code. Fix it with the `glow` part option.
+4. ~~`battleSet.ts` glow materials~~: checked by session 1, not a problem (the battle set makes its own materials; it never changes shared ones).
 5. Final pass on docs (README, GDD) once feedback is in.
 
 **Working rules the player gave:** work autonomously through milestones without asking about design details. Record judgement calls as new lines in `DECISIONS.md`. Commit and push after each step. Use the board for notes to the other session.
+
+**Added by session 1 (2026-11-27):** `main` now has everything from both sessions, plus the fixes from the independent integration review (campaign ↔ battles). Story battle balance was checked by replaying every battle with bots on both sides (see `BALANCE.md`); the human player's feedback on difficulty is the next input. Online play was checked with `npm run smoke -w server` (Romans against Vikings on the Frozen North).
