@@ -83,6 +83,23 @@ export const VIKING_LOOK = {
   mail: '#8B939A',
 } as const;
 
+/** Bandits in hoods and rags; the dead in what is left of whatever they were buried in. */
+export const FOLK_LOOK = {
+  banditSkins: ['#D9A47E', '#C98F68', '#E3B48E'],
+  hoods: ['#5B4A3A', '#4A4038', '#6B5A44'],
+  rags: '#7A6A52',
+  stubble: '#5A4636',
+  plainWood: '#8A6440',
+  deadSkins: ['#8FA68A', '#9DB09A', '#7E957F'],
+  deadShade: '#6F8470',
+  deadEyes: '#E8FF9A',
+  deadRags: '#4E4638',
+  deadCloth: '#5E5A52',
+  rust: '#7A5A44',
+  deadHair: '#B8B8AE',
+  grave: '#3E3A34',
+} as const;
+
 export interface ArmyPalette {
   body: string;
   trim: string;
@@ -316,6 +333,31 @@ export const LIGHTING = {
   fogEnd: 210,
 } as const;
 
+/** Story battles at dusk and at night: darker skies, dimmer light, closer fog. */
+export const TIME_OF_DAY = {
+  dusk: { sky: '#E3946A', fog: '#C98A70', hemi: 0.55, sun: 0.75, sunColor: '#FFB07A', fogStart: 50, fogEnd: 170 },
+  night: { sky: '#0D1626', fog: '#111C2E', hemi: 0.28, sun: 0.32, sunColor: '#9DB4FF', fogStart: 30, fogEnd: 120 },
+} as const;
+
+/** Fire on burning houses and torches in the night camp. */
+export const FIRE = {
+  flame: '#FF8A2A',
+  core: '#FFD25A',
+  ember: '#FF5A1F',
+  /** Smoke lit from below by the fire, so it shows against a night sky. */
+  smoke: '#9A8A7E',
+  /** How fast flames flicker, and by how much. */
+  flicker: 9,
+  flickerAmount: 0.25,
+  torchHeight: 2.2,
+  /** Flames on a burning house start this big, and smoke rises above them. */
+  houseFlame: 2.2,
+  smokeLife: 4,
+  smokeRise: 9,
+  smokeDrift: 3,
+  smokeAlpha: 0.35,
+} as const;
+
 export const CAMERA = {
   fov: 0.84,
   /** Close behind and low, at about the soldiers' eye level. */
@@ -463,6 +505,8 @@ export const MINIMAP = {
 } as const;
 
 export const HUD = {
+  /** Story battles: names show over heroes and generals this close to the camera. */
+  nameTagDistance: 45,
   enemyLookAngle: 0.22,
   enemyLookMaxDistance: 90,
   edgeToastSeconds: 2.2,

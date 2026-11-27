@@ -98,8 +98,8 @@ export class BattleRenderer {
           const rig = this.rigs.get(event.unitId);
           const unit = units?.[event.unitId];
           if (unit) this.effects.burst('death', unit.x, unit.y + HIT_HEIGHT, unit.z, 10, event.knockback);
-          // Commanders stay where the simulation says their body lies; they get up there.
-          if (rig && unit?.kind !== 'commander') {
+          // Commanders and heroes stay where the simulation says their body lies; they get up there.
+          if (rig && unit?.kind !== 'commander' && !unit?.hero) {
             this.rigs.delete(event.unitId);
             this.ragdolls.add(event.unitId, rig, event.knockback, now);
           }
@@ -173,6 +173,7 @@ export class BattleRenderer {
   private celebrating(view: MatchView, unit: UnitView): boolean {
     if (view.phase === 'playing' || unit.kind === 'commander' || unit.mountId !== null) return false;
     const army = view.armies[unit.armyId];
+    if (army?.faction === 'zombie') return false;
     return army !== undefined && !army.eliminated && (view.winnerTeam === null || army.team === view.winnerTeam);
   }
 
@@ -188,7 +189,7 @@ export class BattleRenderer {
     this.lastView = view;
     for (const unit of view.units) {
       let rig = this.rigs.get(unit.id);
-      if (!unit.alive && unit.kind === 'commander') {
+      if (!unit.alive && (unit.kind === 'commander' || unit.hero !== null)) {
         if (rig?.type === 'person') animateDowned(rig, unit, dt, now);
         continue;
       }

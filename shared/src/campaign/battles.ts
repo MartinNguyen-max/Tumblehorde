@@ -19,6 +19,8 @@ export type OnLoss = 'retry' | 'retryOrLeave' | 'continue';
 
 export interface CampaignBattle {
   chapter: ChapterId;
+  /** What to do, shown at the top of the screen. */
+  objective: string;
   settings: MatchSettings;
   goal: BattleGoal;
   time: TimeOfDay;
@@ -73,6 +75,18 @@ const OLD_FRIENDS = {
   felix: { x: 45, z: 6, yaw: -Math.PI / 2 },
   rufus: { x: 45, z: -6, yaw: -Math.PI / 2 },
 } satisfies Record<string, MapPoint>;
+
+/** The line at the top of the screen in each story battle. */
+const BATTLE_OBJECTIVES: Partial<Record<ChapterId, string>> = {
+  'forest-road': 'Save the villagers: beat the bandits',
+  'burning-village': 'Drive the raiders out of the village',
+  bridge: 'Hold the bridge',
+  'dark-forest': 'Ambush! Fight them off',
+  outpost: 'Take the outpost',
+  'night-raid': 'Hold the camp',
+  'last-battle': 'Break the horde. Find Hrolf the Red',
+  'last-night': 'Hold them back',
+};
 
 function at(point: MapPoint): ArmySetup['spawn'] {
   return { x: point.x, z: point.z, yaw: point.yaw };
@@ -131,7 +145,8 @@ function heroesFor(save: CampaignSave, chapter: ChapterId): HeroId[] {
 export function campaignBattle(chapter: ChapterId, save: CampaignSave): CampaignBattle | null {
   const heroes = heroesFor(save, chapter);
   const rout: BattleGoal = { kind: 'rout' };
-  const base = { chapter, goal: rout, time: 'day' as TimeOfDay, onLoss: 'retry' as OnLoss, commanders: {}, warlordArmy: null };
+  const objective = BATTLE_OBJECTIVES[chapter] ?? 'Win the battle';
+  const base = { chapter, objective, goal: rout, time: 'day' as TimeOfDay, onLoss: 'retry' as OnLoss, commanders: {}, warlordArmy: null };
   switch (chapter) {
     case 'forest-road': {
       // Varro rides with Cassian; Felix and Rufus are the villagers fighting for their lives up the road.
@@ -144,7 +159,7 @@ export function campaignBattle(chapter: ChapterId, save: CampaignSave): Campaign
       const me = cassian(save, chapter, VILLAGE_POINTS.arrival, heroes, false);
       const galba = army({ name: 'Galba', team: 0, faction: 'roman', soldiers: STORY_BATTLE.galbasMen, spawn: VILLAGE_POINTS.defenders, commander: true });
       const raiders = army({ name: 'Raiders', team: 1, faction: 'viking', soldiers: STORY_BATTLE.villageRaiders, spawn: VILLAGE_POINTS.raiders, style: 'charge' });
-      return { ...base, time: 'dusk', settings: settings('village', [me.setup, galba, raiders]), legionNames: me.legionNames, commanders: { 1: 'Galba' } };
+      return { ...base, time: 'night', settings: settings('village', [me.setup, galba, raiders]), legionNames: me.legionNames, commanders: { 1: 'Galba' } };
     }
     case 'bridge': {
       const me = cassian(save, chapter, RIVER_POINTS.bridgehead, heroes, true);

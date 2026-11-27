@@ -6,7 +6,8 @@ import type { Army, MatchState, Unit } from './types.ts';
 
 /** After the battle is won, everyone left standing on the winning side celebrates. */
 export function isCelebrating(state: MatchState, army: Army): boolean {
-  if (state.phase === 'playing' || army.eliminated) return false;
+  // The dead do not cheer: they just keep coming.
+  if (state.phase === 'playing' || army.eliminated || army.faction === 'zombie') return false;
   return state.winnerTeam === null || army.team === state.winnerTeam;
 }
 

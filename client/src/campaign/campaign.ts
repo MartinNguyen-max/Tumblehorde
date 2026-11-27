@@ -1,4 +1,17 @@
-import { type CampaignSave, type Chapter, chapterById, type ChapterId, checkpoint, newSave, nextChapter } from '@tumblehorde/shared';
+import {
+  afterBattle,
+  type BattleResult,
+  campaignBattle,
+  type CampaignSave,
+  type Chapter,
+  chapterById,
+  type ChapterId,
+  checkpoint,
+  newSave,
+  nextChapter,
+} from '@tumblehorde/shared';
+import { DefeatCard } from './defeat.ts';
+import { type BattleScreen, StoryBattle } from './storyBattle.ts';
 import type { World } from '../render/world.ts';
 import type { InputState } from '../input/input.ts';
 import { CinematicOverlay } from '../cinematic/overlay.ts';
@@ -35,6 +48,8 @@ export interface CampaignDeps {
   input: InputState;
   sound: CinematicSound | null;
   canvas: HTMLCanvasElement;
+  /** The battle screen, lent by main.ts for battle chapters. */
+  battles: BattleScreen;
   /** Back to the main menu. */
   onExit: () => void;
 }
@@ -44,6 +59,8 @@ type Phase =
   | { kind: 'loading'; chapter: Chapter; timer: number }
   | { kind: 'cutscene'; chapter: Chapter; scenes: readonly Cutscene[]; index: number }
   | { kind: 'roam'; chapter: Chapter; roam: FreeRoam }
+  | { kind: 'battle'; chapter: Chapter; fight: StoryBattle }
+  | { kind: 'defeated'; chapter: Chapter }
   | { kind: 'unbuilt'; chapter: Chapter };
 
 /**
@@ -60,6 +77,9 @@ export class Campaign {
   private phase: Phase = { kind: 'idle' };
   /** Testing a single scene from the debug hook: back to the menu afterwards. */
   private single = false;
+  private readonly defeat = new DefeatCard();
+  /** The legionaries who fell in the last battle, in order, for the roll call at the campfire. */
+  lastFallen: string[] = [];
 
   constructor(deps: CampaignDeps) {
     this.deps = deps;
@@ -110,6 +130,7 @@ export class Campaign {
       this.playScene(scenes[0]);
       return;
     }
+    if (chapter.kind === 'battle' && this.startBattle(chapter)) return;
     const district = CHAPTER_DISTRICTS[chapter.id];
     if (chapter.kind === 'freeRoam' && district) {
       this.startRoam(chapter, district);
@@ -117,6 +138,37 @@ export class Campaign {
     }
     this.phase = { kind: 'unbuilt', chapter };
     this.pause.showUnbuilt(chapter.title);
+  }
+
+  /** A battle chapter: fight it with the men the story has left. False if it has no battle yet. */
+  private startBattle(chapter: Chapter): boolean {
+    if (!this.save) return false;
+    const battle = campaignBattle(chapter.id, this.save);
+    if (!battle) return false;
+    const fight = new StoryBattle(this.deps.world, this.deps.battles, battle, (result) => this.battleOver(chapter, battle.onLoss, result));
+    this.phase = { kind: 'battle', chapter, fight };
+    return true;
+  }
+
+  private endBattle(): void {
+    if (this.phase.kind !== 'battle') return;
+    this.phase.fight.dispose();
+  }
+
+  /** Won: the fallen stay fallen (from the Dark Forest on) and the story goes on. Lost: try again, or (the last night) go on. */
+  private battleOver(chapter: Chapter, onLoss: 'retry' | 'retryOrLeave' | 'continue', result: BattleResult): void {
+    this.endBattle();
+    if (!this.save) return;
+    if (result.won || onLoss === 'continue') {
+      const outcome = afterBattle(this.save.legion, result.fallenNames, chapter.id);
+      this.save = { ...this.save, legion: outcome.legion };
+      this.lastFallen = outcome.fallen;
+      this.finishChapter(chapter.id);
+      return;
+    }
+    this.phase = { kind: 'defeated', chapter };
+    const text = onLoss === 'retryOrLeave' ? 'The horde broke your lines. Rally the legion and fight again, or leave.' : 'Your story is saved at the start of this battle.';
+    this.defeat.show('Defeated', text, () => this.enterChapter(chapter.id), () => this.leave());
   }
 
   private startRoam(chapter: Chapter, district: DistrictSet): void {
@@ -183,10 +235,16 @@ export class Campaign {
     return true;
   }
 
-  frame(dt: number): void {
-    if (this.pause.consumeToggle() && this.phase.kind !== 'unbuilt') this.pause.toggle();
-    if (this.pause.open) return;
+  frame(dt: number, now: number = performance.now() / 1000): void {
     const phase = this.phase;
+    // In battle, Esc releases the mouse and the battle's own pause prompt takes over.
+    if (phase.kind === 'battle') {
+      this.pause.consumeToggle();
+      phase.fight.frame(dt, now);
+      return;
+    }
+    if (this.pause.consumeToggle() && phase.kind !== 'unbuilt' && phase.kind !== 'defeated') this.pause.toggle();
+    if (this.pause.open) return;
     if (phase.kind === 'loading') {
       phase.timer -= dt;
       if (phase.timer <= 0) this.startChapter(phase.chapter);
@@ -204,6 +262,8 @@ export class Campaign {
 
   stop(): void {
     this.endRoam();
+    this.endBattle();
+    this.defeat.hide();
     this.phase = { kind: 'idle' };
     this.single = false;
     this.player.stop();
