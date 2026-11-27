@@ -131,6 +131,7 @@ function createArmy(
     searchTimer: 0,
     feastTimer: 0,
     rallyTimer: 0,
+    courageTimer: 0,
     gesture: { taps: [], wasCrouching: false },
     allyOffer: null,
     spearsThrown: false,
@@ -138,7 +139,7 @@ function createArmy(
     forfeited: false,
     disconnectTimer: null,
     stats: { kills: 0, deaths: 0, commanderDeaths: 0 },
-    bot: { style: isBot ? randomBotStyle(state) : 'steady', contactTimer: 0, regroupTimer: 0, regrouping: false, orderTimer: 0, thinkTimer: 0, standoffTimer: 0 },
+    bot: { style: isBot ? randomBotStyle(state) : 'steady', contactTimer: 0, flankTimer: 0, regroupTimer: 0, regrouping: false, orderTimer: 0, thinkTimer: 0, standoffTimer: 0, threat: [] },
     startingSoldiers: soldierIds.length,
   };
 }

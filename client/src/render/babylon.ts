@@ -22,4 +22,4 @@ export { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial';
 export { HavokPlugin } from '@babylonjs/core/Physics/v2/Plugins/havokPlugin';
 export { PhysicsBody } from '@babylonjs/core/Physics/v2/physicsBody';
 export { PhysicsMotionType } from '@babylonjs/core/Physics/v2/IPhysicsEnginePlugin';
-export { PhysicsShapeBox, PhysicsShapeMesh } from '@babylonjs/core/Physics/v2/physicsShape';
+export { PhysicsShapeBox, PhysicsShapeContainer, PhysicsShapeMesh } from '@babylonjs/core/Physics/v2/physicsShape';

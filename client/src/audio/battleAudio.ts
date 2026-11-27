@@ -120,15 +120,20 @@ export class BattleAudio {
     }
   }
 
-  /** Soldiers mutter now and then, more so when drunk. */
+  /** Soldiers mutter now and then, more so when drunk; after a win the winners cheer and laugh. */
   update(view: MatchView | null, dt: number): void {
     if (!view || !this.engine.enabled) return;
     this.chatterTimer -= dt;
     if (this.chatterTimer > 0) return;
-    this.chatterTimer = SOUND.chatterEvery * (0.5 + Math.random());
+    const celebrating = view.phase !== 'playing';
+    this.chatterTimer = (celebrating ? SOUND.celebrateEvery : SOUND.chatterEvery) * (0.5 + Math.random());
     const people = view.units.filter((u) => u.alive && u.kind === 'swordsman');
     const speaker = people[Math.floor(Math.random() * people.length)];
     if (!speaker) return;
+    if (celebrating) {
+      this.say(speaker, Math.random() < 0.7 ? SAY.cheer : SAY.giggle, `party-${speaker.id % SOUND.cheerVoices}`, 0, 0, speaker.id);
+      return;
+    }
     const line = speaker.drunk ? (Math.random() < 0.5 ? SAY.giggle : SAY.drunk) : SAY.chatter;
     this.say(speaker, line, 'chatter', 0, 0, speaker.id);
   }

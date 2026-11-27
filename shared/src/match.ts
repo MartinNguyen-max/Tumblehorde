@@ -4,7 +4,8 @@ import { updateBanquets, updateStumbles } from './banquet.ts';
 import { beginNavigationStep } from './navigation.ts';
 import { updateIntel } from './perception.ts';
 import { fireArrow, stepArrows, throwPilum } from './arrows.ts';
-import { runBotArmy, runLeaderlessArmy } from './bot.ts';
+import { fadeThreats, runBotArmy, runLeaderlessArmy } from './bot.ts';
+import { celebrate, isCelebrating } from './celebration.ts';
 import { ARCHER, COMMANDER, MATCH, SIM } from './config.ts';
 import { applyKnockback, isFreeToAct, killUnit, knockbackVector, resolveMelee, startMelee, thrustsOverShield } from './combat.ts';
 import { distanceXZ, normalizeXZ } from './math.ts';
@@ -257,8 +258,14 @@ export function stepMatch(state: MatchState, inputs: ReadonlyMap<number, Command
   beginNavigationStep();
   updateIntel(state, step);
 
+  fadeThreats(state, step);
   for (const army of state.armies) {
     if (army.eliminated) continue;
+    if (isCelebrating(state, army)) {
+      if (!army.isBot) applyPlayerInput(state, army, inputs.get(army.id));
+      celebrate(state, army, step);
+      continue;
+    }
     if (army.isBot) runBotArmy(state, army, step);
     else if (getUnit(state, army.commanderId)?.alive) applyPlayerInput(state, army, inputs.get(army.id));
     else runLeaderlessArmy(state, army, step);

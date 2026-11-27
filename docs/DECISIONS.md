@@ -149,3 +149,19 @@ Agreed with the player before building. None of these replace an earlier line un
 - **No gore.** Wounds are shown as red stains on clothes and armor.
 - **The zombies come from a grave, unexplained**, and can be any kind of dead. The last battle of the campaign cannot be won.
 - **Commanders still get knocked down and get back up** in army battles; in the arena, going down loses the fight.
+
+## 2026-11-27 (M9: smarter, better fights)
+
+- **Soldiers defend themselves whatever the order.** Whoever hurt a soldier within 4 s and 7 m becomes its target; a soldier in a held line turns round to an enemy at its back (or closer than 2.6 m) and fights back. Reported by the player: bots attacked from behind "didn't even think about it", and after Advance the line stood with its back to the enemy.
+- **Target choice scores enemies** instead of taking the nearest: distance, minus a bonus for whoever hurt you, a turned back or someone fighting a friend, plus a penalty for every attacker beyond three already on that enemy. Fights spread out and soldiers go round to the enemy's back.
+- **Close fighting has a rhythm** (`shared/src/duel.ts`): soldiers keep about a sword's length, circle between blows (two duellists circle the same way), step in to strike, hop out of the way of blows they see coming (30 %, 45 % on Attack), counter right after a block, sometimes leap in on Attack, and bash shield-hiders with their own shield (it knocks the guard aside). The sword wind-up is 0.38 s (was 0.3) so a blow can be seen and dodged. Requested by the player: "they are just standing on top of each other and hitting".
+- **Bot armies turn on whoever hurts them most** (harm remembered per army, fading over 20 s), and a fifth bot style, *flank*, holds a pincer for 14 s to get its wings behind the enemy before charging. Reported by the player: two bots fought each other while the player attacked one from behind.
+- **Soldiers keep a spear after the volley** ("we are pretending they have 2"): the volley is still once per battle, but holding soldiers use a spear again. Replaces "the soldiers fight on with swords (holding too)".
+- **Advance stops at the enemy line**: a holding formation steps forward at most until its front is 1.8 m from an enemy in its way; with no room it refuses ("The enemy line is right there"). Reported by the player: Advance walked the formation through the enemy.
+- **The rally speech gives courage** for 15 s (115 % damage dealt, 60 % stun and 75 % shove taken) and then needs a 40 s rest. Replaces "The commander's rousing speech: only for show". Requested by the player: "more courage, shouldn't overrule enemy but buff a bit".
+- **Victory celebration**: for 7 s after the win (was 2.5 s) the winners jump, spin, dance and cheer before the results.
+- **Team mates start side by side** (the meadow: around their team's side of the circle; the city: neighbouring avenue ends).
+- **Castle walls count as solid for escape routes** (`NAV.solidInset` 0.1, was 0.6): a 2.4 m wall could fall between grid cells, so soldiers in the dead-end strip between moat and gate towers tried to walk out through the wall and stood there. Reported by the player.
+- **Ragdolls bounce off buildings** (one static Havok body with a box per structure), and **the third-person camera stops in front of walls** instead of looking through them. Reported by the player.
+- **First-person view**, a setting on the start page and `T` in battle: the commander's head is hidden, the body, shield and sword stay; looking down the eye moves forward over the chest so you see your belt, shield and sword. Requested by the player.
+- **The sword got a pommel, a wider guard, a bright blade with a dark groove and a tapered point** — still a handful of boxes. Requested by the player: "make sword look sliiightly better".

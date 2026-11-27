@@ -1,4 +1,5 @@
-import { AI, ARCHER, FORMATION, HORSE, NAV, PERCEPTION } from './config.ts';
+import { AI, ARCHER, DUEL, FORMATION, HORSE, NAV, PERCEPTION } from './config.ts';
+import { betterTarget, defendAgainst, duelIntent, pickTarget, planBash, revengeTarget, tickDuel } from './duel.ts';
 import { dirToYaw, distanceXZ, normalizeXZ, wrapAngle, yawToDir, type Vec2 } from './math.ts';
 import { feastSlots, staggerIntent } from './banquet.ts';
 import type { FormationSlot } from './formation.ts';
@@ -139,9 +140,14 @@ function nearestEnemyArcherWithin(state: MatchState, unit: Unit, radius: number)
   return best;
 }
 
-/** `seen` is the nearest enemy in sight (looked up once per think); null if there is none. */
+/**
+ * `seen` is the nearest enemy in sight (looked up once per think); null if there is none.
+ * Whoever just hurt the soldier comes first, whatever the order: nobody stands and takes it.
+ */
 function chooseTarget(state: MatchState, unit: Unit, order: GroupOrder, slot: Vec2, seen: Unit | null): Unit | null {
   const isArcher = unit.kind === 'archer';
+  const fog = fogOfWar(state);
+  const revenge = revengeTarget(state, unit);
   const seenWithin = (radius: number): Unit | null => (seen && distanceXZ(unit.pos, seen.pos) <= radius ? seen : null);
   switch (order.order) {
     case 'attack':
@@ -150,17 +156,17 @@ function chooseTarget(state: MatchState, unit: Unit, order: GroupOrder, slot: Ve
         const archer = nearestEnemyArcherWithin(state, unit, AI.riderFlankRadius);
         if (archer) return archer;
       }
-      if (fogOfWar(state)) return seen;
-      return seen ?? nearestEnemy(state, unit, Infinity);
+      if (fog) return betterTarget(state, unit, seen, revenge);
+      return pickTarget(state, unit, DUEL.scanRadius) ?? nearestEnemy(state, unit, Infinity);
     case 'follow': {
+      if (revenge && !isArcher) return revenge;
       const radius = isArcher ? ARCHER.ranged.range : AI.reactionRadius;
-      const enemy = seenWithin(radius);
+      const enemy = fog || isArcher ? seenWithin(radius) : pickTarget(state, unit, radius);
       return enemy && distanceXZ(enemy.pos, slot) < AI.followLeash ? enemy : null;
     }
     case 'hold':
-      return isArcher
-        ? enemyInSight(state, unit, ARCHER.ranged.range)
-        : enemyInSight(state, unit, AI.holdEngageRadius, slot);
+      if (isArcher) return enemyInSight(state, unit, ARCHER.ranged.range);
+      return revenge ?? enemyInSight(state, unit, AI.holdEngageRadius, slot);
   }
 }
 
@@ -171,6 +177,7 @@ export function thinkSoldier(state: MatchState, unit: Unit, order: GroupOrder, s
   unit.ai.watchId = seen && distanceXZ(unit.pos, seen.pos) <= AI.watchRadius ? seen.id : null;
   const target = chooseTarget(state, unit, order, slot, seen);
   unit.ai.targetId = target?.id ?? null;
+  planBash(state, unit, target);
   updateShieldDecision(state, unit, order, target);
   if (unit.kind === 'rider' && !isMounted(unit)) {
     unit.ai.horseTargetId = nearestFreeHorse(state, unit, AI.remountSearchRadius)?.id ?? null;
@@ -182,7 +189,12 @@ function updateShieldDecision(state: MatchState, unit: Unit, order: GroupOrder, 
   if (!canUseShield(unit) || isMounted(unit)) return;
   const threat = findMeleeThreat(state, unit);
   if (threat) {
-    if (nextRandom(state.rng) < AI.shieldReactChance) unit.ai.shieldTimer = AI.shieldMinHold;
+    // A held line stays put behind its shields; anyone else may also hop out of the way.
+    if (order.order === 'hold' && unit.kind === 'swordsman') {
+      if (nextRandom(state.rng) < AI.shieldReactChance) unit.ai.shieldTimer = AI.shieldMinHold;
+    } else {
+      defendAgainst(state, unit, threat, order.order === 'attack');
+    }
     return;
   }
   if (order.order === 'hold' && !target && nearestEnemyArcher(state, unit)) {
@@ -339,6 +351,7 @@ export function soldierIntent(state: MatchState, unit: Unit, order: GroupOrder, 
   }
   const target = getUnit(state, unit.ai.targetId);
   const validTarget = target && canBeTargeted(target) ? target : null;
+  if (unit.ai.dodgeTimer > 0 && validTarget && duelIntent(state, unit, validTarget, order.order === 'attack')) return;
   if (unit.kind === 'swordsman' && order.order === 'hold') {
     if (holdLineIntent(state, unit, slot, validTarget)) return;
     // A held line always stands behind locked shields.
@@ -359,7 +372,7 @@ export function soldierIntent(state: MatchState, unit: Unit, order: GroupOrder, 
   }
   if (unit.kind === 'archer') archerIntent(state, unit, validTarget, order);
   else if (isMounted(unit)) riderChargeIntent(unit, validTarget);
-  else meleeIntent(state, unit, validTarget);
+  else if (!duelIntent(state, unit, validTarget, order.order === 'attack')) walkTowards(state, unit, validTarget.pos);
 }
 
 /**
@@ -373,7 +386,9 @@ function holdLineIntent(state: MatchState, unit: Unit, slot: FormationSlot, targ
   const stats = meleeStatsFor(unit);
   const toSlot = distanceXZ(unit.pos, slot);
   if (toSlot > FORMATION.holdArriveRadius) walkToSlot(state, unit, slot, toSlot);
-  const facingEnemy = withinHoldArc(unit, slot, enemy);
+  // Someone at your back, or who just hurt you, gets faced and fought, wherever the line looks.
+  const mustTurn = enemy === revengeTarget(state, unit) || distanceXZ(unit.pos, enemy.pos) < DUEL.closeThreatRadius;
+  const facingEnemy = mustTurn || withinHoldArc(unit, slot, enemy);
   if (facingEnemy) faceTowards(unit, enemy.pos);
   else unit.intent.faceYaw = slot.yaw;
   const inReach = stats !== null && distanceXZ(unit.pos, enemy.pos) <= stats.range + bodyRadius(enemy);
@@ -430,6 +445,7 @@ export function runArmyAi(state: MatchState, army: Army, dt: number): void {
     if (weapon) setWeapon(unit, weapon);
     unit.ai.thinkTimer -= dt;
     unit.ai.shieldTimer -= dt;
+    tickDuel(state, unit, dt);
     if (unit.ai.thinkTimer <= 0) {
       unit.ai.thinkTimer += AI.thinkInterval;
       if (unit.ai.thinkTimer <= 0) unit.ai.thinkTimer = AI.thinkInterval;
@@ -442,8 +458,8 @@ export function runArmyAi(state: MatchState, army: Army, dt: number): void {
 
 /** Swordsmen march and hold with the spear and draw the sword to attack. */
 export function weaponForOrder(unit: Unit, order: GroupOrder): Weapon | null {
+  // A soldier carries two spears: one to throw, one to hold the line with.
   if (unit.kind !== 'swordsman' || unit.action === 'throw') return null;
-  if (unit.spearThrown) return 'sword';
   return order.order === 'attack' ? 'sword' : 'spear';
 }
 

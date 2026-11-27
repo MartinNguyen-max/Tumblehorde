@@ -1,6 +1,7 @@
 import { type ArmySetup, type ArmySize, DEFENDER_TEAM, type GameMode, isMapId, MAP, type MapId, MAPS, mapFromRandom, type MatchSettings } from '@tumblehorde/shared';
 import { paletteForArmy } from '../palettes.ts';
 import { byId, escapeHtml, segmented } from './dom.ts';
+import { readViewMode, storeViewMode } from './viewSetting.ts';
 
 export interface LandingHooks {
   onStartLocal(settings: MatchSettings): void;
@@ -51,6 +52,7 @@ export class Landing {
     this.renderTeams();
     this.preview();
   });
+  private readonly view = segmented(byId('opt-view'), (value) => storeViewMode(value === 'first' ? 'first' : 'third'));
   private readonly teamField = byId('team-field');
   private readonly teamList = byId('team-list');
   private readonly startButton = byId('start-local', HTMLButtonElement);
@@ -63,6 +65,7 @@ export class Landing {
   constructor(hooks: LandingHooks) {
     this.hooks = hooks;
     this.nameInput.value = readStoredName();
+    this.view.set(readViewMode());
     this.teamList.addEventListener('click', (e) => {
       const chip = e.target instanceof HTMLElement ? e.target.closest<HTMLButtonElement>('.team-chip') : null;
       const index = Number(chip?.dataset.index);

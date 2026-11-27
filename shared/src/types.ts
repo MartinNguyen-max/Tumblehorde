@@ -52,6 +52,19 @@ export interface AiMemory {
   /** What a thrown spear is aimed at: an enemy, or a spot on the ground. */
   throwTargetId: EntityId | null;
   throwAt: Vec3 | null;
+  /** Whoever hurt this soldier last, and when: they get paid back, whatever the order. */
+  revengeId: EntityId | null;
+  revengeTime: number;
+  /** Which way this soldier circles an enemy between blows (+1 or -1), and when it next changes its mind. */
+  circleSign: number;
+  circleTimer: number;
+  /** A quick hop out of the way of a blow: seconds left and the direction. */
+  dodgeTimer: number;
+  dodgeX: number;
+  dodgeZ: number;
+  /** The next blow is a shield bash, and the blow under way is one. */
+  bashNext: boolean;
+  bashing: boolean;
 }
 
 export interface Unit {
@@ -119,14 +132,17 @@ export interface ArmyStats {
  * - steady: form up, stand off behind a spear wall, then charge with swords;
  * - charge: no waiting, straight at you with swords;
  * - phalanx: push forward in formation with spears and never break ranks;
- * - patient: wait behind a shield wall for you to come, and only then fight.
+ * - patient: wait behind a shield wall for you to come, and only then fight;
+ * - flank: hold a pincer, send the wings round behind the enemy, then charge.
  */
-export type BotStyle = 'steady' | 'charge' | 'phalanx' | 'patient';
+export type BotStyle = 'steady' | 'charge' | 'phalanx' | 'patient' | 'flank';
 
 export interface BotBrain {
   style: BotStyle;
   /** Seconds a phalanx has stood at the enemy's line. */
   contactTimer: number;
+  /** Seconds flankers have held their pincer near the enemy. */
+  flankTimer: number;
   /** Seconds spent falling back to regroup; after a while the army makes a last stand instead. */
   regroupTimer: number;
   /** Falling back right now (a new style is picked when a fall-back starts). */
@@ -135,6 +151,8 @@ export interface BotBrain {
   thinkTimer: number;
   /** Seconds spent facing the enemy without engaging. */
   standoffTimer: number;
+  /** Recent harm done to this army, per attacking army id; fades over time. Bots turn on whoever hurts them most. */
+  threat: number[];
 }
 
 export interface Army {
@@ -159,6 +177,8 @@ export interface Army {
   feastTimer: number;
   /** Seconds until the commander can give another rousing speech. */
   rallyTimer: number;
+  /** Seconds of courage left after a speech: harder blows, steadier feet. */
+  courageTimer: number;
   /** Recent crouch taps by the commander, for offering alliances. */
   gesture: { taps: number[]; wasCrouching: boolean };
   /** An alliance this army offered, waiting for an answer. */
@@ -177,7 +197,7 @@ export interface Army {
 
 export type ProjectileKind = 'arrow' | 'pilum';
 
-export type RefusedReason = 'spearsSpent' | 'noTargetInRange' | 'banquetSpent' | 'notHolding';
+export type RefusedReason = 'spearsSpent' | 'noTargetInRange' | 'banquetSpent' | 'notHolding' | 'enemyAhead' | 'rallyResting';
 
 export interface Arrow {
   id: EntityId;
@@ -221,7 +241,8 @@ export type SimEvent =
       knockback: Vec3;
     }
   | { type: 'death'; unitId: EntityId; killerArmyId: number | null; knockback: Vec3 }
-  | { type: 'swing'; unitId: EntityId }
+  /** A blow starts; `bash` is a shove with the shield instead of a weapon strike. */
+  | { type: 'swing'; unitId: EntityId; bash?: boolean }
   | { type: 'arrowFired'; arrowId: EntityId; shooterId: EntityId }
   | { type: 'arrowLanded'; pos: Vec3; dir: Vec3; kind: ProjectileKind }
   /** A thrown spear stuck in a unit (or its shield): it goes where they go. */

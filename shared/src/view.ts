@@ -59,6 +59,10 @@ export interface ArmyView {
   /** Armies this one made an alliance with. */
   allies: number[];
   spearsThrown: boolean;
+  /** Seconds of courage left after a rally speech. */
+  courageTimer: number;
+  /** Seconds before the commander can give another speech. */
+  rallyTimer: number;
   kills: number;
   deaths: number;
   commanderDeaths: number;
@@ -134,6 +138,8 @@ export function matchView(state: MatchState): MatchView {
       banquet: army.banquet,
       allies: state.alliances.flatMap(([a, b]) => (a === army.id ? [b] : b === army.id ? [a] : [])),
       spearsThrown: army.spearsThrown,
+      courageTimer: army.courageTimer,
+      rallyTimer: army.rallyTimer,
       kills: army.stats.kills,
       deaths: army.stats.deaths,
       commanderDeaths: army.stats.commanderDeaths,

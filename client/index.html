@@ -83,6 +83,13 @@
             <span class="field-label">Teams <small>(click a bot to switch sides)</small></span>
             <div class="team-list" id="team-list"></div>
           </div>
+          <div class="field">
+            <span class="field-label">View <small>(T switches during a battle)</small></span>
+            <div class="seg" id="opt-view" role="radiogroup">
+              <button data-value="third" class="on">Third person</button>
+              <button data-value="first">First person</button>
+            </div>
+          </div>
           <button class="btn primary" id="start-local">Start battle</button>
         </section>
 
@@ -190,7 +197,7 @@
           <span class="cmd" data-order="attack"><b>3</b>Attack</span>
           <span class="cmd extra" id="hud-split"><b>4</b><span id="hud-split-label">Split in two</span></span>
           <span class="cmd extra once" id="hud-banquet"><b>5</b><span id="hud-banquet-label">Banquet 🍷</span><small class="sub">once</small></span>
-          <span class="cmd extra" id="hud-rally"><b>6</b>Rally speech</span>
+          <span class="cmd extra" id="hud-rally"><b>6</b><span id="hud-rally-label">Rally speech</span></span>
         </div>
         <!-- Row 2: everything else. -->
         <div class="kit" id="hud-kit">

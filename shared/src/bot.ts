@@ -15,9 +15,9 @@ import { armiesHostile, canBeTargeted, getUnit, setWeapon } from './units.ts';
  * - engage: close, or tired of waiting; swords charge, riders flank, archers keep shooting.
  * - regroup: badly outnumbered; fall back behind the commander.
  */
-export type BotStance = 'form' | 'march' | 'standoff' | 'engage' | 'regroup' | 'wait' | 'push';
+export type BotStance = 'form' | 'march' | 'standoff' | 'engage' | 'regroup' | 'wait' | 'push' | 'flank';
 
-const BOT_STYLES: readonly BotStyle[] = ['steady', 'charge', 'phalanx', 'patient'];
+const BOT_STYLES: readonly BotStyle[] = ['steady', 'charge', 'phalanx', 'patient', 'flank'];
 
 export function randomBotStyle(state: MatchState): BotStyle {
   return BOT_STYLES[Math.floor(nextRandom(state.rng) * BOT_STYLES.length)] ?? 'steady';
@@ -41,6 +41,9 @@ export function styledStance(state: MatchState, army: Army, stance: BotStance, d
       const waitedLongEnough = state.time - MATCH.prepareTime > BOT.patientMaxWait;
       return distance < BOT.patientEngageDistance || waitedLongEnough ? 'engage' : 'wait';
     }
+    case 'flank':
+      if (stance === 'march') return 'march';
+      return army.bot.flankTimer > BOT.flankTime ? 'engage' : 'flank';
   }
 }
 
@@ -59,6 +62,7 @@ export function stanceOrders(stance: Exclude<BotStance, 'form'>, hasMelee: boole
     case 'standoff':
     case 'wait':
     case 'push':
+    case 'flank':
       return ['hold', 'hold', 'hold'];
     case 'engage':
       // Archers keep shooting from behind the line, unless there is no line left to hide behind.
@@ -71,6 +75,34 @@ export function stanceOrders(stance: Exclude<BotStance, 'form'>, hasMelee: boole
 interface EnemyArmy {
   center: Vec2;
   soldiers: number;
+}
+
+/**
+ * The enemy army to fight: the nearest, but an army that has been hurting this one counts as
+ * much closer, so a bot fighting a third army turns round when you hit it from behind.
+ */
+export function enemyArmyToFight(state: MatchState, army: Army, from: Vec2): EnemyArmy | null {
+  let best: EnemyArmy | null = null;
+  let bestScore = Infinity;
+  for (const other of state.armies) {
+    if (other.eliminated || !armiesHostile(state, army.id, other.id)) continue;
+    const center = armyCenter(state, other);
+    if (!center) continue;
+    const score = distanceXZ(from, center) - (army.bot.threat[other.id] ?? 0) * BOT.threatWeight;
+    if (score < bestScore) {
+      best = { center, soldiers: livingSoldiers(state, other).length };
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+/** Harm remembered by every army fades away. */
+export function fadeThreats(state: MatchState, dt: number): void {
+  const keep = Math.exp(-dt / BOT.threatMemory);
+  for (const army of state.armies) {
+    for (let i = 0; i < army.bot.threat.length; i++) army.bot.threat[i] = (army.bot.threat[i] ?? 0) * keep;
+  }
 }
 
 export function nearestEnemyArmy(state: MatchState, army: Army, from: Vec2): EnemyArmy | null {
@@ -104,8 +136,18 @@ function pushForward(state: MatchState, army: Army, enemyCenter: Vec2, distance:
   return advanceArmy(state, army, enemyCenter, Math.min(BOT.phalanxStep, distance - BOT.phalanxContact));
 }
 
+/** Flankers hold a pincer: the middle keeps the enemy busy while the wings go round behind it. */
+function holdPincer(state: MatchState, army: Army, leaderless: boolean): boolean {
+  if (army.formation === 'pincer' && army.groupOrders.every((g) => g.order === 'hold')) return false;
+  army.formation = 'pincer';
+  return issueOrder(state, army, 'hold', null, leaderless);
+}
+
 function applyStance(state: MatchState, army: Army, stance: BotStance, leaderless: boolean, enemyCenter: Vec2, distance: number): boolean {
   if (stance === 'form') return false;
+  if (stance === 'flank') return holdPincer(state, army, leaderless);
+  // Only flankers hold a pincer; everyone else forms up in their usual shape.
+  if (army.isBot && army.formation === 'pincer') army.formation = FORMATION.defaultFormation;
   if (stance === 'push') return pushForward(state, army, enemyCenter, distance);
   if (leaderless && stance === 'march') return advanceArmy(state, army, enemyCenter, BOT.advanceStep);
   let changed = false;
@@ -134,7 +176,8 @@ function commanderGoal(state: MatchState, army: Army, commander: Unit, stance: B
     case 'standoff':
     case 'engage':
     case 'wait':
-    case 'push': {
+    case 'push':
+    case 'flank': {
       // Wait until the troops stop following; otherwise they chase the commander backwards.
       if (army.groupOrders.some((g) => g.order === 'follow')) return null;
       const front = centroid(livingSoldiers(state, army).filter((s) => s.kind === 'swordsman')) ?? armyCenter(state, army) ?? commander.pos;
@@ -223,7 +266,7 @@ function defendGate(state: MatchState, army: Army): void {
 
 /** In the city a bot only knows where the enemy was last seen; it guesses they are as many as itself. */
 function knownEnemy(state: MatchState, army: Army, own: Vec2): EnemyArmy | null {
-  if (!fogOfWar(state)) return nearestEnemyArmy(state, army, own);
+  if (!fogOfWar(state)) return enemyArmyToFight(state, army, own);
   if (!army.intel) return null;
   return { center: { x: army.intel.x, z: army.intel.z }, soldiers: livingSoldiers(state, army).length };
 }
@@ -263,6 +306,7 @@ function planArmy(state: MatchState, army: Army, dt: number, leaderless: boolean
   army.bot.regrouping = regrouping;
   const atTheLine = army.bot.style === 'phalanx' && distance <= BOT.phalanxContact + 1;
   army.bot.contactTimer = atTheLine ? army.bot.contactTimer + dt : 0;
+  army.bot.flankTimer = army.bot.style === 'flank' && plain !== 'march' ? army.bot.flankTimer + dt : 0;
   const stance = styledStance(state, army, plain, distance);
   if (army.bot.orderTimer <= 0 && applyStance(state, army, stance, leaderless, enemy.center, distance)) {
     const walking = (leaderless && stance === 'march') || stance === 'push';

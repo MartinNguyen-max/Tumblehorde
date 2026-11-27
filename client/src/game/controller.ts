@@ -21,7 +21,8 @@ import type { BattleRenderer } from '../render/battle.ts';
 import type { FollowCamera } from '../render/camera.ts';
 import { setShadowArea, type World } from '../render/world.ts';
 import type { Hud } from '../ui/hud.ts';
-import { CAMERA } from '../visualConfig.ts';
+import { readViewMode, storeViewMode } from '../ui/viewSetting.ts';
+import { CAMERA, FIRST_PERSON } from '../visualConfig.ts';
 import type { Session } from './session.ts';
 
 /** `2` (Hold) is handled by the formation wheel. */
@@ -78,6 +79,14 @@ export class GameController {
     this.listener = parts.listener;
     this.hooks = hooks;
     this.input.onPointerLockChange = (locked) => this.setPaused(!locked);
+    this.camera.setMode(readViewMode());
+  }
+
+  /** `T`: first person ⇄ third person, remembered for next time. */
+  private toggleView(): void {
+    const mode = this.camera.mode === 'first' ? 'third' : 'first';
+    this.camera.setMode(mode);
+    storeViewMode(mode);
   }
 
   get isPaused(): boolean {
@@ -144,6 +153,8 @@ export class GameController {
         this.session.command({ type: 'mount' });
       } else if (code === 'KeyV') {
         this.overview = !this.overview;
+      } else if (code === 'KeyT') {
+        this.toggleView();
       } else if (code === 'KeyQ') {
         this.cycleWeapon();
       }
@@ -272,8 +283,14 @@ export class GameController {
       height = SPECTATE_HEIGHT;
     }
     if (this.overview) height = CAMERA.overviewHeight;
-    const aiming = me?.alive === true && me.weapon === 'bow';
-    this.camera.update(dt, this.lastFocus, height, aiming ? BOW_SHOULDER_OFFSET : 0);
+    const throughEyes = this.camera.mode === 'first' && me?.alive === true && !this.overview;
+    this.renderer.setFirstPerson(throughEyes && me ? me.id : null);
+    if (throughEyes && me) {
+      this.camera.updateFirstPerson({ x: me.x, y: me.y + FIRST_PERSON.eyeHeight, z: me.z });
+    } else {
+      const aiming = me?.alive === true && me.weapon === 'bow';
+      this.camera.update(dt, this.lastFocus, height, aiming ? BOW_SHOULDER_OFFSET : 0);
+    }
     const f = this.camera.focusPoint();
     setShadowArea(this.world.sun, new Vector3(f.x, 0, f.z));
   }

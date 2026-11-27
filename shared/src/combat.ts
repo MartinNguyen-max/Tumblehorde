@@ -1,4 +1,5 @@
-import { BANQUET, COMMANDER, HORSE, KNOCKBACK, MELEE, SHIELD, type KnockbackStats } from './config.ts';
+import { BANQUET, COMMANDER, DUEL, HORSE, KNOCKBACK, MELEE, RALLY, SHIELD, type KnockbackStats, type MeleeStats } from './config.ts';
+import { rememberAttacker } from './duel.ts';
 import { normalizeXZ, yawToDir, type Vec2, type Vec3 } from './math.ts';
 import { throwRider } from './mounts.ts';
 import { nextRandom } from './random.ts';
@@ -61,6 +62,23 @@ function inShieldWall(state: MatchState, target: Unit): boolean {
   return false;
 }
 
+/** The army had a rousing speech lately. */
+export function courageous(state: MatchState, unit: Unit): boolean {
+  return (state.armies[unit.armyId]?.courageTimer ?? 0) > 0;
+}
+
+/** Harm done to an army is remembered (and fades), so a bot army turns on whoever hurts it most. */
+function rememberThreat(state: MatchState, target: Unit, attackerArmyId: number, damage: number): void {
+  const victim = state.armies[target.armyId];
+  if (!victim || attackerArmyId === target.armyId || attackerArmyId < 0) return;
+  victim.bot.threat[attackerArmyId] = (victim.bot.threat[attackerArmyId] ?? 0) + damage;
+}
+
+/** Blocking a blow opens a counter: the defender's next strike is ready almost at once. */
+function openCounter(target: Unit): void {
+  target.cooldownTimer = Math.min(target.cooldownTimer, DUEL.counterCooldown);
+}
+
 export function applyHit(
   state: MatchState,
   target: Unit,
@@ -72,13 +90,17 @@ export function applyHit(
   const blocked = !source.breaksGuard && isBlockingFrom(target, source.from);
   // A drunk's blow still glances off the shield, but no shield wall holds against it.
   const drunkBlow = source.attacker?.drunk === true;
+  const brave = source.attacker !== null && courageous(state, source.attacker);
+  const steady = courageous(state, target);
   const wall = blocked && !drunkBlow && inShieldWall(state, target);
   const blockFraction = wall ? SHIELD.wallBlockFraction : SHIELD.blockFraction;
-  const strength = damage * (drunkBlow ? BANQUET.damageDealtFactor : 1) * (target.drunk ? BANQUET.damageTakenFactor : 1);
+  const strength =
+    damage * (drunkBlow ? BANQUET.damageDealtFactor : 1) * (target.drunk ? BANQUET.damageTakenFactor : 1) * (brave ? RALLY.damageFactor : 1);
   const dealt = blocked ? strength * Math.max(1 - blockFraction, source.pierce ?? 0) : strength;
   let factor = source.shovesThroughShield ? 1 : wall ? 0 : blocked ? SHIELD.blockedKnockbackFactor : 1;
   if (drunkBlow) factor *= BANQUET.strikeKnockbackFactor;
   if (target.drunk) factor *= BANQUET.knockbackTakenFactor;
+  if (steady) factor *= RALLY.knockbackTakenFactor;
   if (isHorse(target)) factor *= HORSE.knockbackTaken;
   // Riders stay in the saddle; only the horse can throw them.
   if (isMounted(target)) factor = 0;
@@ -87,6 +109,9 @@ export function applyHit(
   target.hp -= dealt;
   target.sinceHurt = 0;
   target.lastHitByArmy = source.armyId;
+  rememberAttacker(state, target, source.attacker);
+  rememberThreat(state, target, source.armyId, dealt);
+  if (blocked) openCounter(target);
   state.events.push({
     type: 'hit',
     targetId: target.id,
@@ -105,7 +130,7 @@ export function applyHit(
     killUnit(state, target, source.armyId, boosted);
     return;
   }
-  if (factor > 0) applyKnockback(target, knockback, blocked ? 0 : knock.stun);
+  if (factor > 0) applyKnockback(target, knockback, blocked ? 0 : knock.stun * (steady ? RALLY.stunTakenFactor : 1));
 }
 
 export function applyKnockback(target: Unit, knockback: Vec3, stun: number): void {
@@ -157,14 +182,22 @@ export function killUnit(state: MatchState, unit: Unit, killerArmyId: number | n
   state.events.push({ type: 'death', unitId: unit.id, killerArmyId, knockback });
 }
 
-/** Starts a melee swing if the unit is free to act. Returns true if it started. */
+/** The blow a unit is about to strike (or is striking): a shield bash, or its weapon. */
+export function strikeStats(unit: Unit, bash: boolean): MeleeStats | null {
+  return bash ? DUEL.bash : meleeStatsFor(unit);
+}
+
+/** Starts a melee swing (or a planned shield bash) if the unit is free to act. Returns true if it started. */
 export function startMelee(state: MatchState, unit: Unit): boolean {
-  const stats = meleeStatsFor(unit);
+  const bash = unit.ai.bashNext && canUseShield(unit) && !isMounted(unit);
+  const stats = strikeStats(unit, bash);
   if (!stats || !isFreeToAct(unit)) return false;
   unit.action = 'melee';
   unit.actionTimer = stats.windup;
   unit.cooldownTimer = stats.cooldown * (unit.drunk ? BANQUET.cooldownFactor : 1);
-  state.events.push({ type: 'swing', unitId: unit.id });
+  unit.ai.bashing = bash;
+  unit.ai.bashNext = false;
+  state.events.push(bash ? { type: 'swing', unitId: unit.id, bash: true } : { type: 'swing', unitId: unit.id });
   return true;
 }
 
@@ -199,7 +232,9 @@ export function meleeTargets(state: MatchState, attacker: Unit, range: number, a
 }
 
 export function resolveMelee(state: MatchState, attacker: Unit): void {
-  const stats = meleeStatsFor(attacker);
+  const bash = attacker.ai.bashing;
+  attacker.ai.bashing = false;
+  const stats = strikeStats(attacker, bash);
   if (!stats) return;
   const targets = meleeTargets(state, attacker, stats.range, stats.arcHalfAngle).slice(0, stats.maxTargets);
   for (const chosen of targets) {
@@ -214,6 +249,8 @@ export function resolveMelee(state: MatchState, attacker: Unit): void {
         from: attacker.pos,
         pushDir: pushDir.x || pushDir.z ? pushDir : yawToDir(attacker.yaw),
         shovesThroughShield: stats.shovesThroughShield === true,
+        // A shield bash knocks the guard aside rather than glancing off it.
+        breaksGuard: bash,
       },
       stats.damage,
       stats.knockback,

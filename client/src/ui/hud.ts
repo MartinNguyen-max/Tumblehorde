@@ -8,6 +8,7 @@ import {
   wrapAngle,
   HORSE,
   MATCH,
+  RALLY,
   type MatchView,
   type Order,
   type SimEvent,
@@ -42,6 +43,8 @@ const REFUSED_TEXT: Record<RefusedReason, string> = {
   noTargetInRange: 'No enemy in throwing range: look at one closer',
   banquetSpent: 'The wine is all gone',
   notHolding: 'Advance moves a holding formation: hold first (2)',
+  enemyAhead: 'The enemy line is right there: attack (3) or hold your ground',
+  rallyResting: 'Your voice needs a rest before the next speech',
 };
 const HP_LABEL_HEIGHT = 2.75;
 const FOE_LABEL_HEIGHT = 3.4;
@@ -94,6 +97,7 @@ export class Hud {
   private readonly banquetCmd = byId('hud-banquet');
   private readonly banquetLabel = byId('hud-banquet-label');
   private readonly rallyCmd = byId('hud-rally');
+  private readonly rallyLabel = byId('hud-rally-label');
   private readonly holdLabel = byId('hud-hold-label');
   private readonly wheel = byId('formation-wheel');
   private wheelDot: HTMLElement = this.wheel;
@@ -244,6 +248,7 @@ export class Hud {
           break;
         case 'rally':
           this.showRally(view, event.armyId, event.commanderId);
+          if (event.armyId === myArmyId) this.showBanner(`Courage! Your legion fights harder for ${RALLY.courageTime} s`);
           break;
         case 'allyOffer':
           if (event.to === myArmyId) this.showBanner(`${this.plainName(view, event.from)} wants to be allies! Look at them and crouch (Ctrl) 4×`, ALLY_BANNER_SECONDS);
@@ -347,7 +352,11 @@ export class Hud {
     this.banquetCmd.classList.toggle('active', army.banquet === 'feasting');
     const banquetText = army.banquet === 'drunk' ? 'Drunk! 🍷' : 'Banquet 🍷';
     if (this.banquetLabel.textContent !== banquetText) this.banquetLabel.textContent = banquetText;
-    this.rallyCmd.classList.toggle('off', !canOrder);
+    this.rallyCmd.classList.toggle('off', !canOrder || army.rallyTimer > 0);
+    this.rallyCmd.classList.toggle('active', army.courageTimer > 0);
+    const rallyText =
+      army.courageTimer > 0 ? `Courage! ${Math.ceil(army.courageTimer)}s` : army.rallyTimer > 0 ? `Rally in ${Math.ceil(army.rallyTimer)}s` : 'Rally speech';
+    if (this.rallyLabel.textContent !== rallyText) this.rallyLabel.textContent = rallyText;
     const holding = selected === null ? army.orders.includes('hold') : army.orders[selected] === 'hold';
     this.advanceCmd.classList.toggle('off', !canOrder || !holding);
     this.volleyCmd.classList.toggle('off', !canOrder || army.spearsThrown);

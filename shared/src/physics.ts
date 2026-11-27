@@ -1,4 +1,4 @@
-import { BODY, COMMANDER, CROUCH, HORSE, MAP, MOVEMENT, SHIELD, SIM, WATER } from './config.ts';
+import { BODY, COMMANDER, CROUCH, DUEL, HORSE, MAP, MOVEMENT, SHIELD, SIM, WATER } from './config.ts';
 import { applyHit, applyKnockback, knockbackVector } from './combat.ts';
 import { dirToYaw, normalizeXZ, turnTowards, wrapAngle, yawToDir } from './math.ts';
 import { syncRiderToHorse } from './mounts.ts';
@@ -43,6 +43,7 @@ export function personSpeed(unit: Unit): number {
   if (unit.action !== 'none') speed *= MOVEMENT.attackingSpeedFactor;
   if (unit.wet) speed *= WATER.wadeSpeedFactor;
   if (unit.crouching) speed *= CROUCH.speedFactor;
+  if (unit.ai.dodgeTimer > 0) speed *= DUEL.dodgeSpeedFactor;
   return speed;
 }
 

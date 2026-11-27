@@ -81,7 +81,7 @@ export function createUnit(id: EntityId, kind: UnitKind, armyId: number, pos: Ve
     crouching: false,
     spearThrown: false,
     intent: emptyIntent(yaw),
-    ai: { targetId: null, thinkTimer: 0, shieldTimer: 0, chargePoint: null, horseTargetId: null, watchId: null, navGoal: null, navPoint: null, navTimer: 0, throwTargetId: null, throwAt: null },
+    ai: { targetId: null, thinkTimer: 0, shieldTimer: 0, chargePoint: null, horseTargetId: null, watchId: null, navGoal: null, navPoint: null, navTimer: 0, throwTargetId: null, throwAt: null, revengeId: null, revengeTime: -Infinity, circleSign: id % 2 === 0 ? 1 : -1, circleTimer: 0, dodgeTimer: 0, dodgeX: 0, dodgeZ: 0, bashNext: false, bashing: false },
   };
 }
 

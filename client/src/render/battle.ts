@@ -9,6 +9,7 @@ import {
   animatePerson,
   createHorseRig,
   createPersonRig,
+  keepCelebrating,
   reactToHit,
   type Rig,
   showMarker,
@@ -36,6 +37,8 @@ export class BattleRenderer {
   private lastView: MatchView | null = null;
   private highlightArmy: number | null = null;
   private highlightGroup: number | null = null;
+  /** The unit we look out of in first person: their head is hidden. */
+  private eyesOf: number | null = null;
 
   constructor(world: World) {
     this.world = world;
@@ -47,6 +50,13 @@ export class BattleRenderer {
   highlight(armyId: number | null, group: number | null): void {
     this.highlightArmy = armyId;
     this.highlightGroup = group;
+  }
+
+  setFirstPerson(unitId: number | null): void {
+    if (this.eyesOf === unitId) return;
+    const previous = this.eyesOf === null ? undefined : this.rigs.get(this.eyesOf);
+    if (previous?.type === 'person') previous.head.setEnabled(true);
+    this.eyesOf = unitId;
   }
 
   setMap(map: MapId): void {
@@ -74,7 +84,7 @@ export class BattleRenderer {
         case 'swing': {
           const rig = this.rigs.get(event.unitId);
           const unit = units?.[event.unitId];
-          if (rig) startSwing(rig, unit?.weapon ?? 'sword', unit?.mountId !== null && unit?.mountId !== undefined);
+          if (rig) startSwing(rig, unit?.weapon ?? 'sword', unit?.mountId !== null && unit?.mountId !== undefined, event.bash === true);
           break;
         }
         case 'hit': {
@@ -159,6 +169,13 @@ export class BattleRenderer {
     }
   }
 
+  /** The battle is won and this soldier is on the winning side. */
+  private celebrating(view: MatchView, unit: UnitView): boolean {
+    if (view.phase === 'playing' || unit.kind === 'commander' || unit.mountId !== null) return false;
+    const army = view.armies[unit.armyId];
+    return army !== undefined && !army.eliminated && (view.winnerTeam === null || army.team === view.winnerTeam);
+  }
+
   /** Riders face along their horse and only twist part of the way; commanders turn freely to block. */
   private displayYaw(view: MatchView, unit: UnitView): number {
     if (unit.mountId === null || unit.kind === 'commander') return unit.yaw;
@@ -189,6 +206,8 @@ export class BattleRenderer {
       if (rig.type === 'horse') {
         animateHorse(rig, unit, ctx);
       } else {
+        if (this.celebrating(view, unit)) keepCelebrating(rig, unit.id);
+        if (unit.id === this.eyesOf) rig.head.setEnabled(false);
         animatePerson(rig, unit, ctx);
         const selected = this.highlightGroup !== null && unit.armyId === this.highlightArmy && unit.kind !== 'commander' && unit.group === this.highlightGroup;
         showMarker(rig, selected, now);

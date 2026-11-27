@@ -27,11 +27,12 @@ Inspiration: Shieldwall (combat and shields), Bannerlord (army and commander), F
 | F | Advance: holding soldiers step forward a few meters towards where you look |
 | 4 | Split the army in two; press again to pick which half hears you (A, B, whole army) |
 | 5 | Banquet (once per battle) |
-| 6 | Rally speech |
+| 6 | Rally speech: courage for 15 s (harder blows, steadier feet), then a 40 s rest |
 | R | Throw spears at the enemies where you look (once per battle) |
 | Ctrl (held) | Crouch; crouch 4× at another player's commander up close to offer an alliance |
 | Q / E | Sword or spear / mount or dismount |
 | V | Overview camera |
+| T | First person ⇄ third person (also a setting on the start page) |
 | M | Sound on/off (also the speaker button in the top right corner) |
 
 See `DECISIONS.md` for how the controls evolved after playtesting.
