@@ -121,3 +121,56 @@ export function frameShot(camera: FreeCamera, shot: Shot, progress: number, time
   camera.fov = shot.fovEnd === undefined ? fov : fov + (shot.fovEnd - fov) * t;
   return look;
 }
+
+/** The actor a shot looks at, if it looks at one. */
+function subjectOf(target: Target): Actor | null {
+  if (Array.isArray(target)) return null;
+  return 'actor' in target ? target.actor : (target as Actor);
+}
+
+const CLEARANCE = {
+  /** How close the line of sight may pass to someone else's head or chest. */
+  radius: 0.42,
+  /** Swings around the subject tried in turn, in radians. */
+  swings: [0, 0.3, -0.3, 0.6, -0.6, 0.9, -0.9, 1.2, -1.2, 1.6, -1.6],
+  chestDrop: 0.65,
+} as const;
+
+function segmentDistance(a: Vector3, b: Vector3, p: Vector3): number {
+  const ab = b.subtract(a);
+  const t = Math.max(0, Math.min(1, Vector3.Dot(p.subtract(a), ab) / Math.max(1e-6, ab.lengthSquared())));
+  return Vector3.Distance(a.add(ab.scale(t)), p);
+}
+
+function rotateAround(point: Point, center: Vector3, angle: number): Point {
+  const dx = point[0] - center.x;
+  const dz = point[2] - center.z;
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  return [center.x + dx * c + dz * s, point[1], center.z - dx * s + dz * c];
+}
+
+/**
+ * Swings a shot of someone around them until nobody else stands in the line of sight, so a
+ * close-up never ends up staring at the back of another head. Wide shots are left alone.
+ */
+export function unblock(shot: Shot, actors: Iterable<Actor>): Shot {
+  const subject = subjectOf(shot.at);
+  if (!subject) return shot;
+  const target = resolve(shot.at);
+  const blockers: Vector3[] = [];
+  for (const actor of actors) {
+    if (actor === subject || !actor.root.isEnabled()) continue;
+    const h = actor.headPosition();
+    blockers.push(new Vector3(h.x, h.y, h.z), new Vector3(h.x, h.y - CLEARANCE.chestDrop, h.z));
+  }
+  for (const swing of CLEARANCE.swings) {
+    const from = rotateAround(shot.from, target, swing);
+    const eye = new Vector3(...from);
+    if (blockers.every((b) => segmentDistance(eye, target, b) > CLEARANCE.radius)) {
+      if (swing === 0) return shot;
+      return { ...shot, from, to: shot.to ? rotateAround(shot.to, target, swing) : undefined };
+    }
+  }
+  return shot;
+}

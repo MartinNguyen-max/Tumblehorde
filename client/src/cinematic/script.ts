@@ -41,6 +41,8 @@ export interface Beat {
   run?: (stage: Stage) => void;
   /** Every frame of the beat, with progress 0..1; called with 1 when the beat is skipped. */
   during?: (stage: Stage, progress: number) => void;
+  /** Only played when this is true at the start of the beat (a branch after a choice). */
+  when?: () => boolean;
   /** Stops and waits for the player to pick; `pick` gets the chosen index. */
   choice?: { options: readonly string[]; pick: (index: number) => void };
 }

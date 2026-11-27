@@ -13,7 +13,7 @@ import {
 import type { World } from '../render/world.ts';
 import type { CinematicOverlay } from './overlay.ts';
 import type { Beat, CinematicSound, Cutscene, StoryContext } from './script.ts';
-import { frameShot, type Shot } from './shot.ts';
+import { frameShot, type Shot, unblock } from './shot.ts';
 import { Stage } from './stage.ts';
 
 const PAUSE_BEAT = 2.5;
@@ -44,6 +44,8 @@ export class CutscenePlayer {
   private timeline: Timeline = createTimeline();
   private shot: Shot | null = null;
   private onDone: (() => void) | null = null;
+  /** Beats of a branch not taken, which end at once. */
+  private readonly unseen = new Set<number>();
   private time = 0;
 
   constructor(world: World, overlay: CinematicOverlay, sound: CinematicSound | null) {
@@ -68,6 +70,7 @@ export class CutscenePlayer {
     this.beats = scene.create(stage, story);
     this.timings = this.beats.map((beat) => ({ duration: beatDuration(beat), waits: beat.choice !== undefined }));
     this.timeline = createTimeline();
+    this.unseen.clear();
     this.shot = null;
     this.time = 0;
     this.onDone = onDone;
@@ -99,8 +102,8 @@ export class CutscenePlayer {
     }
     const beat = this.beats[this.timeline.beat];
     const duration = this.timings[this.timeline.beat]?.duration ?? 1;
-    const progress = Math.min(1, this.timeline.elapsed / duration);
-    if (beat) {
+    const progress = duration > 0 ? Math.min(1, this.timeline.elapsed / duration) : 1;
+    if (beat && !this.unseen.has(this.timeline.beat)) {
       beat.during?.(stage, progress);
       if (beat.say) setTalking(stage, beat.say.who, progress < TALK_SHARE);
     }
@@ -124,16 +127,24 @@ export class CutscenePlayer {
     }
     for (const index of step.started) {
       const beat = this.beats[index];
-      if (beat) this.startBeat(stage, beat);
+      if (beat) this.startBeat(stage, beat, index);
     }
   }
 
-  private startBeat(stage: Stage, beat: Beat): void {
+  private startBeat(stage: Stage, beat: Beat, index: number): void {
+    const timing = this.timings[index];
+    if (beat.when && !beat.when() && timing) {
+      // A beat of the branch not taken: it ends at once, unseen.
+      timing.duration = 0;
+      timing.waits = false;
+      this.unseen.add(index);
+      return;
+    }
     if (beat.fade) this.overlay.fade(beat.fade.to, beat.fade.color, beat.fade.time, beat.fade.from);
     if (beat.music) this.sound?.music(beat.music);
     if (beat.sound) this.sound?.effect(beat.sound);
     beat.run?.(stage);
-    if (beat.shot) this.shot = typeof beat.shot === 'function' ? beat.shot() : beat.shot;
+    if (beat.shot) this.shot = unblock(typeof beat.shot === 'function' ? beat.shot() : beat.shot, stage.actors.values());
     this.overlay.setTitle(beat.title ?? null);
     this.overlay.setLetter(beat.letter ?? null);
     if (beat.say) {
