@@ -71,6 +71,11 @@ export class LocalSession implements Session {
     }
   }
 
+  /** The simulation itself, for story battles that check their own goals. */
+  get match(): MatchState {
+    return this.state;
+  }
+
   view(): MatchView {
     return interpolateViews(this.previous, this.current, this.accumulator / this.step);
   }

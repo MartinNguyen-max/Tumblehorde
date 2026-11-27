@@ -82,6 +82,10 @@ After a **banquet** the whole army is drunk for the rest of the battle: they swa
 
 Locally there are at most 4 armies in total. Bots follow the same rules as the player.
 
+### Campaign
+
+One long single-player story (see `STORY.md`), saved at every chapter: cutscenes made in the game, a walkable capital, arena fights, and eight story battles on the battle engine with their own maps (a forest road, a burning village at night, a river bridge, the dark forest, the frozen outpost, a night raid, the northern fortress) and goals (beat them all, hold a bridge or a camp until a clock runs out, or the last night, which cannot be won). Heroes (Varro, Felix, Rufus, Eirik, Marcus) are knocked down but always get back up; from the Dark Forest on, legionaries who fall stay dead. A lost battle can be fought again. Winners celebrate after every won battle.
+
 ## 9. Bots
 
 - Local: Medium difficulty to start with. More difficulty levels come later.

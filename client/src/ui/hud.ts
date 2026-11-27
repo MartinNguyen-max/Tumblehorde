@@ -66,6 +66,7 @@ function wordsOf(faction: Faction): (typeof FACTION_WORDS)['roman' | 'viking'] {
 }
 const HP_LABEL_HEIGHT = 2.75;
 const FOE_LABEL_HEIGHT = 3.4;
+const NAME_TAG_HEIGHT = 2.6;
 const POPUP_RISE = 40;
 
 interface Popup {
@@ -103,6 +104,11 @@ export class Hud {
   private readonly hpFill = byId('hp-fill');
   private readonly hpText = byId('hp-text');
   private readonly foeLabel = byId('foe-label');
+  private readonly objective = byId('hud-objective');
+  private readonly nameTagLayer = byId('name-tags');
+  private readonly nameTags = new Map<number, HTMLElement>();
+  /** Story battles: the objective line, and whether named units get name tags. */
+  private story: { objective: (view: MatchView) => string | null } | null = null;
   private readonly toast = byId('toast');
   private readonly banner = byId('banner');
   private readonly centerMsg = byId('center-msg');
@@ -179,8 +185,17 @@ export class Hud {
     this.minimap.setMap(map);
   }
 
+  /** A story battle: an objective line and name tags over heroes and other armies' commanders; null for a skirmish. */
+  setStory(story: { objective: (view: MatchView) => string | null } | null, prepareTime: number = MATCH.prepareTime): void {
+    this.story = story;
+    this.prepareTime = prepareTime;
+    this.objective.hidden = true;
+    for (const tag of this.nameTags.values()) tag.remove();
+    this.nameTags.clear();
+  }
+
   reset(): void {
-    this.prepareTime = MATCH.prepareTime;
+    this.setStory(null);
     this.feed.replaceChildren();
     this.popupLayer.replaceChildren();
     this.popups = [];
@@ -358,6 +373,7 @@ export class Hud {
     this.updateHpLabel(ctx, me);
     this.updateFoeLabel(ctx);
     this.updatePopups(ctx);
+    this.updateStory(ctx);
     this.minimap.update(view, myArmyId, ctx.lookYaw, dt);
 
     this.tickTimers(dt);
@@ -493,6 +509,49 @@ export class Hud {
     this.hpFill.style.background = fraction > 0.5 ? '#5FC24A' : fraction > 0.25 ? '#F0B83A' : '#E0533F';
     this.hpText.textContent = `You · ${Math.ceil(me.hp)} HP`;
     this.place(this.hpLabel, ctx, me.x, me.y + HP_LABEL_HEIGHT, me.z);
+  }
+
+  /** The story's objective, and the names of heroes and generals over their heads. */
+  private updateStory(ctx: HudContext): void {
+    const story = this.story;
+    if (!story) return;
+    const text = story.objective(ctx.view);
+    this.objective.hidden = text === null;
+    if (text !== null && this.objective.textContent !== text) this.objective.textContent = text;
+    const camera = ctx.scene.activeCamera;
+    const seen = new Set<number>();
+    for (const unit of ctx.view.units) {
+      const name = this.storyName(ctx.view, unit);
+      if (!name || !unit.alive || !camera) continue;
+      if (Math.hypot(unit.x - camera.position.x, unit.z - camera.position.z) > HUD.nameTagDistance) continue;
+      seen.add(unit.id);
+      let tag = this.nameTags.get(unit.id);
+      if (!tag) {
+        tag = document.createElement('div');
+        tag.className = 'label name-tag';
+        tag.textContent = name;
+        const army = ctx.view.armies[unit.armyId];
+        const mine = ctx.view.armies[this.myArmyId];
+        tag.classList.toggle('foe', army !== undefined && mine !== undefined && army.team !== mine.team);
+        this.nameTagLayer.append(tag);
+        this.nameTags.set(unit.id, tag);
+      }
+      const height = unit.mountId !== null ? NAME_TAG_HEIGHT + 1 : NAME_TAG_HEIGHT;
+      this.place(tag, ctx, unit.x, unit.y + height, unit.z);
+    }
+    for (const [id, tag] of this.nameTags) {
+      if (seen.has(id)) continue;
+      tag.remove();
+      this.nameTags.delete(id);
+    }
+  }
+
+  /** Heroes by their name; other armies' commanders by their army's (a general's) name. */
+  private storyName(view: MatchView, unit: UnitView): string | null {
+    if (unit.hero) return unit.hero;
+    const army = view.armies[unit.armyId];
+    if (unit.kind === 'commander' && army && army.id !== this.myArmyId) return army.name;
+    return null;
   }
 
   /** Shows the number of enemies in the army you are looking at. */

@@ -23,6 +23,7 @@ export class Snowfall {
   }
 
   dispose(): void {
+    this.layers[0]?.material?.dispose();
     for (const layer of this.layers) layer.dispose();
   }
 

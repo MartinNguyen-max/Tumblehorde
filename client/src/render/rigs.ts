@@ -4,6 +4,7 @@ import { ANIMATION, type ArmyPalette, COLORS, ROMAN } from '../visualConfig.ts';
 import { buildBean } from './beans.ts';
 import { buildRoman, type PersonBody } from './legionary.ts';
 import { buildViking, vikingLook } from './viking.ts';
+import { buildBandit, buildZombie } from './folk.ts';
 import { childNode, type PartFactory } from './parts.ts';
 
 /** Soldiers are drawn a bit larger than their collision body: chunky and easy to read. */
@@ -64,6 +65,8 @@ export type SwingStyle = 'chop' | 'swipe' | 'thrust' | 'spin' | 'slash' | 'lance
 export interface PersonRig extends PersonBody {
   type: 'person';
   unitKind: UnitKind;
+  /** One of the risen dead: arms out in front, a stiff lurch, a lolling head. */
+  undead: boolean;
   scale: number;
   root: TransformNode;
   body: TransformNode;
@@ -125,6 +128,8 @@ const RUN_LEAN = 0.025;
 const MAX_MOVE_LEAN = 0.35;
 /** Faster than this (a dodge) the soldier hops with the feet tucked. */
 const DODGE_SPEED = 6.5;
+/** How far the dead lean forward as they come. */
+const UNDEAD_STOOP = 0.3;
 
 function addBubbles(parts: PartFactory, head: TransformNode): InstancedMesh[] {
   const bubbles: InstancedMesh[] = [];
@@ -154,6 +159,14 @@ function buildBody(parts: PartFactory, body: TransformNode, kind: UnitKind, pale
     const { look, variant } = vikingLook(id);
     return { built: buildViking(parts, body, palette, kind === 'commander', look), look: `viking-${variant}` };
   }
+  if (faction === 'bandit' && kind === 'swordsman') {
+    const { built, variant } = buildBandit(parts, body, palette, id);
+    return { built, look: `bandit-${variant}` };
+  }
+  if (faction === 'zombie') {
+    const { built, variant } = buildZombie(parts, body, palette, id);
+    return { built, look: `zombie-${variant}` };
+  }
   return { built: buildRoman(parts, body, palette, kind === 'commander'), look: 'roman' };
 }
 
@@ -175,6 +188,7 @@ export function createPersonRig(scene: Scene, parts: PartFactory, kind: UnitKind
     ...built,
     type: 'person',
     unitKind: kind,
+    undead: faction === 'zombie',
     scale,
     root,
     body,
@@ -495,6 +509,7 @@ export function animatePerson(rig: PersonRig, view: UnitView, ctx: AnimationCont
 
   animateCrouch(rig, view, dt, mounted);
   animateThrow(rig, view, dt);
+  if (rig.undead) animateUndead(rig, view, pose !== null, now);
 
   let shouting = animateSpeech(rig, dt);
   if (!stunned && !mounted) shouting = animateCheer(rig, dt) || shouting;
@@ -504,6 +519,19 @@ export function animatePerson(rig: PersonRig, view: UnitView, ctx: AnimationCont
   rig.mouth.setEnabled(!shouting && !grinning);
   rig.mouthOpen?.setEnabled(shouting || grinning);
   rig.root.setEnabled(!view.invulnerable || Math.sin(now * BLINK_RATE) > -0.3);
+}
+
+/** The dead reach for you with both arms, lurch forward bent over, and their heads loll. */
+function animateUndead(rig: PersonRig, view: UnitView, striking: boolean, now: number): void {
+  if (view.stunTimer > 0 || !view.alive) return;
+  const sway = Math.sin(now * 3 + view.id);
+  if (!striking) {
+    rig.armR.rotation.set(-1.45 + sway * 0.12, 0, 0.08);
+    rig.armL.rotation.set(-1.5 - sway * 0.12, 0, -0.08);
+  }
+  rig.body.rotation.x += UNDEAD_STOOP;
+  rig.head.rotation.z += Math.sin(now * 1.3 + view.id * 2) * 0.35;
+  rig.head.rotation.x += 0.2;
 }
 
 /** Ducking down: a squat on foot (feet out front, very undignified), a low lean in the saddle. */

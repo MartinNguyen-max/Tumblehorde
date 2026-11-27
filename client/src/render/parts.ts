@@ -43,17 +43,21 @@ export interface PartOptions {
   gloss?: boolean;
   /** Polished metal: a strong, tight highlight. Wins over gloss. */
   metal?: boolean;
+  /** Glows in the dark (the eyes of the dead). Wins over everything. */
+  glow?: boolean;
 }
 
-type Finish = 'matte' | 'gloss' | 'metal';
+type Finish = 'matte' | 'gloss' | 'metal' | 'glow';
 
 const FINISH: Record<Finish, { specular: number; power: number }> = {
   matte: { specular: 0, power: 1 },
   gloss: { specular: 0.28, power: 24 },
   metal: { specular: 0.45, power: 40 },
+  glow: { specular: 0, power: 1 },
 };
 
 function finishOf(options: PartOptions): Finish {
+  if (options.glow) return 'glow';
   if (options.metal) return 'metal';
   return options.gloss ? 'gloss' : 'matte';
 }
@@ -93,6 +97,10 @@ export class PartFactory {
     const { specular, power } = FINISH[kind];
     mat.specularColor = new Color3(specular, specular, specular);
     mat.specularPower = power;
+    if (kind === 'glow') {
+      mat.emissiveColor = Color3.FromHexString(color);
+      mat.disableLighting = true;
+    }
     this.materials.set(key, mat);
     return mat;
   }

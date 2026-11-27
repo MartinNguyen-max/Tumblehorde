@@ -120,7 +120,7 @@ function swarmSlots(sizes: readonly number[], frontCenter: Vec2, yaw: number): F
   return rankSlots(sizes, frontCenter, yaw, FORMATION.swarmSpacing, FORMATION.swarmRankGap).map((slot, i) => ({
     x: slot.x + slotNoise(i, 1) * jitter,
     z: slot.z + slotNoise(i, 2) * jitter,
-    yaw: slot.yaw + slotNoise(i, 3) * 0.3,
+    yaw: slot.yaw + slotNoise(i, 3) * FORMATION.swarmYawJitter,
   }));
 }
 

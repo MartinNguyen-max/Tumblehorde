@@ -26,6 +26,7 @@ import {
   createRandom,
   type IceSheet,
   isOnPath,
+  type River,
   NORTH,
   onIce,
   MAP,
@@ -66,6 +67,8 @@ export interface World {
   structureBody: PhysicsBody | null;
   /** Falling snow on snowy maps. */
   snow: Snowfall | null;
+  /** Materials made for this map only (ice, river): disposed with it. */
+  mapMaterials: StandardMaterial[];
 }
 
 const EDGE_POST_SPACING = 9;
@@ -121,6 +124,7 @@ export async function createWorld(canvas: HTMLCanvasElement): Promise<World> {
     terrainBody: null,
     structureBody: null,
     snow: null,
+    mapMaterials: [],
   };
   loadMap(world, 'meadow');
   return world;
@@ -136,6 +140,8 @@ export function loadMap(world: World, map: MapId): void {
   world.structureBody = null;
   world.snow?.dispose();
   world.snow = null;
+  for (const material of world.mapMaterials) material.dispose();
+  world.mapMaterials = [];
   world.mapRoot?.dispose();
   const theme = MAP_THEMES[map];
   const { scene } = world;
@@ -155,7 +161,9 @@ export function loadMap(world: World, map: MapId): void {
   world.structureBody = createStructureBody(scene, root, map);
   createEdge(scene, world.parts, root, map, world.edgeMaterial);
   if (MAPS[map].layout === 'siege') createMoat(scene, world.parts, root);
-  for (const sheet of MAPS[map].ice ?? []) createIce(scene, root, sheet);
+  for (const sheet of MAPS[map].ice ?? []) world.mapMaterials.push(createIce(scene, root, sheet));
+  const river = MAPS[map].river;
+  if (river) world.mapMaterials.push(createRiver(scene, world.parts, root, map, river));
   world.snow = theme.snow ? new Snowfall(scene) : null;
   // Scenery never moves: compute its transforms once instead of every frame.
   root.computeWorldMatrix(true);
@@ -463,7 +471,7 @@ function createScenery(parts: PartFactory, root: TransformNode, map: MapId, them
 /** Faint walls and posts at the map edge. The walls fade in when the player gets close. */
 /** The castle's moat: shallow water all round, a wooden bridge to the gate, and an arch over the gate. */
 /** A glossy, see-through skin over the frozen lake, so the ice shines. */
-function createIce(scene: Scene, root: TransformNode, sheet: IceSheet): void {
+function createIce(scene: Scene, root: TransformNode, sheet: IceSheet): StandardMaterial {
   const material = new StandardMaterial('ice', scene);
   material.diffuseColor = Color3.FromHexString(COLORS.ice);
   material.specularColor = new Color3(0.9, 0.95, 1);
@@ -476,6 +484,31 @@ function createIce(scene: Scene, root: TransformNode, sheet: IceSheet): void {
   disc.material = material;
   disc.parent = root;
   disc.isPickable = false;
+  return material;
+}
+
+/** A river: water either side of the bridge, and a plank deck across it. */
+function createRiver(scene: Scene, parts: PartFactory, root: TransformNode, map: MapId, river: River): StandardMaterial {
+  const water = new StandardMaterial('river', scene);
+  water.diffuseColor = Color3.FromHexString(COLORS.water);
+  water.specularColor = new Color3(0.5, 0.5, 0.5);
+  water.specularPower = 64;
+  water.alpha = 0.82;
+  const length = TERRAIN.extent - river.bridgeHalf;
+  for (const side of [-1, 1]) {
+    const plane = MeshBuilder.CreateBox('river', { width: river.halfWidth * 2, height: 0.05, depth: length }, scene);
+    plane.position.set(river.x, WATER.level, side * (river.bridgeHalf + length / 2));
+    plane.material = water;
+    plane.parent = root;
+    plane.isPickable = false;
+  }
+  const deck = new TransformNode('river-bridge', scene);
+  deck.parent = root;
+  deck.position.set(river.x, terrainHeightAt(map, river.x, 0) + 0.05, 0);
+  const span = river.halfWidth * 2 + 2;
+  parts.part('box', COLORS.wood, deck, [span, 0.25, river.bridgeHalf * 2], [0, 0, 0]);
+  for (let x = -span / 2 + 0.6; x < span / 2; x += 1.2) parts.part('box', COLORS.darkWood, deck, [0.08, 0.27, river.bridgeHalf * 2], [x, 0.01, 0], { castShadow: false });
+  return water;
 }
 
 /** Snow drifts down around the camera on snowy maps. */

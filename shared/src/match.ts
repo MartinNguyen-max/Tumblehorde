@@ -157,11 +157,13 @@ function updateRespawns(state: MatchState, dt: number): void {
   for (const army of state.armies) {
     const commander = getUnit(state, army.commanderId);
     if (army.forfeited || army.eliminated) continue;
+    // A downed hero only gets up while someone else on their side still stands: a wiped-out side has lost.
+    const helpAtHand = sideStillStanding(state, army.team);
     for (const id of army.soldierIds) {
       const hero = state.units[id];
       if (!hero || hero.alive || hero.hero === null || hero.respawnTimer <= 0) continue;
-      hero.respawnTimer -= dt;
-      if (hero.respawnTimer <= 0) getBackUp(state, hero, HERO.getUpHealth);
+      hero.respawnTimer = Math.max(0, hero.respawnTimer - dt);
+      if (hero.respawnTimer <= 0 && helpAtHand) getBackUp(state, hero, HERO.getUpHealth);
     }
     if (!commander || commander.alive || state.settings.arena) continue;
     commander.respawnTimer -= dt;
@@ -172,6 +174,10 @@ function updateRespawns(state: MatchState, dt: number): void {
 /** A knocked-down hero gets back on their feet where they lie, a little worse for wear. */
 function getBackUp(state: MatchState, unit: Unit, health: number): void {
   unit.alive = true;
+  unit.cooldownTimer = 0;
+  unit.lastHitByArmy = null;
+  unit.ai.targetId = null;
+  unit.ai.revengeId = null;
   unit.hp = unit.maxHp * health;
   unit.sinceHurt = 0;
   unit.pos = { x: unit.pos.x, y: terrainHeightAt(state.settings.map, unit.pos.x, unit.pos.z), z: unit.pos.z };
@@ -240,15 +246,28 @@ function updateDisconnects(state: MatchState, dt: number): void {
   }
 }
 
+/** Anyone on `team` who is not a hero still on their feet (a commander, a soldier). */
+export function sideStillStanding(state: MatchState, team: number): boolean {
+  return state.armies.some((a) => {
+    if (a.team !== team || a.eliminated) return false;
+    if (getUnit(state, a.commanderId)?.alive) return true;
+    return a.soldierIds.some((id) => {
+      const u = state.units[id];
+      return u !== undefined && u.alive && u.hero === null;
+    });
+  });
+}
+
 export function isArmyDefeated(state: MatchState, army: Army): boolean {
   const commander = getUnit(state, army.commanderId);
   if (state.settings.armies[army.id]?.reinforce) return false;
-  // A hero lying on the ground will get up again: the army is not beaten yet.
+  if (livingSoldiers(state, army).length > 0 || commander?.alive) return false;
+  // A hero lying on the ground gets up again, as long as someone on their side still stands.
   const heroDown = army.soldierIds.some((id) => {
     const u = state.units[id];
-    return u !== undefined && u.hero !== null && !u.alive && u.respawnTimer > 0;
+    return u !== undefined && u.hero !== null && !u.alive;
   });
-  return livingSoldiers(state, army).length === 0 && !commander?.alive && !heroDown;
+  return !(heroDown && sideStillStanding(state, army.team));
 }
 
 function updateElimination(state: MatchState): void {

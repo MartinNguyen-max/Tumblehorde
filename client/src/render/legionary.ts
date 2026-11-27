@@ -165,7 +165,7 @@ export function addSpear(parts: PartFactory, grip: TransformNode): TransformNode
  * A short, broad gladius: a round brass pommel, a wrapped grip, a wide guard, a bright blade
  * with a dark groove down the middle and a tapered point. Still a handful of chunky boxes.
  */
-function addSword(parts: PartFactory, grip: TransformNode): TransformNode {
+export function addSword(parts: PartFactory, grip: TransformNode): TransformNode {
   const sword = childNode('sword', grip);
   parts.part('box', ROMAN.brass, sword, [0.1, 0.07, 0.1], [0, 0.16, 0], METAL);
   parts.part('box', ROMAN.leather, sword, [0.075, 0.16, 0.075], [0, 0.06, 0], SMALL);

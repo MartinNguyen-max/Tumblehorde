@@ -18,6 +18,9 @@ import {
   reinforceAtFortress,
   workedOut,
   wonArena,
+  campaignBattle,
+  type CampaignBattle,
+  type BattleResult,
 } from '@tumblehorde/shared';
 import type { World } from '../render/world.ts';
 import type { InputState } from '../input/input.ts';
@@ -31,6 +34,8 @@ import { Stage } from '../cinematic/stage.ts';
 import { decorateArena } from './arenaDecor.ts';
 import { StoryCard } from './card.ts';
 import { SCENES_AFTER, SCENES_BEFORE } from './storyScenes.ts';
+import { StoryBattle } from './storyBattle.ts';
+import type { LocalSession } from '../game/session.ts';
 import { boughtItem, EFFECT, storyDialogue } from './dialogues.ts';
 import { CAPITAL, type DistrictSet } from './districts.ts';
 import { FreeRoam } from './freeRoam.ts';
@@ -60,8 +65,11 @@ export interface CampaignDeps {
   canvas: HTMLCanvasElement;
   /** Back to the main menu. */
   onExit: () => void;
-  /** Runs a battle in the battle engine; `onEnd` gets the final view once it is over. */
-  startBattle: (settings: MatchSettings, onEnd: (view: MatchView) => void) => void;
+  /**
+   * Runs a battle in the battle engine; `onEnd` gets the final view once it is over. Story battles
+   * pass an objective for the top of the screen and keep the session to check their goals.
+   */
+  startBattle: (settings: MatchSettings, onEnd: (view: MatchView) => void, objective?: (view: MatchView) => string | null) => LocalSession;
   stopBattle: () => void;
 }
 
@@ -76,7 +84,7 @@ type Phase =
   | { kind: 'loading'; chapter: Chapter; timer: number }
   | { kind: 'cutscene'; scenes: readonly Cutscene[]; index: number; then: () => void }
   | { kind: 'roam'; chapter: Chapter; roam: FreeRoam }
-  | { kind: 'battle'; chapter: Chapter }
+  | { kind: 'battle'; chapter: Chapter; story?: StoryBattle }
   | { kind: 'card' };
 
 function scenesOf(ids: readonly string[] | undefined): Cutscene[] {
@@ -166,14 +174,31 @@ export class Campaign {
     }
   }
 
-  /**
-   * The battle of a battle chapter. Until the battle host is wired in, a card lets the story be
-   * played through (the battle counts as won, nobody falls).
-   */
+  /** The battle of a battle chapter, fought with the men the story has left (see `campaignBattle`). */
   private runStoryBattle(chapter: Chapter, done: (outcome: StoryBattleOutcome) => void): void {
+    const battle = this.save ? campaignBattle(chapter.id, this.save) : null;
+    if (!battle) {
+      this.showUnbuilt(chapter);
+      return;
+    }
+    const story = new StoryBattle(this.deps.world, this.deps, battle, (result) => {
+      story.dispose();
+      this.storyBattleOver(chapter, battle, result, done);
+    });
+    this.phase = { kind: 'battle', chapter, story };
+  }
+
+  /** Won (or the last night, which cannot be won): the story goes on. Lost: fight again, or leave. */
+  private storyBattleOver(chapter: Chapter, battle: CampaignBattle, result: BattleResult, done: (outcome: StoryBattleOutcome) => void): void {
+    if (result.won || battle.onLoss === 'continue') {
+      done({ won: result.won, fallen: result.fallenNames });
+      return;
+    }
     this.phase = { kind: 'card' };
-    this.card.show(chapter.title, 'The battle of this chapter is still being built. Skip it to go on with the story.', [
-      { label: 'Skip the battle', primary: true, action: () => done({ won: true, fallen: [] }) },
+    const text =
+      battle.onLoss === 'retryOrLeave' ? 'The horde broke your lines. Rally the legion and fight again, or leave.' : 'Your story is saved at the start of this battle.';
+    this.card.show('Defeated', text, [
+      { label: 'Fight again', primary: true, action: () => this.runStoryBattle(chapter, done) },
       { label: 'Leave to menu', action: () => this.leave() },
     ]);
   }
@@ -358,6 +383,7 @@ export class Campaign {
     }
     if (phase.kind === 'cutscene') this.player.update(dt, this.deps.input.isHeld('Space'));
     if (phase.kind === 'roam') phase.roam.update(dt);
+    if (phase.kind === 'battle') phase.story?.update(dt);
   }
 
   /** Leaves the story; progress stays saved at the last checkpoint. */
@@ -367,7 +393,10 @@ export class Campaign {
   }
 
   stop(): void {
-    if (this.phase.kind === 'battle') this.deps.stopBattle();
+    if (this.phase.kind === 'battle') {
+      this.phase.story?.dispose();
+      this.deps.stopBattle();
+    }
     this.endRoam();
     this.phase = { kind: 'idle' };
     this.player.stop();
