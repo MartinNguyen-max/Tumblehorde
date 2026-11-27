@@ -11,7 +11,7 @@ const [scenarioPath, outDir] = process.argv.slice(2);
 const steps = JSON.parse(readFileSync(scenarioPath, 'utf8'));
 mkdirSync(outDir, { recursive: true });
 const port = 9333 + Math.floor(Math.random() * 500);
-const chrome = spawn('google-chrome', ['--headless=new', `--remote-debugging-port=${port}`, '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--window-size=1280,720', '--user-data-dir=' + join(tmpdir(), 'tumblehorde-chrome-' + port), 'about:blank'], { stdio: 'ignore' });
+const chrome = spawn(process.env.CHROME ?? 'google-chrome', ['--headless=new', `--remote-debugging-port=${port}`, '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--window-size=1280,720', '--user-data-dir=' + join(tmpdir(), 'tumblehorde-chrome-' + port), 'about:blank'], { stdio: 'ignore' });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let target;
 for (let i = 0; i < 50 && !target; i++) {
