@@ -24,5 +24,6 @@ export * from './input.ts';
 export * from './view.ts';
 export * from './net.ts';
 export * from './predict.ts';
+export * from './campaign/index.ts';
 export * from './duel.ts';
 export * from './celebration.ts';

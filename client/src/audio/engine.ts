@@ -83,6 +83,15 @@ export class AudioEngine {
     return buffer;
   }
 
+  /**
+   * A plain output into the master volume, without placement or voice limits: for cutscene music
+   * and voices. Null while sound is off or not started yet.
+   */
+  directOut(): { ctx: AudioContext; out: AudioNode } | null {
+    if (!this.enabled || !this.ctx || !this.master || this.ctx.state !== 'running') return null;
+    return { ctx: this.ctx, out: this.master };
+  }
+
   setListener(x: number, z: number, yaw: number): void {
     this.listener = { x, z, yaw };
   }

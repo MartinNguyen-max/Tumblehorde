@@ -16,6 +16,9 @@ import { CAMERA, MAP_NAMES } from './visualConfig.ts';
 import { AudioEngine } from './audio/engine.ts';
 import { BattleAudio } from './audio/battleAudio.ts';
 import { setupSoundToggle } from './ui/soundToggle.ts';
+import { Campaign } from './campaign/campaign.ts';
+import { CampaignMenu } from './campaign/menu.ts';
+import { CinematicAudio } from './audio/cinematicAudio.ts';
 
 const DEMO_CAMERA = { distance: 62, pitch: 0.55, height: 1 } as const;
 const PLAY_CAMERA = { distance: CAMERA.distance, pitch: CAMERA.startPitch } as const;
@@ -32,6 +35,17 @@ async function boot(): Promise<void> {
   const audio = new AudioEngine();
   const battleAudio = new BattleAudio(audio);
   setupSoundToggle(audio);
+  const campaign = new Campaign({ world, input, canvas, sound: new CinematicAudio(audio), onExit: () => showLanding() });
+  const campaignMenu = new CampaignMenu({
+    onNew: () => {
+      enterCampaign();
+      campaign.startNew();
+    },
+    onContinue: () => {
+      enterCampaign();
+      campaign.continueSaved();
+    },
+  });
   const clickToPlay = byId('click-to-play');
   const ctpTitle = byId('ctp-title');
   const ctpText = byId('ctp-text');
@@ -71,12 +85,23 @@ async function boot(): Promise<void> {
     world.edgeMaterial.alpha = 0;
   };
 
+  /** The campaign takes over the screen: no battle, no menu, no demo behind it. */
+  const enterCampaign = (): void => {
+    stopBattle();
+    demo = null;
+    renderer.clear();
+    landing.setVisible(false);
+    onlineLobby.hide();
+  };
+
   const showLanding = (message?: string): void => {
+    campaign.stop();
     stopBattle();
     onlineLobby.hide();
     landing.setVisible(true);
     if (message) landing.onlineHint.textContent = message;
     startDemo();
+    campaignMenu.refresh();
   };
 
   const showPausePrompt = (paused: boolean, online: boolean, first: boolean): void => {
@@ -171,7 +196,9 @@ async function boot(): Promise<void> {
   world.engine.runRenderLoop(() => {
     const dt = Math.min(world.engine.getDeltaTime() / 1000, MAX_FRAME_TIME);
     const now = performance.now() / 1000;
-    if (controller) {
+    if (campaign.active) {
+      campaign.frame(dt);
+    } else if (controller) {
       controller.frame(dt, now);
     } else if (demo) {
       demo.update(dt);
@@ -217,6 +244,15 @@ async function boot(): Promise<void> {
         view: () => controller?.session.view() ?? null,
         fastForward: (seconds: number) => {
           for (let t = 0; t < seconds; t += 1 / 60) controller?.session.update(1 / 60);
+        },
+        cutscene: (id: string) => {
+          enterCampaign();
+          return campaign.playById(id);
+        },
+        campaign,
+        chapter: (id: Parameters<Campaign['startAt']>[0]) => {
+          enterCampaign();
+          campaign.startAt(id);
         },
         fps: () => world.engine.getFps(),
         scene: world.scene,
