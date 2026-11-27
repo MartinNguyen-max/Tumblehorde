@@ -36,13 +36,14 @@ import {
 import { type TransformNode, Vector3 } from '../render/babylon.ts';
 import { CAMERA } from '../visualConfig.ts';
 import type { InputState } from '../input/input.ts';
-import type { Actor, ActorLook } from '../cinematic/actor.ts';
+import type { Actor } from '../cinematic/actor.ts';
 import type { CinematicOverlay } from '../cinematic/overlay.ts';
 import type { CinematicSound } from '../cinematic/script.ts';
 import { Stage } from '../cinematic/stage.ts';
 import { CAST } from '../cinematic/cast.ts';
 import { SMALL_TALK } from './dialogues.ts';
 import { CityMap } from './cityMap.ts';
+import { PlayerBody } from './playerBody.ts';
 import type { DistrictSet, Spot } from './districts.ts';
 
 /**
@@ -111,6 +112,8 @@ interface WorkoutRun {
   workout: Workout;
   /** Key presses since the last frame: taps can be shorter than a frame. */
   presses: ('left' | 'right')[];
+  /** Reps already shown with a swing. */
+  shownReps: number;
   stop: () => void;
   onDone: (done: boolean) => void;
 }
@@ -127,7 +130,10 @@ export class FreeRoam {
   private readonly set: DistrictSet;
   private readonly walkable: Walkable;
   private readonly walker: Walker;
-  private player: Actor;
+  private player: PlayerBody;
+  private readonly voice = CAST.cassianPrisoner.voice;
+  /** Space was down last frame (jumps start on the press, not while held). */
+  private jumpHeld = false;
   private readonly npcs: Npc[];
   private readonly npcActors: Actor[];
   private readonly rng = createRandom(7);
@@ -150,15 +156,13 @@ export class FreeRoam {
   };
 
   /** Cassian changes clothes (puts on the armor he just bought): a new body in the same spot. */
-  setPlayerLook(look: ActorLook): void {
-    const voice = this.player.voice;
+  setPlayerLook(role: string): void {
     this.player.dispose();
-    this.player = this.stage.actor(PLAYER_NAME, look);
-    this.player.voice = voice;
-    this.player.drive(this.walker.pos.x, this.walker.pos.z, this.walker.yaw, 0);
+    this.player = new PlayerBody(this.stage, role);
   }
 
-  constructor(stage: Stage, deps: FreeRoamDeps, set: DistrictSet, playerLook: ActorLook) {
+  /** `playerRole`: the cast role whose clothes Cassian wears. */
+  constructor(stage: Stage, deps: FreeRoamDeps, set: DistrictSet, playerRole: string) {
     this.stage = stage;
     this.deps = deps;
     this.set = set;
@@ -167,8 +171,7 @@ export class FreeRoam {
     this.walkable = districtWalkable(set.district);
     this.walker = { pos: { x: set.start.x, z: set.start.z }, yaw: set.start.yaw, speed: 0 };
     this.yaw = set.start.yaw;
-    this.player = stage.actor(PLAYER_NAME, playerLook);
-    this.player.voice = CAST.cassianPrisoner.voice;
+    this.player = new PlayerBody(stage, playerRole);
     this.npcs = set.people.map((spec, i) => createNpc(i, { ...spec, name: deps.renames?.[spec.name] ?? spec.name }));
     this.npcActors = set.people.map((spec, i) => {
       const actor = stage.actor(`${spec.name}#${i}`, spec.look);
@@ -195,9 +198,12 @@ export class FreeRoam {
     input.takeReleased();
     const pressedE = pressed.includes('KeyE');
 
+    const space = input.isHeld('Space');
+    const pressedJump = space && !this.jumpHeld;
+    this.jumpHeld = space;
     if (this.workout) this.updateWorkout(dt);
     else if (this.talk) this.updateTalk(pressedE);
-    else this.updateWalking(dt, pressedE, pressed.includes('Space'));
+    else this.updateWalking(dt, pressedE, pressedJump);
     this.deps.overlay.status(this.deps.status());
     this.time += dt;
     const goal = this.talk || this.workout ? null : this.guideTarget();
@@ -273,7 +279,7 @@ export class FreeRoam {
       if (e.code === 'KeyD') presses.push('right');
     };
     window.addEventListener('keydown', onKey);
-    this.workout = { workout: startWorkout(), presses, onDone, stop: () => window.removeEventListener('keydown', onKey) };
+    this.workout = { workout: startWorkout(), presses, shownReps: 0, onDone, stop: () => window.removeEventListener('keydown', onKey) };
     this.walker.speed = 0;
     this.deps.overlay.prompt(null);
   }
@@ -286,12 +292,11 @@ export class FreeRoam {
     run.workout = workoutTick(run.workout, dt);
     const { reps, timeLeft } = run.workout;
     overlay.talk('Lift the stone!', `Press A and D in turn: ${reps}/${WORKOUT.reps} · ${timeLeft.toFixed(1)} s`, '', reps / WORKOUT.reps);
-    this.player.setPose(reps % 2 === 0 ? 'cheer' : 'offer');
-    this.player.setMood(timeLeft < 2 ? 'shout' : 'angry');
+    if (reps !== run.shownReps) this.player.punch();
+    run.shownReps = reps;
     const result = workoutResult(run.workout);
     if (result === 'going') return;
     this.endWorkout();
-    this.player.setMood(result === 'done' ? 'happy' : 'sad');
     run.onDone(result === 'done');
   }
 
@@ -303,10 +308,11 @@ export class FreeRoam {
 
   private punch(): void {
     this.punchTimer = PUNCH_TIME;
+    this.player.punch();
     const target = facedNpc(this.npcs, this.walker.pos, this.walker.yaw, NPC.punchDistance);
     if (!target || target.dialogue) return;
     punchNpc(this.npcs, target, this.walker.pos);
-    this.deps.sound?.speak(this.npcActors[target.id]?.voice ?? this.player.voice, 'surprised', 0.4);
+    this.deps.sound?.speak(this.npcActors[target.id]?.voice ?? this.voice, 'surprised', 0.4);
   }
 
   private openTalk(npc: Npc): void {
@@ -358,11 +364,16 @@ export class FreeRoam {
   private speak(line: Line): void {
     const talk = this.talk;
     if (!talk) return;
-    const actor = line.speaker === PLAYER_NAME ? this.player : this.npcActors[talk.npc.id];
+    const seconds = Math.min(TALK_VOICE.maxSeconds, line.text.length / TALK_VOICE.charsPerSecond);
+    if (line.speaker === PLAYER_NAME) {
+      this.deps.sound?.speak(this.voice, line.mood ?? 'neutral', seconds);
+      return;
+    }
+    const actor = this.npcActors[talk.npc.id];
     if (!actor) return;
     actor.setMood(line.mood ?? 'neutral');
     actor.talking = true;
-    this.deps.sound?.speak(actor.voice, line.mood ?? 'neutral', Math.min(TALK_VOICE.maxSeconds, line.text.length / TALK_VOICE.charsPerSecond));
+    this.deps.sound?.speak(actor.voice, line.mood ?? 'neutral', seconds);
   }
 
   private closeTalk(): void {
@@ -371,7 +382,7 @@ export class FreeRoam {
     this.talk = null;
     endTalk(talk.npc, this.rng);
     this.deps.overlay.talk(null, null);
-    for (const actor of [this.player, ...this.npcActors]) {
+    for (const actor of this.npcActors) {
       actor.talking = false;
       actor.setMood('neutral');
     }
@@ -379,9 +390,7 @@ export class FreeRoam {
   }
 
   private syncActors(dt: number): void {
-    this.player.drive(this.walker.pos.x, this.walker.pos.z, this.walker.yaw, this.walker.speed);
-    this.player.root.position.y = this.walker.air?.height ?? 0;
-    if (!this.workout) this.player.setPose(this.punchTimer > 0 ? 'punch' : 'stand');
+    this.player.update(dt, this.walker);
     this.npcs.forEach((npc, i) => {
       const actor = this.npcActors[i];
       if (!actor) return;

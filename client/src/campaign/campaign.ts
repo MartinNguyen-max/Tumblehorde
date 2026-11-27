@@ -25,8 +25,6 @@ import {
 } from '@tumblehorde/shared';
 import type { World } from '../render/world.ts';
 import type { InputState } from '../input/input.ts';
-import type { ActorLook } from '../cinematic/actor.ts';
-import { CLOTH, HAIR } from '../cinematic/config.ts';
 import { CinematicOverlay } from '../cinematic/overlay.ts';
 import { CutscenePlayer } from '../cinematic/player.ts';
 import type { CinematicSound, Cutscene, StoryContext } from '../cinematic/script.ts';
@@ -36,7 +34,6 @@ import { decorateArena } from './arenaDecor.ts';
 import { StoryCard } from './card.ts';
 import { SCENES_AFTER, SCENES_BEFORE } from './storyScenes.ts';
 import { StoryBattle } from './storyBattle.ts';
-import { CAST } from '../cinematic/cast.ts';
 import type { LocalSession } from '../game/session.ts';
 import { boughtItem, EFFECT, storyDialogue } from './dialogues.ts';
 import { CAPITAL, type DistrictSet } from './districts.ts';
@@ -58,10 +55,6 @@ const CHAPTER_DISTRICTS: Partial<Record<ChapterId, DistrictSet>> = {
   apprentice: CAPITAL,
 };
 
-/** Cassian after the years in prison: rags, long hair and a beard. */
-const CASSIAN_FREED: ActorLook = { outfit: 'rags', hair: HAIR.brown, hairStyle: 'long', beard: 'long', beardColor: HAIR.brown };
-/** Varro's apprentice: a clean tunic, hair and beard cut. */
-const CASSIAN_APPRENTICE: ActorLook = { outfit: 'smith', color: CLOTH.tunic, hair: HAIR.brown, hairStyle: 'short', beard: 'short', beardColor: HAIR.brown };
 
 export interface CampaignDeps {
   world: World;
@@ -332,10 +325,10 @@ export class Campaign {
     }
   }
 
-  /** Cassian in the city: a freed prisoner's rags, the smith's apprentice, then in his silver armor. */
-  private roamLook(chapter: Chapter): ActorLook {
-    if (chapter.id === 'capital') return CASSIAN_FREED;
-    return this.save?.gear.armor ? CAST.cassianTraveller.look : CASSIAN_APPRENTICE;
+  /** Cassian in the city (a cast role): a freed prisoner's rags, the smith's apprentice, then in his silver armor. */
+  private roamLook(chapter: Chapter): string {
+    if (chapter.id === 'capital') return 'cassianPrisoner';
+    return this.save?.gear.armor ? 'cassianTraveller' : 'cassianSmith';
   }
 
   private endRoam(): void {

@@ -8,7 +8,7 @@ The player played again after round 1. Work list; items are ticked as they land.
 - [ ] The prison window: a real view outside that changes with the seasons
 
 ## The city
-- [ ] Jumping works; walking around looks and feels like the battle game
+- [x] Jumping works; walking around looks and feels like the battle game
 
 ## Battles
 - [ ] The burning village: smoke seen from afar, the Vikings surrounding the Romans, then Cassian joins; Vikings and Romans easy to tell apart

@@ -159,8 +159,8 @@ const STROLLERS: readonly [NpcRole, string, number, number][] = [
   ['citizen', 'Citizen', -6, -4], ['citizen', 'Citizen', 5, 6], ['citizen', 'Citizen', -9, 11], ['citizen', 'Citizen', 10, -10],
   ['citizen', 'Citizen', -16, 0], ['citizen', 'Citizen', -3, 12], ['citizen', 'Citizen', 15, 0], ['citizen', 'Citizen', -20, -12],
   ['citizen', 'Citizen', 0, -28], ['citizen', 'Citizen', 0, -36], ['citizen', 'Citizen', -34, 0], ['citizen', 'Citizen', 36, 0],
-  ['child', 'Child', 3, 4], ['child', 'Child', -5, 6], ['child', 'Child', -12, 1], ['child', 'Child', 0, 30],
-  ['reveller', 'Reveller', 0, 26], ['reveller', 'Reveller', -1, 33], ['reveller', 'Reveller', 1, 38], ['reveller', 'Reveller', 6, 14],
+  ['child', 'Child', 3, 4], ['child', 'Child', -5, 6], ['child', 'Child', -12, 1], ['child', 'Child', 1.2, 44],
+  ['reveller', 'Reveller', 1, 23], ['reveller', 'Reveller', -1, 42], ['reveller', 'Reveller', 1, 38], ['reveller', 'Reveller', 6, 14],
   ['citizen', 'Citizen', 4, -14], ['citizen', 'Citizen', -8, -12], ['citizen', 'Citizen', 0, 20], ['citizen', 'Citizen', -40, 0],
 ];
 
