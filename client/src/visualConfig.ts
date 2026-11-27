@@ -100,6 +100,16 @@ export const FOLK_LOOK = {
   grave: '#3E3A34',
 } as const;
 
+/** The story's named people in battle: who looks like what (beard colors and the like). */
+export const STORY_LOOKS = {
+  /** Eirik: a young Viking, blond braids, a wolf pelt, no helmet. */
+  eirik: { beard: '#E3C77A', pelt: 1 },
+  /** Hrolf the Red: a red-bearded jarl. */
+  hrolfBeard: '#B8401E',
+  /** Varro, the old smith: a big grey beard on a legionary's body. */
+  varroBeard: '#B9B4AA',
+} as const;
+
 export interface ArmyPalette {
   body: string;
   trim: string;
