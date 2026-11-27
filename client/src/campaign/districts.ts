@@ -92,6 +92,9 @@ const COLUMN: Footprint = { x: 14, z: -6, width: 1.6, depth: 1.6, yaw: 0 };
 
 const FOOTPRINTS: readonly Footprint[] = [...BLOCKS, FOUNTAIN, FORGE, TEMPLE, GATE, ...STALL_FOOTPRINTS, POST, COLUMN];
 
+/** The capital's square, for scenes set in it: its size, what stands in it, and the training yard. */
+export const CAPITAL_SQUARE = { halfX: SQ.halfX, halfZ: SQ.halfZ, footprints: FOOTPRINTS, yard: YARD, fountainRadius: FOUNTAIN_RADIUS } as const;
+
 function townsfolk(color: string, hair: string, extra: Partial<ActorLook> = {}): ActorLook {
   return { outfit: 'villager', color, hair, hairStyle: 'short', ...extra };
 }

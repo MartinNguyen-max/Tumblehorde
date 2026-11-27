@@ -1,5 +1,5 @@
 import type { TransformNode } from '../render/babylon.ts';
-import { house, SET_COLORS } from './sets.ts';
+import { house, SET_COLORS, tree } from './sets.ts';
 import type { Stage } from './stage.ts';
 import { Crowd, ringSeats } from '../render/crowd.ts';
 
@@ -130,16 +130,75 @@ export function throneRoom(stage: Stage): void {
   stage.box(STORY_COLORS.forgeWall, [16, 8, 0.5], [0, 4, -16]);
 }
 
-/** What is left of the monastery: black stumps of walls, a broken bell tower, ash. */
+/** Where the monks lie, in the ruins: six mounds under wooden crosses. */
+export const RUIN_GRAVES = [
+  { x: -8.5, z: 5 }, { x: -7, z: 5.4 }, { x: -5.5, z: 5 }, { x: -8.5, z: 7.2 }, { x: -7, z: 7.6 }, { x: -5.5, z: 7.2 },
+] as const;
+/** Where the bell lies, at the end of the fallen tower. */
+export const RUIN_BELL = { x: 13.6, z: -8.6 } as const;
+
+/** A broken wall: a row of blocks of uneven height, stone below and black where it burned. */
+function brokenWall(stage: Stage, x: number, z: number, length: number, yaw: number, top: number, seed: number): void {
+  const g = stage.group('broken-wall', x, 0, z);
+  g.rotation.y = yaw;
+  const pieces = Math.max(2, Math.round(length / 0.9));
+  for (let i = 0; i < pieces; i++) {
+    const h = top * (0.25 + 0.75 * Math.abs(Math.sin(seed * 3.1 + i * 1.7)));
+    const px = -length / 2 + (i + 0.5) * (length / pieces);
+    const w = length / pieces + 0.02;
+    const low = Math.min(h, 0.9);
+    stage.world.parts.part('box', SET_COLORS.stoneDark, g, [w, low, 0.6], [px, low / 2, 0]);
+    if (h > low) stage.world.parts.part('box', SET_COLORS.charred, g, [w, h - low, 0.6], [px, low + (h - low) / 2, 0]);
+  }
+}
+
+/** What is left of the monastery years later: broken black walls, the bell tower lying where it fell, graves, weeds. */
 export function ruinedMonastery(stage: Stage): void {
-  stage.box(SET_COLORS.ash, [60, 0.1, 60], [0, -0.04, 0], 0, { castShadow: false });
-  const walls: readonly (readonly [number, number, number, number, number])[] = [
-    [-5, -9, 9, 2.2, 0], [7, -5, 6, 1.4, Math.PI / 2], [-9, 0, 5, 1.0, Math.PI / 2], [2, -9.5, 3, 3.2, 0],
-  ];
-  for (const [x, z, l, h, yaw] of walls) stage.box(SET_COLORS.charred, [l, h, 0.6], [x, h / 2, z], yaw);
-  stage.box(SET_COLORS.charred, [2.6, 5, 2.6], [2.5, 2.5, -9.5]);
-  for (let i = 0; i < 6; i++) stage.box(STORY_COLORS.log, [0.3, 0.3, 2.4], [-3 + i * 1.3, 0.15, -6 + (i % 3)], i * 0.9);
-  stage.box(SET_COLORS.bell, [0.8, 0.7, 0.8], [3.6, 0.35, -7.5], 0.5, { metal: true });
+  stage.ground('#5A6A44', 110, 'hills');
+  stage.box(SET_COLORS.ash, [30, 0.05, 24], [1, 0.0, -4], 0, { castShadow: false });
+  stage.box(SET_COLORS.flagstone, [9, 0.06, 7], [0, 0.01, -1.5], 0, { castShadow: false });
+  // The two houses, as broken walls.
+  brokenWall(stage, -5, -11.5, 9, 0, 3.2, 1);
+  brokenWall(stage, -5, -6.5, 9, 0, 1.6, 2);
+  brokenWall(stage, -9.5, -9, 5, Math.PI / 2, 2.4, 3);
+  brokenWall(stage, -0.5, -9, 5, Math.PI / 2, 1.2, 4);
+  brokenWall(stage, 7, -9, 5, 0, 2.6, 5);
+  brokenWall(stage, 7, -1, 5, 0, 1.0, 6);
+  brokenWall(stage, 4.5, -5, 8, Math.PI / 2, 2.0, 7);
+  brokenWall(stage, 9.5, -5, 8, Math.PI / 2, 2.8, 8);
+  brokenWall(stage, -11, 2, 10, Math.PI / 2, 2.0, 9);
+  // Roof beams that fell in.
+  for (const [x, z, yaw, tilt] of [[-6, -9, 0.3, 0.5], [-3, -8.5, -0.2, -0.6], [7, -6, 1.4, 0.4], [7.5, -3, 1.7, -0.5]] as const) {
+    const beam = stage.box(STORY_COLORS.log, [4, 0.3, 0.3], [x, 1.0, z], yaw);
+    beam.rotation.z = tilt;
+  }
+  // The bell tower: a black stump, and the rest lying where it fell, broken in three.
+  stage.box(SET_COLORS.charred, [2.6, 3, 2.6], [2.5, 1.5, -9.5]);
+  for (const [x, len] of [[5.6, 3.2], [9.0, 3.0], [12.2, 2.6]] as const) stage.box(SET_COLORS.stoneDark, [len, 2.4, 2.4], [x, 1.2, -9.4], 0.04 * x);
+  stage.box(SET_COLORS.bell, [0.8, 0.7, 0.8], [RUIN_BELL.x, 0.35, RUIN_BELL.z], 0.5, { metal: true });
+  // The graves the villagers dug.
+  for (const [i, g] of RUIN_GRAVES.entries()) {
+    stage.box(STORY_COLORS.soil, [0.9, 0.3, 1.7], [g.x, 0.12, g.z], 0.05 * i);
+    stage.box(STORY_COLORS.log, [0.1, 0.9, 0.1], [g.x, 0.45, g.z - 0.8]);
+    stage.box(STORY_COLORS.log, [0.5, 0.1, 0.1], [g.x, 0.7, g.z - 0.8]);
+    stage.shape('bush', '#7A9A4A', [0.3, 0.2, 0.3], [g.x + 0.3, 0.3, g.z + 0.4]);
+  }
+  // Years of weeds through the ash, and a young tree growing inside the old walls.
+  for (let i = 0; i < 40; i++) {
+    const a = i * 2.399;
+    const r = 2 + (i % 9) * 1.3;
+    stage.shape('bush', i % 2 === 0 ? '#5E7E3A' : '#6E8E44', [0.35, 0.25, 0.35], [Math.cos(a) * r, 0.1, -4 + Math.sin(a) * r]);
+  }
+  tree(stage, -4, -9, 0.8);
+  // Crows on the walls.
+  for (const [x, y, z] of [[-6.2, 3.3, -11.5], [8.5, 2.9, -5.4], [-9.5, 2.5, -8.2]] as const) {
+    stage.box('#1A1A1E', [0.22, 0.2, 0.34], [x, y, z]);
+    stage.box('#1A1A1E', [0.14, 0.14, 0.14], [x, y + 0.14, z + 0.16]);
+  }
+  // The river where the ships came, and one that never left.
+  stage.box(STORY_COLORS.water, [14, 0.08, 120], [22, 0.02, -20], 0, { castShadow: false });
+  const wreck = dragonBoat(stage, 18, -16, 0.3);
+  wreck.rotation.z = 0.35;
   // The old bench, burned, where the carving lessons were.
   stage.box(SET_COLORS.charred, [1.8, 0.1, 0.45], [0, 0.3, 0], 0.15);
 }

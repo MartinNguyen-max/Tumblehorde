@@ -13,7 +13,7 @@ import { LIGHTS, type LightName } from './light.ts';
  * and everything is put back on `leave`.
  */
 
-export type Weather = 'none' | 'rain' | 'snow' | 'embers' | 'motes' | 'ash';
+export type Weather = 'none' | 'rain' | 'snow' | 'embers' | 'motes' | 'ash' | 'petals';
 
 const WEATHER = {
   rain: { count: 420, color: '#B8CCE0', size: [0.02, 0.5, 0.02], fall: 16, drift: 1.5, spread: 18, height: 12 },
@@ -21,6 +21,7 @@ const WEATHER = {
   embers: { count: 120, color: '#FF9A3A', size: [0.06, 0.06, 0.06], fall: -1.6, drift: 0.9, spread: 9, height: 7 },
   motes: { count: 90, color: '#FFF2C8', size: [0.035, 0.035, 0.035], fall: -0.08, drift: 0.25, spread: 8, height: 4 },
   ash: { count: 200, color: '#6A6460', size: [0.05, 0.05, 0.05], fall: 0.7, drift: 0.8, spread: 14, height: 9 },
+  petals: { count: 260, color: '#F07A9A', size: [0.12, 0.02, 0.1], fall: 1.3, drift: 1.4, spread: 16, height: 11 },
 } as const;
 
 const FLAME_COLORS = ['#FFD24A', '#FF9A2E', '#FF5A1E'] as const;
