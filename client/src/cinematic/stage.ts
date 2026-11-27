@@ -3,6 +3,7 @@ import { Color3, Color4, FreeCamera, type InstancedMesh, type Scene, TransformNo
 import type { PartOptions } from '../render/parts.ts';
 import { setShadowArea, type World } from '../render/world.ts';
 import { Actor, type ActorLook } from './actor.ts';
+import { Horse } from './horse.ts';
 import { LIGHTS, type LightName } from './light.ts';
 
 /**
@@ -59,6 +60,9 @@ export class Stage {
   readonly root: TransformNode;
   readonly camera: FreeCamera;
   readonly actors = new Map<string, Actor>();
+  readonly horses: Horse[] = [];
+  /** Extra per-frame animation of the set (a swinging lantern, a rising gate). */
+  private readonly animations: ((dt: number, time: number) => void)[] = [];
   private readonly fires: Fire[] = [];
   private flakes: Flake[] = [];
   private weatherKind: Weather = 'none';
@@ -102,6 +106,30 @@ export class Stage {
     actor.root.parent = this.root;
     this.actors.set(name, actor);
     return actor;
+  }
+
+  horse(hide?: string): Horse {
+    const horse = new Horse(this.scene, this.world.parts, this.root, hide);
+    this.horses.push(horse);
+    return horse;
+  }
+
+  /** Puts an actor in the saddle. */
+  mount(actor: Actor, horse: Horse): void {
+    actor.root.parent = horse.saddle;
+    actor.place(0, 0, 0);
+    actor.setStance('sit', true);
+  }
+
+  /** Runs `animate` every frame for the rest of the scene. */
+  animate(animate: (dt: number, time: number) => void): void {
+    this.animations.push(animate);
+  }
+
+  /** Every walk and ride jumps to its end (a skipped beat). */
+  finishMoves(): void {
+    for (const actor of this.actors.values()) actor.finishWalk();
+    for (const horse of this.horses) horse.finishRun();
   }
 
   get(name: string): Actor {
@@ -149,6 +177,24 @@ export class Stage {
     sun.direction = new Vector3(...preset.sunDirection).normalize();
   }
 
+  /** A small flame on something held (a torch head), flickering, without a light of its own. */
+  flame(parent: TransformNode, size = 0.22): void {
+    const parts = this.world.parts;
+    const flames = FLAME_COLORS.map((color, i) => {
+      const material = parts.material(color);
+      material.emissiveColor = Color3.FromHexString(color);
+      material.disableLighting = true;
+      const s = size * (1 - i * 0.25);
+      return parts.part('box', color, parent, [s, s * 1.5, s], [0, size * 0.6 + i * size * 0.35, 0], { castShadow: false });
+    });
+    this.animate((_dt, time) => {
+      flames.forEach((f, i) => {
+        f.scaling.y = f.scaling.x * (1.4 + Math.sin(time * FIRE_FLICKER + i * 2) * 0.35);
+        f.rotation.y = time * (i % 2 === 0 ? 2 : -1.6);
+      });
+    });
+  }
+
   /** A campfire or burning beam: flickering boxes and a warm light. */
   fire(x: number, z: number, size = 1, y = 0): void {
     const flames: InstancedMesh[] = [];
@@ -194,6 +240,8 @@ export class Stage {
   update(dt: number): void {
     this.time += dt;
     for (const actor of this.actors.values()) actor.update(dt);
+    for (const horse of this.horses) horse.update(dt);
+    for (const animate of this.animations) animate(dt, this.time);
     for (const fire of this.fires) {
       fire.flames.forEach((flame, i) => {
         const wave = Math.sin(this.time * FIRE_FLICKER + i * 1.7) * 0.5 + Math.sin(this.time * FIRE_FLICKER * 1.9 + i) * 0.5;

@@ -6,7 +6,7 @@ import type { ChapterId } from '@tumblehorde/shared';
  */
 
 export const SCENES_BEFORE: Partial<Record<ChapterId, readonly string[]>> = {
-  prologue: ['prologue-morning'],
+  prologue: ['prologue-morning', 'prologue-raid', 'prologue-road', 'prologue-prison'],
   'arena-1': ['arena-tunnel'],
 };
 

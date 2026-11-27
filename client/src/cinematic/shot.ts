@@ -24,6 +24,9 @@ export interface Shot {
   shake?: number;
 }
 
+/** How far to the side of the listener's head an over-the-shoulder camera stands. */
+const SHOULDER_OFFSET = 1.15;
+
 export const FOV = {
   wide: 0.85,
   normal: 0.7,
@@ -66,6 +69,29 @@ export function portrait(actor: Actor, options: PortraitOptions = {}): Shot {
   const at = (d: number): Point => [head.x + Math.sin(yaw) * d, head.y + rise, head.z + Math.cos(yaw) * d];
   const shot: Shot = { from: at(distance), at: { actor, offset: [0, -0.06, 0] }, fov };
   if (push !== 0) shot.to = at(distance - push);
+  return shot;
+}
+
+/**
+ * Over the shoulder of `listener` onto the face of `speaker`: the classic shot for a talk
+ * between two people. The camera stands behind the listener, a little to one side (`side`
+ * 1 = their right), so the listener's shoulder frames the speaker without hiding them.
+ */
+export function overShoulder(speaker: Actor, listener: Actor, options: { side?: number; back?: number; fov?: number; push?: number } = {}): Shot {
+  const { side = 1, back = 1.3, fov = FOV.close, push = 0 } = options;
+  const face = speaker.settle().headPosition();
+  const ear = listener.settle().headPosition();
+  const dx = face.x - ear.x;
+  const dz = face.z - ear.z;
+  const d = Math.hypot(dx, dz) || 1;
+  const fx = dx / d;
+  const fz = dz / d;
+  // Right of the listener as they look at the speaker.
+  const rx = fz;
+  const rz = -fx;
+  const spot = (b: number): Point => [ear.x - fx * b + rx * side * SHOULDER_OFFSET, ear.y + 0.15, ear.z - fz * b + rz * side * SHOULDER_OFFSET];
+  const shot: Shot = { from: spot(back), at: { actor: speaker, offset: [0, -0.06, 0] }, fov };
+  if (push !== 0) shot.to = spot(back - push);
   return shot;
 }
 

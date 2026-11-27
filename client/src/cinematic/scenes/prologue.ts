@@ -14,7 +14,7 @@ const BENCH_Z = 0;
 const ANSELM_X = -0.5;
 const CASSIAN_X = 0.5;
 
-function buildMonastery(stage: Stage): void {
+export function buildMonastery(stage: Stage): void {
   stage.ground(SET_COLORS.grass);
   stage.box(SET_COLORS.flagstone, [9, 0.04, 7], [0, 0.0, -1.5], 0, { castShadow: false });
   house(stage, -5, -9, 9, 5, 4.2, 0);

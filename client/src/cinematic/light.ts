@@ -41,9 +41,9 @@ export const LIGHTS: Record<LightName, LightPreset> = {
     sun: '#FF8A50', sunIntensity: 0.9, sunDirection: [0.9, -0.25, 0.2],
   },
   night: {
-    sky: '#0E1630', fog: '#101A34', fogStart: 12, fogEnd: 70,
-    hemiSky: '#3A4A80', hemiGround: '#141824', hemiIntensity: 0.42,
-    sun: '#8AA0E0', sunIntensity: 0.3, sunDirection: [0.4, -0.8, 0.3],
+    sky: '#16224A', fog: '#18264A', fogStart: 18, fogEnd: 90,
+    hemiSky: '#5A6AA8', hemiGround: '#20283A', hemiIntensity: 0.62,
+    sun: '#A8BCF0', sunIntensity: 0.5, sunDirection: [0.4, -0.8, 0.3],
   },
   fireNight: {
     sky: '#2A1018', fog: '#3A1A1A', fogStart: 10, fogEnd: 60,
@@ -57,7 +57,7 @@ export const LIGHTS: Record<LightName, LightPreset> = {
   },
   prison: {
     sky: '#1A1A1E', fog: '#1A1A1E', fogStart: 6, fogEnd: 30,
-    hemiSky: '#6A6E78', hemiGround: '#2A2620', hemiIntensity: 0.38,
+    hemiSky: '#9AA0AC', hemiGround: '#4A4438', hemiIntensity: 0.8,
     sun: '#FFF0C8', sunIntensity: 0.8, sunDirection: [0.6, -0.55, 0.3],
   },
   snow: {

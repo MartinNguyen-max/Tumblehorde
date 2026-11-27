@@ -34,6 +34,8 @@ export class CinematicOverlay {
   constructor() {
     this.root = el('div', 'cine', document.body);
     this.root.hidden = true;
+    // The fade sits under the bars and the words, so a line can be read over black.
+    this.fadeLayer = el('div', 'cine-fade', this.root);
     el('div', 'cine-bar top', this.root);
     el('div', 'cine-bar bottom', this.root);
     this.title = el('div', 'cine-title', this.root);
@@ -44,7 +46,6 @@ export class CinematicOverlay {
     this.skip.append('Hold Space to skip');
     const meter = el('span', 'meter', this.skip);
     this.skipFill = el('i', '', meter);
-    this.fadeLayer = el('div', 'cine-fade', this.root);
     this.loading = el('div', 'cine-loading', document.body);
     this.talkBox = el('div', 'cine-talk', document.body);
     this.talkBox.hidden = true;

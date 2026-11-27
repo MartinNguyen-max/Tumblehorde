@@ -118,7 +118,7 @@ export class CutscenePlayer {
       if (!beat) continue;
       if (skipped) {
         beat.during?.(stage, 1);
-        for (const actor of stage.actors.values()) actor.finishWalk();
+        stage.finishMoves();
       }
       if (beat.say) setTalking(stage, beat.say.who, false);
     }
