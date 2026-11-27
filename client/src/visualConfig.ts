@@ -329,6 +329,7 @@ export const MAP_THEMES: Record<MapId, MapTheme> = {
   village: { ...BATTLE_THEMES.meadow, plasters: ['#EDE4CF', '#E9CBA0', '#F3E6CF'], roofs: ['#B5533C', '#A3462F', '#C4643F'] },
   river: { ...BATTLE_THEMES.meadow },
   fortress: { ...BATTLE_THEMES.north, ice: undefined, plaster: '#D9D2C2', plasters: ['#D9D2C2'], stone: '#9AA0A3' },
+  steppe: { ...BATTLE_THEMES.meadow },
 };
 
 export const MAP_NAMES: Record<MapId, string> = {
@@ -341,6 +342,7 @@ export const MAP_NAMES: Record<MapId, string> = {
   village: 'The Village',
   river: 'The Bridge',
   fortress: 'The Northern Fortress',
+  steppe: 'The Open Field',
 };
 
 /** Falling snow: flakes in a box around the camera, drifting down and sideways. */

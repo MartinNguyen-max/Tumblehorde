@@ -16,7 +16,7 @@ The player played again after round 1. Work list; items are ticked as they land.
 - [ ] Scenes before each fight (bridge, outpost, the night camp...) with a reason and a transition
 - [x] The last battle against Hrolf is hard: the legion loses many men
 - [x] The formation hint only the first time it is taught
-- [ ] The Mongols fought on a truly open field (no fences)
+- [x] The Mongols fought on a truly open field (no fences)
 - [ ] Holding the capital is hard: almost everyone dies; Marcus and his riders do not get stuck
 
 ## Scenes

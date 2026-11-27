@@ -2,7 +2,7 @@ import { ARENA_MAP } from './campaign/arena.ts';
 /** The battlefields offered for battles. Each has its own terrain shape, its own obstacles and its own way of starting. */
 export const MAP_IDS = ['meadow', 'castle', 'city', 'north'] as const;
 /** Places only the story goes to; never offered (or picked at random) for a battle. */
-export const CAMPAIGN_MAP_IDS = ['forest', 'village', 'river', 'fortress', 'arena'] as const;
+export const CAMPAIGN_MAP_IDS = ['forest', 'village', 'river', 'fortress', 'arena', 'steppe'] as const;
 export type MapId = (typeof MAP_IDS)[number] | (typeof CAMPAIGN_MAP_IDS)[number];
 export const ALL_MAP_IDS: readonly MapId[] = [...MAP_IDS, ...CAMPAIGN_MAP_IDS];
 
@@ -219,7 +219,7 @@ export const NORTH_POINTS = {
 } satisfies Record<string, MapPoint>;
 
 /** The open field on the way back south: the legion and Hrolf's Vikings against the Mongol riders. */
-export const MEADOW_POINTS = {
+export const STEPPE_POINTS = {
   legion: { x: 0, z: -60, yaw: 0 },
   vikings: { x: -32, z: -56, yaw: 0 },
   riders: { x: 0, z: 72, yaw: Math.PI },
@@ -499,6 +499,23 @@ export const MAPS: Record<MapId, MapDefinition> = {
     structures: city(),
   },
   arena: { id: 'arena', ...ARENA_MAP },
+  steppe: {
+    id: 'steppe',
+    name: 'The Open Field',
+    layout: 'open',
+    hills: { amplitude: 1.6, frequencyX: 0.035, frequencyZ: 0.03 },
+    ripples: { amplitude: 0.4, frequencyX: 0.12, frequencyZ: 0.1 },
+    flatRadius: 60,
+    points: STEPPE_POINTS,
+    // Open grass where riders can ride: a few lone trees and stones far apart, nothing else.
+    inside: [
+      { kind: 'tree', count: 6, scaleMin: 1.0, scaleMax: 1.4 },
+      { kind: 'rock', count: 6, scaleMin: 0.6, scaleMax: 1.0 },
+    ],
+    scenery: ['tree', 'tree', 'rock'],
+    sceneryCount: 120,
+    structures: [],
+  },
 };
 
 export function isMapId(value: unknown): value is MapId {

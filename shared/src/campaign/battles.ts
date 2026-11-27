@@ -1,4 +1,4 @@
-import { CAPITAL_POINTS, FOREST_POINTS, FORTRESS_POINTS, type MapPoint, MEADOW_POINTS, NORTH_POINTS, RIVER_POINTS, VILLAGE_POINTS } from '../maps.ts';
+import { CAPITAL_POINTS, FOREST_POINTS, FORTRESS_POINTS, type MapPoint, STEPPE_POINTS, NORTH_POINTS, RIVER_POINTS, VILLAGE_POINTS } from '../maps.ts';
 import { declareVictory } from '../match.ts';
 import type { ArmySetup, BotStyle, Faction, Formation, MatchSettings, MatchState, Order } from '../types.ts';
 import { type ChapterId, isAtOrAfter } from './chapters.ts';
@@ -87,9 +87,9 @@ export const STORY_BATTLE = {
   ambushWarning: 12,
   /** The Mongols: riders, fewer than the Vikings but tougher than raiders on foot, and a second band on the flank. */
   mongolRiders: 28,
-  mongolFlank: 16,
+  mongolFlank: 14,
   mongolFlankAt: 35,
-  riderHorde: { hp: 0.4, damage: 0.35 },
+  riderHorde: { hp: 0.38, damage: 0.32 },
   khanToughness: 2.5,
   /** Hrolf's best men, if he was spared. */
   hrolfBand: 24,
@@ -401,24 +401,24 @@ function buildBattle(chapter: ChapterId, save: CampaignSave): CampaignBattle | n
       };
     }
     case 'open-field': {
-      const me = cassian(save, chapter, MEADOW_POINTS.legion, heroes, true);
+      const me = cassian(save, chapter, STEPPE_POINTS.legion, heroes, true);
       const sides: ArmySetup[] = [me.setup];
       const commanders: Record<number, string> = {};
       // Hrolf's best men if he was spared; Galba's cohort if not.
       if (save.choices.hrolfSpared === true) {
         commanders[sides.length] = 'Hrolf the Red';
-        sides.push(army({ name: 'Hrolf', team: 0, faction: 'viking', soldiers: STORY_BATTLE.hrolfBand, spawn: MEADOW_POINTS.vikings, commander: true, style: 'charge', looks: { commander: STORY_LOOKS.hrolf } }));
+        sides.push(army({ name: 'Hrolf', team: 0, faction: 'viking', soldiers: STORY_BATTLE.hrolfBand, spawn: STEPPE_POINTS.vikings, commander: true, style: 'charge', looks: { commander: STORY_LOOKS.hrolf } }));
       } else {
         commanders[sides.length] = 'Galba';
-        sides.push(army({ name: 'Galba', team: 0, faction: 'roman', soldiers: STORY_BATTLE.hrolfBand, spawn: MEADOW_POINTS.vikings, commander: true, style: 'steady', looks: { commander: STORY_LOOKS.galba } }));
+        sides.push(army({ name: 'Galba', team: 0, faction: 'roman', soldiers: STORY_BATTLE.hrolfBand, spawn: STEPPE_POINTS.vikings, commander: true, style: 'steady', looks: { commander: STORY_LOOKS.galba } }));
       }
       const riders = (name: string, soldiers: number, spawn: MapPoint, extra: Partial<Side> = {}): ArmySetup =>
         army({ name, team: 1, faction: 'bandit', soldiers, spawn, mounted: true, style: 'flank', horde: STORY_BATTLE.riderHorde, color: PEOPLE_COLORS.mongol, looks: { soldier: STORY_LOOKS.mongol, commander: STORY_LOOKS.khan }, ...extra });
       const khanArmy = sides.length;
       commanders[khanArmy] = 'Jorgai the Hawk';
-      sides.push(riders('Mongols', STORY_BATTLE.mongolRiders, MEADOW_POINTS.riders, { commander: true, commanderToughness: STORY_BATTLE.khanToughness }));
-      sides.push(riders('Mongols', STORY_BATTLE.mongolFlank, MEADOW_POINTS.flank, { arriveAt: STORY_BATTLE.mongolFlankAt }));
-      return { ...base, onLoss: 'retryOrLeave', settings: settings('meadow', sides), legionNames: me.legionNames, commanders, warlordArmy: khanArmy };
+      sides.push(riders('Mongols', STORY_BATTLE.mongolRiders, STEPPE_POINTS.riders, { commander: true, commanderToughness: STORY_BATTLE.khanToughness }));
+      sides.push(riders('Mongols', STORY_BATTLE.mongolFlank, STEPPE_POINTS.flank, { arriveAt: STORY_BATTLE.mongolFlankAt }));
+      return { ...base, onLoss: 'retryOrLeave', settings: settings('steppe', sides), legionNames: me.legionNames, commanders, warlordArmy: khanArmy };
     }
     case 'the-gate': {
       // Alone: the legion holds the gate behind him while he runs up the street to her house.
