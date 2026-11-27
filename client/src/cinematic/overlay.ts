@@ -154,7 +154,7 @@ export class CinematicOverlay {
   }
 
   /** The talk box at the bottom in free roam; null hides it. */
-  talk(speaker: string | null, text: string | null, hint = 'E to go on'): void {
+  talk(speaker: string | null, text: string | null, hint = 'E to go on', progress?: number): void {
     if (text === null) {
       this.talkBox.hidden = true;
       return;
@@ -162,6 +162,10 @@ export class CinematicOverlay {
     this.talkBox.replaceChildren();
     if (speaker) el('span', 'who', this.talkBox).textContent = speaker;
     this.talkBox.append(text);
+    if (progress !== undefined) {
+      const bar = el('span', 'meter', this.talkBox);
+      el('i', '', bar).style.width = `${Math.round(Math.min(1, progress) * 100)}%`;
+    }
     if (hint) el('span', 'hint', this.talkBox).textContent = hint;
     this.talkBox.hidden = false;
   }

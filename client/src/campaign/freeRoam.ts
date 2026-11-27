@@ -92,11 +92,12 @@ export interface FreeRoamDeps {
 
 /** How close the player must be to a spot to use it. */
 const SPOT_DISTANCE = 1.8;
-const WORKOUT_BAR = 12;
 
 interface WorkoutRun {
   workout: Workout;
-  lastHeld: 'left' | 'right' | null;
+  /** Key presses since the last frame: taps can be shorter than a frame. */
+  presses: ('left' | 'right')[];
+  stop: () => void;
   onDone: (done: boolean) => void;
 }
 
@@ -212,7 +213,14 @@ export class FreeRoam {
 
   /** The stone lift: A and D in turn, fast, before time runs out. */
   startWorkout(onDone: (done: boolean) => void): void {
-    this.workout = { workout: startWorkout(), lastHeld: null, onDone };
+    const presses: ('left' | 'right')[] = [];
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.repeat) return;
+      if (e.code === 'KeyA') presses.push('left');
+      if (e.code === 'KeyD') presses.push('right');
+    };
+    window.addEventListener('keydown', onKey);
+    this.workout = { workout: startWorkout(), presses, onDone, stop: () => window.removeEventListener('keydown', onKey) };
     this.walker.speed = 0;
     this.deps.overlay.prompt(null);
   }
@@ -220,23 +228,24 @@ export class FreeRoam {
   private updateWorkout(dt: number): void {
     const run = this.workout;
     if (!run) return;
-    const { input, overlay } = this.deps;
-    const held = input.isHeld('KeyA') ? 'left' : input.isHeld('KeyD') ? 'right' : null;
-    if (held && held !== run.lastHeld) run.workout = workoutPress(run.workout, held);
-    run.lastHeld = held;
+    const { overlay } = this.deps;
+    for (const side of run.presses.splice(0)) run.workout = workoutPress(run.workout, side);
     run.workout = workoutTick(run.workout, dt);
     const { reps, timeLeft } = run.workout;
-    const filled = Math.round((reps / WORKOUT.reps) * WORKOUT_BAR);
-    const bar = '▮'.repeat(Math.min(WORKOUT_BAR, filled)) + '▯'.repeat(Math.max(0, WORKOUT_BAR - filled));
-    overlay.talk('Lift the stone!', `Press A and D in turn  ${bar}  ${reps}/${WORKOUT.reps}  ${timeLeft.toFixed(1)} s`, '');
+    overlay.talk('Lift the stone!', `Press A and D in turn: ${reps}/${WORKOUT.reps} · ${timeLeft.toFixed(1)} s`, '', reps / WORKOUT.reps);
     this.player.setPose(reps % 2 === 0 ? 'cheer' : 'offer');
     this.player.setMood(timeLeft < 2 ? 'shout' : 'angry');
     const result = workoutResult(run.workout);
     if (result === 'going') return;
-    this.workout = null;
-    overlay.talk(null, null);
+    this.endWorkout();
     this.player.setMood(result === 'done' ? 'happy' : 'sad');
     run.onDone(result === 'done');
+  }
+
+  private endWorkout(): void {
+    this.workout?.stop();
+    this.workout = null;
+    this.deps.overlay.talk(null, null);
   }
 
   private punch(): void {
@@ -382,5 +391,6 @@ export class FreeRoam {
     this.deps.overlay.prompt(null);
     this.deps.overlay.clearChoices();
     this.deps.overlay.status(null);
+    this.endWorkout();
   }
 }
