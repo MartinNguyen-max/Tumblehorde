@@ -55,5 +55,7 @@ export interface CinematicSound {
   music(cue: MusicCue): void;
   speak(voice: VoiceSpec, mood: Mood, seconds: number): void;
   effect(cue: SoundCue): void;
+  /** Called every frame: starts the music if the sound was just turned on. */
+  refresh(): void;
   stop(): void;
 }

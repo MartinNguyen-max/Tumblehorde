@@ -106,6 +106,7 @@ export class CutscenePlayer {
     }
     if (this.shot) stage.focus.copyFrom(frameShot(stage.camera, this.shot, progress, this.time));
     stage.update(dt);
+    this.sound?.refresh();
     this.overlay.setSkip(skipProgress(this.timeline), skipHeld || this.time < SKIP_HINT_TIME);
   }
 
