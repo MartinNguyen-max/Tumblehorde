@@ -166,16 +166,6 @@ Agreed with the player before building. None of these replace an earlier line un
 - **First-person view**, a setting on the start page and `T` in battle: the commander's head is hidden, the body, shield and sword stay; looking down the eye moves forward over the chest so you see your belt, shield and sword. Requested by the player.
 - **The sword got a pommel, a wider guard, a bright blade with a dark groove and a tapered point** — still a handful of boxes. Requested by the player: "make sword look sliiightly better".
 
-## 2026-11-27 (M10: Vikings and the north)
-
-- **Factions are per army** (`ArmySetup.faction`, `'roman' | 'viking'`, Romans by default) and copied onto every unit, so stats can depend on it without looking up the army. Viking soldiers are still the `swordsman` kind (a foot soldier with a shield), with the axe instead of the sword.
-- **What makes Vikings different without being stronger:** axes (27 damage, 1.1 s, a slower 0.42 s wind-up) bite 35 % through a raised shield and hook it aside 35 % of the time; round shields block 90 % (wall 93 %, scutum 92/97 %); Viking spears reach 2.6 m and shove 8 m/s (legion 2.7 m, 9 m/s); Vikings run 5.3 m/s (legion 5). Tuned with bot battles until neither side wins much more than half (`test/factions.test.ts` checks both sides win some). The first try (24 damage, 1.15 s) lost 80 % of the time, 27 damage at 1.05 s won 67 %.
-- **Viking formations** (designed for the game, each with its own place on a five-point wheel): shield wall (the legion's two lines, under its Norse name), boar's head (a wedge growing one per rank instead of two), shield ring (circle), horns (the pincer), and the swarm (a loose mob in ranks of six, 1.5 m apart, everyone a little off their place). Each people can only use its own formations. Viking bots form a shield wall, a boar's head when charging, and a swarm when they wait.
-- **Viking special orders** keep the same rules under their own names: throwing axes (22 m, 42 damage, 45 % through shields) instead of pila, a mead feast, a war roar.
-- **Viking looks vary per warrior** from their id (skin, beard color, pelt, helmet or not, scar, braids); equal looks share one baked mesh. No horned helmets.
-- **Viking voices are lower and rougher**, they roar on 35 % of their swings and roar instead of the war cry on Attack.
-- **The Frozen North** is a fourth battlefield (open layout): snowy hills and pines, three longhouses, two huts, a broken palisade, rune stones and two frozen lakes. Ice: 22 % grip and 12 % friction, and running soldiers slip (15 % per second, 1.2 s down). Snow falls (one mesh of flakes drawn twice, following the camera). Camera also keeps out of tree crowns now.
-- **Picking peoples:** on the start page "Your people" (Romans/Vikings) and "Enemies" (Romans/Vikings/Mixed; allied bots are your people); online a lobby setting "Peoples": all Romans, all Vikings, or Romans vs Vikings (by team, or every other player in a free-for-all).
 ## 2026-11-27 (Campaign foundations, M11, session 2)
 
 - **Holding Space for 0.6 s skips the current beat**, then the meter empties: holding on skips beat by beat, a tap skips nothing, and a choice can never be skipped. A small "Hold Space to skip" meter shows for the first seconds of a scene and while Space is held.
@@ -199,3 +189,23 @@ Agreed with the player before building. None of these replace an earlier line un
 - **The last night ends when Cassian first falls** (or after 4 minutes), and the story goes on: it cannot be won. On the castle map, story battles never use the "hold the gate" rule; only an army told to defend does.
 - **Night and dusk** dim the sky, light and fog; the burning village (now at night, as in the story) has flames and lit smoke on its roofs; torches stand round the night camp, along the dark forest road and in the fortress courtyard.
 - **A lost battle** shows "Fight again / Leave to menu"; the story is saved at the battle.
+## 2026-11-27 (M10: Vikings and the north)
+
+- **Factions are per army** (`ArmySetup.faction`, `'roman' | 'viking'`, Romans by default) and copied onto every unit, so stats can depend on it without looking up the army. Viking soldiers are still the `swordsman` kind (a foot soldier with a shield), with the axe instead of the sword.
+- **What makes Vikings different without being stronger:** axes (27 damage, 1.1 s, a slower 0.42 s wind-up) bite 35 % through a raised shield and hook it aside 35 % of the time; round shields block 90 % (wall 93 %, scutum 92/97 %); Viking spears reach 2.6 m and shove 8 m/s (legion 2.7 m, 9 m/s); Vikings run 5.3 m/s (legion 5). Tuned with bot battles until neither side wins much more than half (`test/factions.test.ts` checks both sides win some). The first try (24 damage, 1.15 s) lost 80 % of the time, 27 damage at 1.05 s won 67 %.
+- **Viking formations** (designed for the game, each with its own place on a five-point wheel): shield wall (the legion's two lines, under its Norse name), boar's head (a wedge growing one per rank instead of two), shield ring (circle), horns (the pincer), and the swarm (a loose mob in ranks of six, 1.5 m apart, everyone a little off their place). Each people can only use its own formations. Viking bots form a shield wall, a boar's head when charging, and a swarm when they wait.
+- **Viking special orders** keep the same rules under their own names: throwing axes (22 m, 42 damage, 45 % through shields) instead of pila, a mead feast, a war roar.
+- **Viking looks vary per warrior** from their id (skin, beard color, pelt, helmet or not, scar, braids); equal looks share one baked mesh. No horned helmets.
+- **Viking voices are lower and rougher**, they roar on 35 % of their swings and roar instead of the war cry on Attack.
+- **The Frozen North** is a fourth battlefield (open layout): snowy hills and pines, three longhouses, two huts, a broken palisade, rune stones and two frozen lakes. Ice: 22 % grip and 12 % friction, and running soldiers slip (15 % per second, 1.2 s down). Snow falls (one mesh of flakes drawn twice, following the camera). Camera also keeps out of tree crowns now.
+- **Picking peoples:** on the start page "Your people" (Romans/Vikings) and "Enemies" (Romans/Vikings/Mixed; allied bots are your people); online a lobby setting "Peoples": all Romans, all Vikings, or Romans vs Vikings (by team, or every other player in a free-for-all).
+
+## 2026-11-27 (The capital, M12, session 2)
+
+- **Arena fights run in the battle engine** on a campaign-only map `arena` (a sand floor inside a ring of podium walls; `STORY_MAP_IDS`, never offered on the start page, in the lobby or by "random"). The player is a lone commander on foot (`ArmySetup.soldiers: 0`), each opponent a one-man bot army; `MatchSettings.arena` means no respawn (going down loses), bots charge and form up for only 3 s. Everything else plays like a battle.
+- **Gear and strength are a fighter kit** (`ArmySetup.kit`: hit points, damage and shield multipliers): 200 HP (+100 with armor), damage +8 % per strength, +25 % with Varro's sword (+40 % with Draco's), and the borrowed shield blocks only 55 % as well as a bought one. Opponents: poor men 100 HP, trained fighters 170 HP, Draco 420 HP.
+- **Losing the first arena fight sends you back to the city** (as the story says); losing the second or Draco offers "Fight again" (and for Draco "Let him keep his crown"). After the second win a card asks whether to take Draco's challenge.
+- **The workout is a stone lift**: press A and D in turn 24 times within 8 s at the stone in the training yard (Old Gaius explains). Each success gives +1 strength, at most three.
+- **Varro's shop is a talk**: options list what you do not own yet with prices, plus "I am ready for the next fight". Purchases are saved at once.
+- **The capital** is one district (80 × 80 m) of the huge city with the Colosseum and a ring of tall houses beyond it; Cassian wears rags in chapter 1 and a smith's tunic with his hair cut as Varro's apprentice.
+- The arena fighters still look like legionaries and the player like the gold commander: the battle rigs belong to the battle code. A campaign look for them is left for polish.

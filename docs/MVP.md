@@ -19,7 +19,7 @@ Updated as work progresses. ✅ done · 🚧 in progress · ⬜ not started.
 | M9 Smarter, better fights | ✅ | Bots defend when hit, flank and gang up; spacing, dodges, counters; spear kept after volley; rally courage; no wall clipping; celebration; first person |
 | M10 Vikings and the north | ✅ | Viking faction (looks, axes, formations, orders), Romans vs Vikings ~50/50, frozen north map |
 | M11 Campaign foundations | ✅ | Cutscene engine (actors with faces and tears, shots, letterbox, subtitles, narrator, title cards, letters, fades, weather, firelight), cutscene music and emotional voices, hold Space to skip one beat, one save slot at every chapter start, loading cards, Esc menu, free roam with NPCs, talk (E) and choices; Campaign card on the start page |
-| M12 The capital | ⬜ | Walkable district in a huge city, ~20 NPCs, Varro, shop, workout, three arena fights |
+| M12 The capital | ✅ | Walkable capital district (forum, forge, bakery, training yard, festival street, skyline and Colosseum beyond) with 21 townsfolk; Varro's job and shop (armor, shield, sword); workout at the stone (+1 strength, 3 times); three arena fights in the Colosseum (3 poor men, 3 trained fighters, optional Draco) with a crowd, purses 25/40/60 and Draco's sword |
 | M13 Campaign chapters | 🚧 | All chapters from the prologue to the zombie night, with their battles and cutscenes |
 | M14 Polish | ⬜ | Full play-through, balance, independent review, docs |
 

@@ -22,6 +22,12 @@ import {
   stepWalker,
   talkableNpc,
   viewDialogue,
+  WORKOUT,
+  type Workout,
+  workoutPress,
+  workoutResult,
+  workoutTick,
+  startWorkout,
   type Walkable,
   type Walker,
 } from '@tumblehorde/shared';
@@ -31,8 +37,8 @@ import type { Actor, ActorLook } from '../cinematic/actor.ts';
 import type { CinematicOverlay } from '../cinematic/overlay.ts';
 import type { CinematicSound } from '../cinematic/script.ts';
 import { Stage } from '../cinematic/stage.ts';
-import { DIALOGUES, SMALL_TALK } from './dialogues.ts';
-import type { DistrictSet } from './districts.ts';
+import { SMALL_TALK } from './dialogues.ts';
+import type { DistrictSet, Spot } from './districts.ts';
 
 /**
  * Walking around the city as Cassian: WASD and the mouse, E to talk, left click to punch.
@@ -76,6 +82,23 @@ export interface FreeRoamDeps {
   canvas: HTMLCanvasElement;
   /** A choice in a talk changed the story (e.g. Varro's job accepted). */
   onEffect: (effect: string) => void;
+  /** The talk for a story character (built from the story so far), or null for small talk. */
+  dialogueFor: (id: string) => Dialogue | null;
+  /** E at a spot (the workout stone); false when nothing happens there now. */
+  spotActive: (id: string) => boolean;
+  /** A line in the corner: gold and strength. */
+  status: () => string | null;
+}
+
+/** How close the player must be to a spot to use it. */
+const SPOT_DISTANCE = 1.8;
+
+interface WorkoutRun {
+  workout: Workout;
+  /** Key presses since the last frame: taps can be shorter than a frame. */
+  presses: ('left' | 'right')[];
+  stop: () => void;
+  onDone: (done: boolean) => void;
 }
 
 function smallTalk(npc: Npc, rng: RandomSource): Dialogue {
@@ -100,6 +123,7 @@ export class FreeRoam {
   private readonly camTarget = new Vector3();
   private cameraReady = false;
   private talk: Talk | null = null;
+  private workout: WorkoutRun | null = null;
   private punchTimer = 0;
   /** A story effect from the last talk, handed on at the end of the frame. */
   private pendingEffect: string | null = null;
@@ -140,8 +164,10 @@ export class FreeRoam {
     input.takeReleased();
     const pressedE = pressed.includes('KeyE');
 
-    if (this.talk) this.updateTalk(pressedE);
+    if (this.workout) this.updateWorkout(dt);
+    else if (this.talk) this.updateTalk(pressedE);
     else this.updateWalking(dt, pressedE);
+    this.deps.overlay.status(this.deps.status());
 
     for (const npc of this.npcs) stepNpc(npc, dt, this.rng, this.walkable);
     this.syncActors(dt);
@@ -162,8 +188,13 @@ export class FreeRoam {
     const move = { x: sin * forward + cos * right, z: cos * forward - sin * right };
     stepWalker(this.walker, this.set.district, move, input.isHeld('ShiftLeft') || input.isHeld('ShiftRight'), dt);
 
-    const partner = talkableNpc(this.npcs, this.walker.pos, this.walker.yaw);
-    this.deps.overlay.prompt(partner ? `E  Talk to ${partner.name}` : null);
+    const spot = this.nearSpot();
+    const partner = spot ? null : talkableNpc(this.npcs, this.walker.pos, this.walker.yaw);
+    this.deps.overlay.prompt(spot ? `E  ${spot.label}` : partner ? `E  Talk to ${partner.name}` : null);
+    if (pressedE && spot) {
+      this.pendingEffect = spot.id;
+      return;
+    }
     if (pressedE && partner) {
       this.openTalk(partner);
       return;
@@ -175,6 +206,48 @@ export class FreeRoam {
     this.punchTimer = Math.max(0, this.punchTimer - dt);
   }
 
+  private nearSpot(): Spot | null {
+    const p = this.walker.pos;
+    return this.set.spots.find((s) => Math.hypot(s.x - p.x, s.z - p.z) < SPOT_DISTANCE && this.deps.spotActive(s.id)) ?? null;
+  }
+
+  /** The stone lift: A and D in turn, fast, before time runs out. */
+  startWorkout(onDone: (done: boolean) => void): void {
+    const presses: ('left' | 'right')[] = [];
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.repeat) return;
+      if (e.code === 'KeyA') presses.push('left');
+      if (e.code === 'KeyD') presses.push('right');
+    };
+    window.addEventListener('keydown', onKey);
+    this.workout = { workout: startWorkout(), presses, onDone, stop: () => window.removeEventListener('keydown', onKey) };
+    this.walker.speed = 0;
+    this.deps.overlay.prompt(null);
+  }
+
+  private updateWorkout(dt: number): void {
+    const run = this.workout;
+    if (!run) return;
+    const { overlay } = this.deps;
+    for (const side of run.presses.splice(0)) run.workout = workoutPress(run.workout, side);
+    run.workout = workoutTick(run.workout, dt);
+    const { reps, timeLeft } = run.workout;
+    overlay.talk('Lift the stone!', `Press A and D in turn: ${reps}/${WORKOUT.reps} · ${timeLeft.toFixed(1)} s`, '', reps / WORKOUT.reps);
+    this.player.setPose(reps % 2 === 0 ? 'cheer' : 'offer');
+    this.player.setMood(timeLeft < 2 ? 'shout' : 'angry');
+    const result = workoutResult(run.workout);
+    if (result === 'going') return;
+    this.endWorkout();
+    this.player.setMood(result === 'done' ? 'happy' : 'sad');
+    run.onDone(result === 'done');
+  }
+
+  private endWorkout(): void {
+    this.workout?.stop();
+    this.workout = null;
+    this.deps.overlay.talk(null, null);
+  }
+
   private punch(): void {
     this.punchTimer = PUNCH_TIME;
     const target = facedNpc(this.npcs, this.walker.pos, this.walker.yaw, NPC.punchDistance);
@@ -184,7 +257,7 @@ export class FreeRoam {
   }
 
   private openTalk(npc: Npc): void {
-    const dialogue = (npc.dialogue ? DIALOGUES[npc.dialogue] : undefined) ?? smallTalk(npc, this.rng);
+    const dialogue = (npc.dialogue ? this.deps.dialogueFor(npc.dialogue) : null) ?? smallTalk(npc, this.rng);
     startTalk(npc, this.walker.pos);
     this.walker.yaw = Math.atan2(npc.pos.x - this.walker.pos.x, npc.pos.z - this.walker.pos.z);
     this.walker.speed = 0;
@@ -252,7 +325,7 @@ export class FreeRoam {
 
   private syncActors(dt: number): void {
     this.player.drive(this.walker.pos.x, this.walker.pos.z, this.walker.yaw, this.walker.speed);
-    this.player.setPose(this.punchTimer > 0 ? 'punch' : 'stand');
+    if (!this.workout) this.player.setPose(this.punchTimer > 0 ? 'punch' : 'stand');
     this.npcs.forEach((npc, i) => {
       const actor = this.npcActors[i];
       if (!actor) return;
@@ -317,5 +390,7 @@ export class FreeRoam {
     this.deps.overlay.talk(null, null);
     this.deps.overlay.prompt(null);
     this.deps.overlay.clearChoices();
+    this.deps.overlay.status(null);
+    this.endWorkout();
   }
 }

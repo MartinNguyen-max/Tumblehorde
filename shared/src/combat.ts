@@ -88,6 +88,13 @@ function openCounter(target: Unit): void {
   target.cooldownTimer = Math.min(target.cooldownTimer, DUEL.counterCooldown);
 }
 
+const NO_KIT = { damage: 1, block: 1 } as const;
+
+/** Campaign fighters hit harder or block better with better gear; everyone else is unchanged. */
+function kitOf(state: MatchState, armyId: number): { damage: number; block: number } {
+  return state.settings.armies[armyId]?.kit ?? NO_KIT;
+}
+
 export function applyHit(
   state: MatchState,
   target: Unit,
@@ -103,9 +110,9 @@ export function applyHit(
   const steady = courageous(state, target);
   const wall = blocked && !drunkBlow && inShieldWall(state, target);
   const block = shieldBlock(target);
-  const blockFraction = wall ? block.wall : block.alone;
+  const blockFraction = (wall ? block.wall : block.alone) * kitOf(state, target.armyId).block;
   const strength =
-    damage * (drunkBlow ? BANQUET.damageDealtFactor : 1) * (target.drunk ? BANQUET.damageTakenFactor : 1) * (brave ? RALLY.damageFactor : 1);
+    damage * (drunkBlow ? BANQUET.damageDealtFactor : 1) * (target.drunk ? BANQUET.damageTakenFactor : 1) * (brave ? RALLY.damageFactor : 1) * kitOf(state, source.armyId).damage;
   const dealt = blocked ? strength * Math.max(1 - blockFraction, source.pierce ?? 0) : strength;
   let factor = source.shovesThroughShield ? 1 : wall ? 0 : blocked ? SHIELD.blockedKnockbackFactor : 1;
   if (drunkBlow) factor *= BANQUET.strikeKnockbackFactor;

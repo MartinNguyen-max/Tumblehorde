@@ -12,7 +12,7 @@ import {
 } from '@tumblehorde/shared';
 import type { World } from '../render/world.ts';
 import type { CinematicOverlay } from './overlay.ts';
-import type { Beat, CinematicSound, Cutscene } from './script.ts';
+import type { Beat, CinematicSound, Cutscene, StoryContext } from './script.ts';
 import { frameShot, type Shot } from './shot.ts';
 import { Stage } from './stage.ts';
 
@@ -61,11 +61,11 @@ export class CutscenePlayer {
     return this.stage;
   }
 
-  play(scene: Cutscene, onDone: () => void): void {
+  play(scene: Cutscene, story: StoryContext, onDone: () => void): void {
     this.stop();
     const stage = new Stage(this.world);
     this.stage = stage;
-    this.beats = scene.create(stage);
+    this.beats = scene.create(stage, story);
     this.timings = this.beats.map((beat) => ({ duration: beatDuration(beat), waits: beat.choice !== undefined }));
     this.timeline = createTimeline();
     this.shot = null;
@@ -129,11 +129,11 @@ export class CutscenePlayer {
   }
 
   private startBeat(stage: Stage, beat: Beat): void {
-    if (beat.shot) this.shot = beat.shot;
     if (beat.fade) this.overlay.fade(beat.fade.to, beat.fade.color, beat.fade.time, beat.fade.from);
     if (beat.music) this.sound?.music(beat.music);
     if (beat.sound) this.sound?.effect(beat.sound);
     beat.run?.(stage);
+    if (beat.shot) this.shot = typeof beat.shot === 'function' ? beat.shot() : beat.shot;
     this.overlay.setTitle(beat.title ?? null);
     this.overlay.setLetter(beat.letter ?? null);
     if (beat.say) {

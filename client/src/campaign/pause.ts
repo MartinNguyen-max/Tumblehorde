@@ -1,6 +1,6 @@
 /**
  * Esc during the story: a small menu to go on or to leave (the story is saved at the last
- * checkpoint). Also the card shown for a chapter that is not built yet.
+ * checkpoint).
  */
 
 export interface PauseActions {
@@ -57,10 +57,6 @@ export class CampaignPause {
   toggle(): void {
     if (this.open) this.hide();
     else this.show('Paused', 'Your story is saved at the start of each chapter.', true);
-  }
-
-  showUnbuilt(chapterTitle: string): void {
-    this.show(chapterTitle, 'This chapter is still being built. Your story is saved here; come back soon.', false);
   }
 
   private show(title: string, text: string, canResume: boolean): void {

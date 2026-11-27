@@ -1,7 +1,8 @@
+import { ARENA_MAP } from './campaign/arena.ts';
 /** The battlefields offered for battles. Each has its own terrain shape, its own obstacles and its own way of starting. */
 export const MAP_IDS = ['meadow', 'castle', 'city', 'north'] as const;
 /** Places only the story goes to; never offered (or picked at random) for a battle. */
-export const CAMPAIGN_MAP_IDS = ['forest', 'village', 'river', 'fortress'] as const;
+export const CAMPAIGN_MAP_IDS = ['forest', 'village', 'river', 'fortress', 'arena'] as const;
 export type MapId = (typeof MAP_IDS)[number] | (typeof CAMPAIGN_MAP_IDS)[number];
 export const ALL_MAP_IDS: readonly MapId[] = [...MAP_IDS, ...CAMPAIGN_MAP_IDS];
 
@@ -26,7 +27,7 @@ export interface Structure {
  * the castle to hold the gate and everyone else outside; `city` starts them in the squares at
  * the ends of the avenues.
  */
-export type MapLayout = 'open' | 'siege' | 'city';
+export type MapLayout = 'open' | 'siege' | 'city' | 'arena';
 
 function house(x: number, z: number, width: number, depth: number, yaw = 0, height = 4.2): Structure {
   return { kind: 'house', x, z, width, depth, height, yaw };
@@ -466,6 +467,7 @@ export const MAPS: Record<MapId, MapDefinition> = {
     sceneryCount: 90,
     structures: city(),
   },
+  arena: { id: 'arena', ...ARENA_MAP },
 };
 
 export function isMapId(value: unknown): value is MapId {

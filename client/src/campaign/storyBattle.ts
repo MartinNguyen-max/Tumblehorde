@@ -12,11 +12,9 @@ import type { LocalSession } from '../game/session.ts';
 import type { World } from '../render/world.ts';
 import { BattleSet } from './battleSet.ts';
 
-/** What main.ts lends the campaign to show a battle: the usual battle screen, without the results dialog. */
-export interface BattleScreen {
-  open(settings: MatchSettings, objective: (view: MatchView) => string | null, onFinished: (view: MatchView) => void): LocalSession;
-  frame(dt: number, now: number): void;
-  close(): void;
+/** The campaign's battle host (main.ts): runs a battle on the battle screen and calls back once it is over. */
+export interface StoryBattleHost {
+  startBattle: (settings: MatchSettings, onEnd: (view: MatchView) => void, objective?: (view: MatchView) => string | null) => LocalSession;
 }
 
 /** Seconds the dead keep coming after Cassian falls, before the story moves on. */
@@ -42,19 +40,21 @@ function clock(seconds: number): string {
  */
 export class StoryBattle {
   private readonly battle: CampaignBattle;
-  private readonly screen: BattleScreen;
   private readonly set: BattleSet;
   private readonly session: LocalSession;
   private ended = false;
 
-  constructor(world: World, screen: BattleScreen, battle: CampaignBattle, onEnd: (result: BattleResult) => void) {
+  constructor(world: World, host: StoryBattleHost, battle: CampaignBattle, onEnd: (result: BattleResult) => void) {
     this.battle = battle;
-    this.screen = screen;
-    this.session = screen.open(battle.settings, (view) => this.objective(view), () => {
-      if (this.ended) return;
-      this.ended = true;
-      onEnd(battleResult(battle, this.session.match));
-    });
+    this.session = host.startBattle(
+      battle.settings,
+      () => {
+        if (this.ended) return;
+        this.ended = true;
+        onEnd(battleResult(battle, this.session.match));
+      },
+      (view) => this.objective(view),
+    );
     this.set = new BattleSet(world, battle.settings.map, battle.time, {
       burning: battle.chapter === 'burning-village',
       torches: TORCHES[battle.chapter] ?? [],
@@ -67,10 +67,10 @@ export class StoryBattle {
     return this.battle.objective;
   }
 
-  frame(dt: number, now: number): void {
+  /** Called every frame; the battle itself is run by the battle screen. */
+  update(dt: number): void {
     this.set.update(dt);
     this.checkGoal();
-    this.screen.frame(dt, now);
   }
 
   /** Holding out wins; on the last night, Cassian's fall (or time) ends it. */
@@ -88,8 +88,8 @@ export class StoryBattle {
     }
   }
 
+  /** Takes down the light, fire and torches; the battle screen is closed by the host. */
   dispose(): void {
     this.set.dispose();
-    this.screen.close();
   }
 }

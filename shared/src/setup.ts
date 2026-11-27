@@ -1,3 +1,4 @@
+import type { FighterKit } from './campaign/arena.ts';
 import { staggerThinking } from './ai.ts';
 import { ARMY, FORMATION, MAP, BODY } from './config.ts';
 import { formationSlots, holdSlots } from './formation.ts';
@@ -57,9 +58,10 @@ function groundPos(settings: MatchSettings, x: number, z: number): { x: number; 
   return { x, y: terrainHeightAt(settings.map, x, z), z };
 }
 
-/** Commanders start on horseback. */
-function addCommander(state: MatchState, armyId: number, pos: Vec3, yaw: number, faction: Faction): Unit {
+/** Commanders start on horseback (in the arena on foot). */
+function addCommander(state: MatchState, armyId: number, pos: Vec3, yaw: number, faction: Faction, mounted = true): Unit {
   const commander = addUnit(state, (id) => createUnit(id, 'commander', armyId, pos, yaw, faction));
+  if (!mounted) return commander;
   const horse = addUnit(state, (id) => createUnit(id, 'horse', armyId, pos, yaw, faction));
   horse.riderId = commander.id;
   commander.mountId = horse.id;
@@ -90,7 +92,7 @@ function createArmy(
   const setup = settings.armies[armyId];
   const faction = setup?.faction ?? 'roman';
   const led = !isBot || ARMY.botCommanders || setup?.commander === true;
-  const commander = led ? addCommander(state, armyId, commanderPos, spawn.yaw, faction) : null;
+  const commander = led ? addCommander(state, armyId, commanderPos, spawn.yaw, faction, !settings.arena) : null;
   if (commander && setup?.commanderToughness) {
     commander.maxHp *= setup.commanderToughness;
     commander.hp = commander.maxHp;
@@ -117,6 +119,7 @@ function createArmy(
     }
   });
 
+  if (setup?.kit) applyKit(setup.kit, commander ? [commander, ...soldiers] : soldiers);
   return {
     id: armyId,
     team,
@@ -166,4 +169,12 @@ export function defaultSettings(overrides: Partial<MatchSettings> = {}): MatchSe
     map: 'meadow',
     ...overrides,
   };
+}
+
+/** Campaign fighters have their own hit points. */
+function applyKit(kit: FighterKit, units: readonly Unit[]): void {
+  for (const unit of units) {
+    unit.hp = kit.hp;
+    unit.maxHp = kit.hp;
+  }
 }

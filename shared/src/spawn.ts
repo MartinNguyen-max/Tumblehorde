@@ -1,3 +1,4 @@
+import { ARENA } from './campaign/arena.ts';
 import { ARMY, MAP } from './config.ts';
 import { CASTLE, CITY, MAPS, type MapId } from './maps.ts';
 import { dirToYaw, type Vec2 } from './math.ts';
@@ -94,6 +95,8 @@ export function armySpawn(settings: Pick<MatchSettings, 'map' | 'mode' | 'armies
       return citySpawn(settings, index);
     case 'siege':
       return siegeSpawn(settings, index);
+    case 'arena':
+      return arenaSpawn(settings, index);
   }
 }
 
@@ -114,4 +117,10 @@ export function allPossibleSpawnPoints(map: MapId): Vec2[] {
     }
   }
   return points;
+}
+
+/** Arena fighters stand on a ring around the middle of the sand, facing in. */
+function arenaSpawn(settings: SpawnSettings, index: number): SpawnPoint {
+  const angle = Math.PI + (index * 2 * Math.PI) / Math.max(1, settings.armies.length);
+  return facingCenter({ x: Math.cos(angle) * ARENA.spawnRadius, z: Math.sin(angle) * ARENA.spawnRadius });
 }

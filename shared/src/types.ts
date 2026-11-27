@@ -1,3 +1,4 @@
+import type { FighterKit } from './campaign/arena.ts';
 import type { MapId } from './maps.ts';
 import type { Vec2, Vec3 } from './math.ts';
 import type { RandomSource } from './random.ts';
@@ -246,6 +247,8 @@ export interface ArmySetup {
   commanderToughness?: number;
   /** The bot's fighting style, instead of a random one. */
   style?: BotStyle;
+  /** Campaign: hit points of every fighter in the army, and multipliers on their damage and shield. */
+  kit?: FighterKit;
 }
 
 export interface MatchSettings {
@@ -254,6 +257,8 @@ export interface MatchSettings {
   armies: ArmySetup[];
   seed: number;
   map: MapId;
+  /** Campaign arena: commanders fight on foot and do not get back up when they go down. */
+  arena?: boolean;
   /** Which unit types the armies have. Defaults to `legion`. */
   mix?: ArmyMix;
   /** Seconds bots spend forming up before they march (story battles can start sooner). */

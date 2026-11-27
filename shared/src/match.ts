@@ -163,7 +163,7 @@ function updateRespawns(state: MatchState, dt: number): void {
       hero.respawnTimer -= dt;
       if (hero.respawnTimer <= 0) getBackUp(state, hero, HERO.getUpHealth);
     }
-    if (!commander || commander.alive) continue;
+    if (!commander || commander.alive || state.settings.arena) continue;
     commander.respawnTimer -= dt;
     if (commander.respawnTimer <= 0) respawnCommander(state, army, commander);
   }

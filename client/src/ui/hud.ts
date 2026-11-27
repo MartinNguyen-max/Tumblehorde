@@ -109,8 +109,6 @@ export class Hud {
   private readonly nameTags = new Map<number, HTMLElement>();
   /** Story battles: the objective line, and whether named units get name tags. */
   private story: { objective: (view: MatchView) => string | null } | null = null;
-  /** Seconds the bots form up before they march, in this battle. */
-  private prepareTime: number = MATCH.prepareTime;
   private readonly toast = byId('toast');
   private readonly banner = byId('banner');
   private readonly centerMsg = byId('center-msg');
@@ -180,6 +178,9 @@ export class Hud {
     this.mapName.textContent = name;
   }
 
+  /** Seconds of the form-up countdown; story battles and the arena set their own. */
+  prepareTime: number = MATCH.prepareTime;
+
   setMap(map: MapId): void {
     this.minimap.setMap(map);
   }
@@ -194,6 +195,7 @@ export class Hud {
   }
 
   reset(): void {
+    this.setStory(null);
     this.feed.replaceChildren();
     this.popupLayer.replaceChildren();
     this.popups = [];

@@ -29,6 +29,7 @@ export class CinematicOverlay {
   private choiceKeys: ((e: KeyboardEvent) => void) | null = null;
   private readonly talkBox: HTMLDivElement;
   private readonly promptBox: HTMLDivElement;
+  private readonly statusBox: HTMLDivElement;
 
   constructor() {
     this.root = el('div', 'cine', document.body);
@@ -49,6 +50,8 @@ export class CinematicOverlay {
     this.talkBox.hidden = true;
     this.promptBox = el('div', 'cine-prompt', document.body);
     this.promptBox.hidden = true;
+    this.statusBox = el('div', 'cine-status', document.body);
+    this.statusBox.hidden = true;
   }
 
   show(letterbox = true): void {
@@ -67,6 +70,7 @@ export class CinematicOverlay {
     this.fade(0);
     this.talk(null, null);
     this.prompt(null);
+    this.status(null);
   }
 
   /** A spoken line (with the speaker's name) or the narrator (speaker null). Null text clears it. */
@@ -150,7 +154,7 @@ export class CinematicOverlay {
   }
 
   /** The talk box at the bottom in free roam; null hides it. */
-  talk(speaker: string | null, text: string | null, hint = 'E to go on'): void {
+  talk(speaker: string | null, text: string | null, hint = 'E to go on', progress?: number): void {
     if (text === null) {
       this.talkBox.hidden = true;
       return;
@@ -158,6 +162,10 @@ export class CinematicOverlay {
     this.talkBox.replaceChildren();
     if (speaker) el('span', 'who', this.talkBox).textContent = speaker;
     this.talkBox.append(text);
+    if (progress !== undefined) {
+      const bar = el('span', 'meter', this.talkBox);
+      el('i', '', bar).style.width = `${Math.round(Math.min(1, progress) * 100)}%`;
+    }
     if (hint) el('span', 'hint', this.talkBox).textContent = hint;
     this.talkBox.hidden = false;
   }
@@ -166,6 +174,12 @@ export class CinematicOverlay {
   prompt(text: string | null): void {
     this.promptBox.hidden = text === null;
     if (text !== null) this.promptBox.textContent = text;
+  }
+
+  /** A small line in the top left corner (gold, strength); null hides it. */
+  status(text: string | null): void {
+    this.statusBox.hidden = text === null;
+    if (text !== null && this.statusBox.textContent !== text) this.statusBox.textContent = text;
   }
 
   showLoading(chapter: Chapter | null): void {

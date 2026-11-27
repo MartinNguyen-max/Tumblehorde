@@ -1,6 +1,5 @@
 import { Vector3 } from './render/babylon.ts';
-import { defaultSettings, type MapId, mapFromRandom, MATCH, type MatchSettings, type MatchView } from '@tumblehorde/shared';
-import type { BattleScreen } from './campaign/storyBattle.ts';
+import { defaultSettings, MATCH, type MapId, mapFromRandom, type MatchSettings, type MatchView } from '@tumblehorde/shared';
 import { GameController } from './game/controller.ts';
 import { LocalSession, type Session } from './game/session.ts';
 import { InputState } from './input/input.ts';
@@ -36,20 +35,24 @@ async function boot(): Promise<void> {
   const audio = new AudioEngine();
   const battleAudio = new BattleAudio(audio);
   setupSoundToggle(audio);
-  /** The battle screen, lent to the campaign for its battle chapters: no results dialog, the story decides what comes next. */
-  const storyScreen: BattleScreen = {
-    open: (settings, objective, onFinished) => {
+  const campaign = new Campaign({
+    world,
+    input,
+    canvas,
+    sound: new CinematicAudio(audio),
+    onExit: () => showLanding(),
+    startBattle: (settings, onEnd, objective) => {
       const session = new LocalSession(settings, 0);
-      startSession(session, () => undefined, { objective, onFinished });
+      startSession(session, () => undefined, (view) => {
+        stopBattle();
+        onEnd(view);
+      });
+      hud.setStory(objective ? { objective } : null, settings.prepareTime ?? MATCH.prepareTime);
+      input.requestLock();
       return session;
     },
-    frame: (dt, now) => controller?.frame(dt, now),
-    close: () => {
-      stopBattle();
-      hud.setStory(null);
-    },
-  };
-  const campaign = new Campaign({ world, input, canvas, sound: new CinematicAudio(audio), battles: storyScreen, onExit: () => showLanding() });
+    stopBattle: () => stopBattle(),
+  });
   const campaignMenu = new CampaignMenu({
     onNew: () => {
       enterCampaign();
@@ -126,16 +129,11 @@ async function boot(): Promise<void> {
       : 'Click to take command. Press <kbd>Esc</kbd> to pause.';
   };
 
-  const startSession = (
-    session: Session,
-    again: () => void,
-    story?: { objective: (view: MatchView) => string | null; onFinished: (view: MatchView) => void },
-  ): void => {
+  const startSession = (session: Session, again: () => void, finished?: (view: MatchView) => void): void => {
     demo = null;
     stopBattle();
     useMap(session.map);
     hud.reset();
-    hud.setStory(story ? { objective: story.objective } : null, session instanceof LocalSession ? (session.settings.prepareTime ?? MATCH.prepareTime) : MATCH.prepareTime);
     landing.setVisible(false);
     hud.setVisible(true);
     rematch = again;
@@ -144,7 +142,7 @@ async function boot(): Promise<void> {
     controller = new GameController(session, { world, renderer, camera, input, hud, audio: battleAudio, listener: audio }, {
       onFinished: (view: MatchView) => {
         clickToPlay.hidden = true;
-        if (story) story.onFinished(view);
+        if (finished) finished(view);
         else results.show(view, session.myArmyId, session.online ? 'Back to lobby' : 'Rematch');
       },
       onPauseChange: (paused) => showPausePrompt(paused, session.online, false),
@@ -216,11 +214,10 @@ async function boot(): Promise<void> {
   world.engine.runRenderLoop(() => {
     const dt = Math.min(world.engine.getDeltaTime() / 1000, MAX_FRAME_TIME);
     const now = performance.now() / 1000;
+    if (controller) controller.frame(dt, now);
     if (campaign.active) {
       campaign.frame(dt);
-    } else if (controller) {
-      controller.frame(dt, now);
-    } else if (demo) {
+    } else if (!controller && demo) {
       demo.update(dt);
       renderer.handleEvents(demo.takeEvents(), now);
       const view = demo.view();
