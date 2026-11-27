@@ -454,7 +454,7 @@ const BROTHERS_HINTS: Record<'marcus' | 'lucius', readonly TutorialStep[]> = {
     { text: 'Find Lucius. When the emperor falls, the city is yours.', points: null, done: { seconds: 8 } },
   ],
   lucius: [
-    { text: 'Hold the forum. Keep 2 held down and pick Two lines: let them come to your shields.', points: 'hold', done: { formation: 'double' } },
+    { text: 'Riders from the south, the dead from the east. Keep 2 held down and pick Square: shields on every side.', points: 'hold', done: { formation: 'square' } },
     { text: 'When the dead reach you, press 6 for a rally speech.', points: 'rally', done: { seconds: 10 } },
   ],
 };
