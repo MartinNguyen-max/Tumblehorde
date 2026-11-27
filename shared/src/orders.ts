@@ -1,5 +1,5 @@
 import { finishFeast } from './banquet.ts';
-import { ARMY, BANQUET, FORMATION, MOVEMENT, PINCER, RALLY, VOLLEY } from './config.ts';
+import { ARMY, BANQUET, FACTION_FORMATIONS, FORMATION, MOVEMENT, PINCER, RALLY, VIKING, VOLLEY } from './config.ts';
 import { assignHoldSlots, blockSlots, followCenter, formationSlots, holdSlots, pincerGroups, pincerHorn, supportSlots, type FormationSlot } from './formation.ts';
 import { localStep, navGrid, navigate, nearestWalkable } from './navigation.ts';
 import { attackGoal, fogOfWar } from './perception.ts';
@@ -147,7 +147,8 @@ export function throwSpears(state: MatchState, army: Army, at: Vec3, group: numb
     if ((group !== null && soldier.group !== group) || soldier.kind !== 'swordsman' || soldier.spearThrown) continue;
     if (soldier.stunTimer > 0 || soldier.action !== 'none') continue;
     // Spears are only thrown at someone: the one volley is not wasted on empty ground.
-    const inRange = targets.filter((t) => distanceXZ(t.pos, soldier.pos) <= VOLLEY.range);
+    const range = soldier.faction === 'viking' ? VIKING.throwRange : VOLLEY.range;
+    const inRange = targets.filter((t) => distanceXZ(t.pos, soldier.pos) <= range);
     if (inRange.length === 0) continue;
     const target = inRange[Math.floor(nextRandom(state.rng) * inRange.length)] ?? null;
     soldier.weapon = 'spear';
@@ -233,8 +234,14 @@ export function rally(state: MatchState, army: Army): boolean {
 }
 
 /** Picks the formation for Hold and forms it up at once, for one group or the whole army. */
+/** Each people has its own formations (see `FACTION_FORMATIONS`). */
+export function knowsFormation(army: Army, formation: Formation): boolean {
+  return (FACTION_FORMATIONS[army.faction] as readonly Formation[]).includes(formation);
+}
+
 export function setFormation(state: MatchState, army: Army, formation: Formation, group: number | null = null): boolean {
   if (!canGiveOrders(state, army) || (group !== null && (group < 0 || group >= army.groupCount))) return false;
+  if (!knowsFormation(army, formation)) return false;
   army.formation = formation;
   return issueOrder(state, army, 'hold', group);
 }

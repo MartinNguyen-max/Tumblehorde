@@ -1,6 +1,6 @@
 import type { MatchView, SimEvent, UnitView } from '@tumblehorde/shared';
 import { SOUND } from '../visualConfig.ts';
-import { babble, type Babble, personal, SAY } from './babble.ts';
+import { babble, type Babble, personal, SAY, viking } from './babble.ts';
 import type { AudioEngine, Place } from './engine.ts';
 import { bonk, burp, clang, clink, glug, kazoo, pop, slideWhistle, splash, swing, throwWhoosh, thunk, trample } from './sounds.ts';
 
@@ -20,15 +20,28 @@ export class BattleAudio {
     this.engine = engine;
   }
 
+  /** The people of the army each unit belongs to, refreshed with every view: Vikings sound different. */
+  private vikingArmies = new Set<number>();
+
   /** Somebody says something, in their own voice when we know who (`speaker`). */
   private say(at: Place | null, what: Babble, key: string, delay = 0, gap: number = SOUND.voiceGap, speaker?: number): void {
     const v = this.engine.voice(at, 1, key, gap, SOUND.voiceLength);
     if (!v) return;
-    babble(this.engine, { ...v, t: v.t + delay }, speaker === undefined ? what : personal(what, speaker));
+    const unit = speaker === undefined ? null : this.lastView?.units[speaker];
+    const voice = unit && this.vikingArmies.has(unit.armyId) ? viking(what) : what;
+    babble(this.engine, { ...v, t: v.t + delay }, speaker === undefined ? voice : personal(voice, speaker));
+  }
+
+  private lastView: MatchView | null = null;
+
+  private noteFactions(view: MatchView): void {
+    this.lastView = view;
+    this.vikingArmies = new Set(view.armies.filter((a) => a.faction === 'viking').map((a) => a.id));
   }
 
   handle(events: readonly SimEvent[], view: MatchView | null, myArmyId: number | null): void {
     if (!view || !this.engine.enabled) return;
+    this.noteFactions(view);
     const at = (id: number): UnitView | undefined => view.units[id];
     for (const event of events) {
       switch (event.type) {
@@ -36,6 +49,8 @@ export class BattleAudio {
           const u = at(event.unitId);
           const v = this.engine.voice(u ?? null, 0.5, 'swing', SOUND.crowdGap);
           if (v) swing(this.engine, v);
+          // Vikings roar as they swing; legionaries fight quieter.
+          if (u && this.vikingArmies.has(u.armyId) && Math.random() < SOUND.vikingRoarChance) this.say(u, SAY.roar, 'roar', 0, SOUND.voiceGap, u.id);
           break;
         }
         case 'hit': {
@@ -81,7 +96,12 @@ export class BattleAudio {
         }
         case 'stumble': {
           const u = at(event.unitId);
-          this.say(u ?? null, Math.random() < 0.5 ? SAY.hic : SAY.giggle, 'hic', 0, SOUND.crowdGap, u?.id);
+          // A drunk trips and giggles; anyone else slipped on the ice.
+          if (u?.drunk) this.say(u, Math.random() < 0.5 ? SAY.hic : SAY.giggle, 'hic', 0, SOUND.crowdGap, u.id);
+          else if (u) {
+            this.say(u, SAY.oof, 'oof', 0, SOUND.crowdGap, u.id);
+            this.whistle(u);
+          }
           break;
         }
         case 'rally':
@@ -183,6 +203,6 @@ export class BattleAudio {
     if (!attack) return;
     this.soldiersOf(view, armyId)
       .slice(0, SOUND.cheerVoices)
-      .forEach((u, i) => this.say(u, SAY.warCry, `cry-${i}`, Math.random() * 0.5, 0, u.id));
+      .forEach((u, i) => this.say(u, this.vikingArmies.has(armyId) ? SAY.roar : SAY.warCry, `cry-${i}`, Math.random() * 0.5, 0, u.id));
   }
 }

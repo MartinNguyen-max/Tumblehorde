@@ -1,5 +1,5 @@
 import { MAP, OBSTACLES, TERRAIN, WATER } from './config.ts';
-import { CASTLE, CITY, inMoat, MAPS, type MapDefinition, type MapId, type ObstacleKind } from './maps.ts';
+import { CASTLE, CITY, type IceSheet, inMoat, MAPS, type MapDefinition, type MapId, NORTH, type ObstacleKind } from './maps.ts';
 import { clamp, distanceXZ, type Vec2 } from './math.ts';
 import { createRandom, randomRange, type RandomSource } from './random.ts';
 import { allPossibleSpawnPoints } from './spawn.ts';
@@ -21,7 +21,28 @@ function hillHeight(def: MapDefinition, x: number, z: number): number {
   const rimDistance = Math.max(Math.abs(x), Math.abs(z)) - TERRAIN.rimStart;
   const rim = rimDistance > 0 ? rimDistance * TERRAIN.rimSlope : 0;
   const moat = def.layout === 'siege' && inMoat(x, z) ? WATER.depth : 0;
-  return h * blend + rim - moat;
+  const ground = h * blend + rim - moat;
+  // Frozen water lies flat, a little below the snow, with a gentle bank.
+  const ice = iceDepth(def.ice ?? [], x, z);
+  return ice > 0 ? ground + (NORTH.iceLevel - ground) * Math.min(1, ice) : ground;
+}
+
+/** How far inside the nearest ice sheet (1 at its edge and beyond, 0 outside its bank). */
+function iceDepth(sheets: readonly IceSheet[], x: number, z: number): number {
+  let best = 0;
+  for (const s of sheets) {
+    const d = Math.hypot((x - s.x) / s.radiusX, (z - s.z) / s.radiusZ);
+    const meters = (1 - d) * Math.min(s.radiusX, s.radiusZ);
+    best = Math.max(best, (meters + NORTH.bank) / NORTH.bank);
+  }
+  return best;
+}
+
+/** On frozen water: slippery underfoot. */
+export function onIce(map: MapId, x: number, z: number): boolean {
+  const sheets = MAPS[map].ice;
+  if (!sheets) return false;
+  return sheets.some((s) => Math.hypot((x - s.x) / s.radiusX, (z - s.z) / s.radiusZ) < 1);
 }
 
 /** Shallow water: only the castle moat. */

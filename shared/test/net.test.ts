@@ -10,6 +10,7 @@ import {
   normalizeRoomCode,
   rosterFor,
   sanitizeInputMessage,
+  type Peoples,
   sanitizeLobbySettings,
   sanitizeName,
   type LobbyMessage,
@@ -59,7 +60,8 @@ describe('snapshot codec', () => {
 });
 
 describe('lobby rules', () => {
-  const lobby = (mode: 'ffa' | 'teams', teams: number[], map: MapChoice = 'random'): LobbyMessage => ({
+  const lobby = (mode: 'ffa' | 'teams', teams: number[], map: MapChoice = 'random', peoples: Peoples = 'romans'): LobbyMessage => ({
+    peoples,
     code: 'ABCDE',
     hostId: 'a',
     phase: 'lobby',
@@ -103,9 +105,29 @@ describe('message validation', () => {
     expect(sanitizeInputMessage('hello')).toBeNull();
   });
 
+  it('puts Romans against Vikings by team, or every other player in a free-for-all', () => {
+    const lobby = (mode: 'ffa' | 'teams', teams: number[], map: MapChoice, peoples: Peoples): LobbyMessage => ({
+      peoples,
+      code: 'ABCDE',
+      hostId: 'a',
+      phase: 'lobby',
+      mode,
+      armySize: 15,
+      map,
+      players: teams.map((team, i) => ({ sessionId: `s${i}`, name: `P${i}`, team, connected: true })),
+    });
+    const teams = battleSettings(lobby('teams', [1, 0, 1], 'meadow', 'versus'), 7);
+    expect(teams.armies.map((a) => a.faction)).toEqual(['viking', 'roman', 'viking']);
+    const ffa = battleSettings(lobby('ffa', [0, 0, 0], 'meadow', 'versus'), 7);
+    expect(ffa.armies.map((a) => a.faction)).toEqual(['roman', 'viking', 'roman']);
+    expect(battleSettings(lobby('ffa', [0, 0], 'meadow', 'vikings'), 7).armies.every((a) => a.faction === 'viking')).toBe(true);
+  });
+
   it('only allows known lobby settings', () => {
-    expect(sanitizeLobbySettings({ mode: 'teams', armySize: 25 })).toEqual({ mode: 'teams', armySize: 25, map: 'random' });
-    expect(sanitizeLobbySettings({ mode: 'teams', armySize: 25, map: 'castle' })).toEqual({ mode: 'teams', armySize: 25, map: 'castle' });
+    expect(sanitizeLobbySettings({ mode: 'teams', armySize: 25 })).toEqual({ mode: 'teams', armySize: 25, map: 'random', peoples: 'romans' });
+    expect(sanitizeLobbySettings({ mode: 'teams', armySize: 25, map: 'castle' })).toEqual({ mode: 'teams', armySize: 25, map: 'castle', peoples: 'romans' });
+    expect(sanitizeLobbySettings({ mode: 'teams', armySize: 25, peoples: 'versus' })?.peoples).toBe('versus');
+    expect(sanitizeLobbySettings({ mode: 'teams', armySize: 25, peoples: 'aliens' })).toBeNull();
     expect(sanitizeLobbySettings({ mode: 'teams', armySize: 25, map: 'moon' })).toBeNull();
     expect(sanitizeLobbySettings({ mode: 'teams', armySize: 20 })).toBeNull();
     expect(sanitizeLobbySettings({ mode: 'chaos', armySize: 25 })).toBeNull();

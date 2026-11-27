@@ -1,4 +1,4 @@
-import { BANQUET, COMMANDER, DUEL, HORSE, KNOCKBACK, MELEE, RALLY, SHIELD, type KnockbackStats, type MeleeStats } from './config.ts';
+import { BANQUET, COMMANDER, DUEL, HORSE, KNOCKBACK, MELEE, RALLY, SHIELD, VIKING, type KnockbackStats, type MeleeStats } from './config.ts';
 import { rememberAttacker } from './duel.ts';
 import { normalizeXZ, yawToDir, type Vec2, type Vec3 } from './math.ts';
 import { throwRider } from './mounts.ts';
@@ -29,6 +29,15 @@ export interface HitSource {
   pierce?: number;
   /** The shove still lands on a raised shield, even in a locked wall (a spear thrust). */
   shovesThroughShield?: boolean;
+  /** Chance that a blocked blow pulls the shield aside (a bearded axe). */
+  hook?: number;
+}
+
+/** How much a raised shield stops, alone and in a wall: round Viking shields a little less than a scutum. */
+export function shieldBlock(unit: Unit): { alone: number; wall: number } {
+  return unit.faction === 'viking'
+    ? { alone: VIKING.blockFraction, wall: VIKING.wallBlockFraction }
+    : { alone: SHIELD.blockFraction, wall: SHIELD.wallBlockFraction };
 }
 
 /** True if `target` has its shield raised towards the point `from`. */
@@ -93,7 +102,8 @@ export function applyHit(
   const brave = source.attacker !== null && courageous(state, source.attacker);
   const steady = courageous(state, target);
   const wall = blocked && !drunkBlow && inShieldWall(state, target);
-  const blockFraction = wall ? SHIELD.wallBlockFraction : SHIELD.blockFraction;
+  const block = shieldBlock(target);
+  const blockFraction = wall ? block.wall : block.alone;
   const strength =
     damage * (drunkBlow ? BANQUET.damageDealtFactor : 1) * (target.drunk ? BANQUET.damageTakenFactor : 1) * (brave ? RALLY.damageFactor : 1);
   const dealt = blocked ? strength * Math.max(1 - blockFraction, source.pierce ?? 0) : strength;
@@ -112,6 +122,7 @@ export function applyHit(
   rememberAttacker(state, target, source.attacker);
   rememberThreat(state, target, source.armyId, dealt);
   if (blocked) openCounter(target);
+  const hooked = blocked && !wall && source.hook !== undefined && nextRandom(state.rng) < source.hook;
   state.events.push({
     type: 'hit',
     targetId: target.id,
@@ -128,6 +139,11 @@ export function applyHit(
       z: knockback.z * KNOCKBACK.deathBoost,
     };
     killUnit(state, target, source.armyId, boosted);
+    return;
+  }
+  if (hooked) {
+    // The axe's beard catches the rim and drags the shield down: the guard is open for a moment.
+    applyKnockback(target, knockback, VIKING.hookStun);
     return;
   }
   if (factor > 0) applyKnockback(target, knockback, blocked ? 0 : knock.stun * (steady ? RALLY.stunTakenFactor : 1));
@@ -251,6 +267,8 @@ export function resolveMelee(state: MatchState, attacker: Unit): void {
         shovesThroughShield: stats.shovesThroughShield === true,
         // A shield bash knocks the guard aside rather than glancing off it.
         breaksGuard: bash,
+        ...(stats.pierce === undefined ? {} : { pierce: stats.pierce }),
+        ...(stats.hookChance === undefined ? {} : { hook: stats.hookChance }),
       },
       stats.damage,
       stats.knockback,

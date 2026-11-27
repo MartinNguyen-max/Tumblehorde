@@ -160,4 +160,11 @@ these are the values after the legion update.
 | Counter | a blocked blow makes the next strike ready within 0.15 s |
 | Shield bash | 40 % of blows at a raised shield: 6 damage, 1.6 m, knocks the guard aside (0.8 s) |
 | Celebration | 7 s after the win before the results |
+| Viking warrior | 180 HP, 5.3 m/s |
+| Axe (Attack) | 27 damage, 1.9 m, 1.1 s, 0.42 s wind-up; 35 % through a raised shield, hooks it aside 35 % of the time (0.55 s) |
+| Viking spear (Hold) | 14 damage, 2.6 m, shove 8 m/s through shields |
+| Round shield | blocks 90 %, in a wall 93 % |
+| Throwing axes (once) | 22 m range, 42 damage (45 % through shields), shove 8 m/s |
+| Romans vs Vikings | bots, 15 a side: Vikings won 46 % of 80 on the meadow, 50 % of 40 at 25 a side, 50 % at the castle, 42 % in the city |
+| Ice | 22 % grip, 12 % friction; running soldiers slip 15 % per second (1.2 s down) |
 | Fog of war (city) | 60 m sight, sightings remembered 25 s |

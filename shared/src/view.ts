@@ -1,7 +1,7 @@
 import { lerp, wrapAngle } from './math.ts';
 import { matchDuration } from './match.ts';
 import { livingSoldiers } from './orders.ts';
-import type { ActionKind, ArmySize, BanquetState, Formation, ProjectileKind, GameMode, MatchPhase, MatchState, Order, Unit, UnitKind, Weapon } from './types.ts';
+import type { ActionKind, ArmySize, BanquetState, Faction, Formation, ProjectileKind, GameMode, MatchPhase, MatchState, Order, Unit, UnitKind, Weapon } from './types.ts';
 
 /** What a client needs to draw a unit. Built from the simulation or decoded from the network. */
 export interface UnitView {
@@ -49,6 +49,7 @@ export interface ArmyView {
   team: number;
   name: string;
   isBot: boolean;
+  faction: Faction;
   eliminated: boolean;
   forfeited: boolean;
   groupCount: number;
@@ -130,6 +131,7 @@ export function matchView(state: MatchState): MatchView {
       team: army.team,
       name: army.name,
       isBot: army.isBot,
+      faction: army.faction,
       eliminated: army.eliminated,
       forfeited: army.forfeited,
       groupCount: army.groupCount,

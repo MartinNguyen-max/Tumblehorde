@@ -4,7 +4,7 @@ import { isMapChoice, MAP_IDS, type MapChoice, type MapId, MAPS, mapFromRandom }
 import { DEFENDER_TEAM } from './spawn.ts';
 import { createRandom, nextRandom } from './random.ts';
 import { createMatch } from './setup.ts';
-import type { ActionKind, ArmySize, Command, ProjectileKind, CommanderInput, GameMode, MatchPhase, MatchSettings, SimEvent } from './types.ts';
+import type { ActionKind, ArmySize, Command, Faction, ProjectileKind, CommanderInput, GameMode, MatchPhase, MatchSettings, SimEvent } from './types.ts';
 import { unitView, type ArmyView, type ArrowView, type MatchView, type UnitView } from './view.ts';
 
 // ---------- Messages ----------
@@ -20,6 +20,13 @@ export interface LobbyPlayer {
 
 export type RoomPhase = 'lobby' | 'battle';
 
+/**
+ * Which peoples fight in an online battle: everyone Roman, everyone Viking, or Romans against
+ * Vikings (by team, or every other player in a free-for-all).
+ */
+export type Peoples = 'romans' | 'vikings' | 'versus';
+export const PEOPLES: readonly Peoples[] = ['romans', 'vikings', 'versus'];
+
 export interface LobbyMessage {
   code: string;
   hostId: string;
@@ -27,6 +34,7 @@ export interface LobbyMessage {
   mode: GameMode;
   armySize: ArmySize;
   map: MapChoice;
+  peoples: Peoples;
   players: LobbyPlayer[];
 }
 
@@ -54,6 +62,14 @@ export interface LobbySettingsMessage {
   mode: GameMode;
   armySize: ArmySize;
   map: MapChoice;
+  peoples: Peoples;
+}
+
+/** The people of player `index` (on `team`) for the lobby's choice. */
+export function factionFor(peoples: Peoples, mode: GameMode, index: number, team: number): Faction {
+  if (peoples === 'romans') return 'roman';
+  if (peoples === 'vikings') return 'viking';
+  return (mode === 'ffa' ? index : team) % 2 === 0 ? 'roman' : 'viking';
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -77,7 +93,8 @@ export function sanitizeLobbySettings(raw: unknown): LobbySettingsMessage | null
   const mode = raw.mode === 'ffa' || raw.mode === 'teams' ? raw.mode : null;
   const size = ARMY.sizes.find((s) => s === raw.armySize) ?? null;
   const map = raw.map === undefined ? 'random' : isMapChoice(raw.map) ? raw.map : null;
-  return mode && size && map ? { mode, armySize: size, map } : null;
+  const peoples = raw.peoples === undefined ? 'romans' : (PEOPLES.find((p) => p === raw.peoples) ?? null);
+  return mode && size && map && peoples ? { mode, armySize: size, map, peoples } : null;
 }
 
 /** Names are shown to other players: trim, drop control characters, cap the length. */
@@ -122,7 +139,10 @@ export function battleSettings(lobby: LobbyMessage, seed: number): MatchSettings
   return {
     mode: lobby.mode,
     armySize: lobby.armySize,
-    armies: lobby.players.map((p, i) => ({ name: p.name, team: lobby.mode === 'ffa' ? i : p.team, isBot: false })),
+    armies: lobby.players.map((p, i) => {
+      const team = lobby.mode === 'ffa' ? i : p.team;
+      return { name: p.name, team, isBot: false, faction: factionFor(lobby.peoples, lobby.mode, i, team) };
+    }),
     seed,
     map: lobby.map === 'random' ? randomMap(lobby, nextRandom(createRandom(seed))) : lobby.map,
   };
@@ -149,7 +169,7 @@ const HP_SCALE = 10;
 const TIMER_SCALE = 20;
 const NONE = 0xffff;
 const ACTIONS: readonly ActionKind[] = ['none', 'melee', 'shoot', 'throw'];
-const PROJECTILES: readonly ProjectileKind[] = ['arrow', 'pilum'];
+const PROJECTILES: readonly ProjectileKind[] = ['arrow', 'pilum', 'axe'];
 const PHASES: readonly MatchPhase[] = ['playing', 'ending', 'over'];
 
 const FLAG_ALIVE = 1;

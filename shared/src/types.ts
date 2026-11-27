@@ -8,11 +8,14 @@ export type UnitKind = 'commander' | 'swordsman' | 'archer' | 'rider' | 'horse';
 export type SoldierKind = 'swordsman' | 'archer' | 'rider';
 
 export type Order = 'follow' | 'hold' | 'attack';
-export type Weapon = 'sword' | 'spear' | 'bow';
+/** Romans and Vikings: the same bodies, different looks, weapons, shields and formations. */
+export type Faction = 'roman' | 'viking';
+
+export type Weapon = 'sword' | 'spear' | 'bow' | 'axe';
 export type GameMode = 'ffa' | 'teams';
 export type ArmySize = 15 | 25 | 40;
 /** How the player's army holds its ground: one long line, two lines, or a ring around the commander. */
-export type Formation = 'line' | 'double' | 'circle' | 'wedge' | 'pincer' | 'square';
+export type Formation = 'line' | 'double' | 'circle' | 'wedge' | 'pincer' | 'square' | 'boar' | 'swarm';
 /** `legion` is swordsmen only. `mixed` (swordsmen, archers, cavalry) is parked for now but still works. */
 export type ArmyMix = 'legion' | 'mixed';
 /** The banquet: once per battle the army feasts around its commander and is drunk ever after. */
@@ -71,6 +74,7 @@ export interface Unit {
   id: EntityId;
   kind: UnitKind;
   armyId: number;
+  faction: Faction;
   hp: number;
   maxHp: number;
   alive: boolean;
@@ -101,6 +105,8 @@ export interface Unit {
   drunk: boolean;
   /** Standing in water right now. */
   wet: boolean;
+  /** Standing on ice right now: it slides. */
+  onIce: boolean;
   crouching: boolean;
   /** This soldier has thrown its spear and fights on with the sword. */
   spearThrown: boolean;
@@ -160,6 +166,7 @@ export interface Army {
   team: number;
   name: string;
   isBot: boolean;
+  faction: Faction;
   /** Bot armies have no commander: they run themselves. */
   commanderId: EntityId | null;
   soldierIds: EntityId[];
@@ -195,7 +202,7 @@ export interface Army {
   startingSoldiers: number;
 }
 
-export type ProjectileKind = 'arrow' | 'pilum';
+export type ProjectileKind = 'arrow' | 'pilum' | 'axe';
 
 export type RefusedReason = 'spearsSpent' | 'noTargetInRange' | 'banquetSpent' | 'notHolding' | 'enemyAhead' | 'rallyResting';
 
@@ -217,6 +224,8 @@ export interface ArmySetup {
   isBot: boolean;
   /** On the castle map: this army holds the castle. Without it, team 0 (or in free-for-all the first army) does. */
   defends?: boolean;
+  /** Romans unless said otherwise. */
+  faction?: Faction;
 }
 
 export interface MatchSettings {
@@ -246,7 +255,7 @@ export type SimEvent =
   | { type: 'arrowFired'; arrowId: EntityId; shooterId: EntityId }
   | { type: 'arrowLanded'; pos: Vec3; dir: Vec3; kind: ProjectileKind }
   /** A thrown spear stuck in a unit (or its shield): it goes where they go. */
-  | { type: 'pilumStuck'; targetId: EntityId; pos: Vec3; dir: Vec3 }
+  | { type: 'pilumStuck'; targetId: EntityId; pos: Vec3; dir: Vec3; kind: ProjectileKind }
   | { type: 'respawn'; unitId: EntityId }
   | { type: 'mount'; riderId: EntityId; horseId: EntityId }
   | { type: 'dismount'; riderId: EntityId; horseId: EntityId; thrown: boolean }

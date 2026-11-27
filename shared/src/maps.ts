@@ -1,5 +1,5 @@
 /** The battlefields. Each has its own terrain shape, its own obstacles and its own way of starting. */
-export const MAP_IDS = ['meadow', 'castle', 'city'] as const;
+export const MAP_IDS = ['meadow', 'castle', 'city', 'north'] as const;
 export type MapId = (typeof MAP_IDS)[number];
 
 export type ObstacleKind = 'tree' | 'rock' | 'cactus';
@@ -186,10 +186,48 @@ function city(): Structure[] {
   return out;
 }
 
+/** A frozen lake or pond: an ellipse of flat, slippery ice. */
+export interface IceSheet {
+  x: number;
+  z: number;
+  radiusX: number;
+  radiusZ: number;
+}
+
+/**
+ * The frozen north: a Viking village of longhouses and huts behind a broken palisade, rune
+ * stones, and a big frozen lake off to one side of the field (with a small pond on the other).
+ */
+export const NORTH = {
+  ice: [
+    { x: -26, z: 34, radiusX: 30, radiusZ: 17 },
+    { x: 42, z: -40, radiusX: 13, radiusZ: 10 },
+  ] satisfies IceSheet[],
+  /** The ice lies this far below the snow around it, with a bank this wide. */
+  iceLevel: -0.35,
+  bank: 4,
+} as const;
+
+function northVillage(): Structure[] {
+  const out: Structure[] = [];
+  const longhouse = (x: number, z: number, yaw: number, length = 13): Structure => ({ kind: 'house', x, z, width: 5.5, depth: length, height: 4.6, yaw });
+  out.push(longhouse(40, 26, 0.1), longhouse(50, 40, 1.45), longhouse(30, 44, -0.25, 11));
+  const hut = (x: number, z: number): Structure => ({ kind: 'hut', x, z, width: 3.2, depth: 3.2, height: 2.6, yaw: 0.4 });
+  out.push(hut(52, 18), hut(22, 32));
+  const fence = (x: number, z: number, length: number, yaw: number): Structure => ({ kind: 'fence', x, z, width: length, depth: 0.5, height: 2.2, yaw });
+  out.push(fence(22, 18, 14, 0.5), fence(36, 12, 12, -0.15), fence(60, 30, 12, Math.PI / 2), fence(44, 54, 14, 0.1));
+  const runeStone = (x: number, z: number, yaw: number): Structure => ({ kind: 'pillar', x, z, width: 1.1, depth: 0.5, height: 2.6, yaw });
+  out.push(runeStone(-6, -30, 0.3), runeStone(14, 12, -0.5), runeStone(-46, -8, 1.1));
+  out.push(wall(-38, -44, 14, 0.5, 1.2), wall(10, -60, 12, -0.3, 1.2));
+  return out;
+}
+
 export interface MapDefinition {
   id: MapId;
   name: string;
   layout: MapLayout;
+  /** Frozen water: flat and slippery. */
+  ice?: readonly IceSheet[];
   /** Rolling hills: amplitude and frequency of the two sine layers. */
   hills: { amplitude: number; frequencyX: number; frequencyZ: number };
   ripples: { amplitude: number; frequencyX: number; frequencyZ: number };
@@ -233,6 +271,22 @@ export const MAPS: Record<MapId, MapDefinition> = {
     scenery: ['tree', 'tree', 'rock'],
     sceneryCount: 120,
     structures: castle(),
+  },
+  north: {
+    id: 'north',
+    name: 'The Frozen North',
+    layout: 'open',
+    hills: { amplitude: 3.4, frequencyX: 0.06, frequencyZ: 0.075 },
+    ripples: { amplitude: 1.0, frequencyX: 0.16, frequencyZ: 0.12 },
+    flatRadius: 22,
+    ice: NORTH.ice,
+    inside: [
+      { kind: 'tree', count: 50, scaleMin: 0.9, scaleMax: 1.45 },
+      { kind: 'rock', count: 26, scaleMin: 0.6, scaleMax: 1.6 },
+    ],
+    scenery: ['tree', 'tree', 'rock'],
+    sceneryCount: 140,
+    structures: northVillage(),
   },
   city: {
     id: 'city',

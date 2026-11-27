@@ -12,7 +12,7 @@ import {
   type UnitView,
 } from '@tumblehorde/shared';
 import { paletteForArmy } from '../palettes.ts';
-import { COLORS, MINIMAP } from '../visualConfig.ts';
+import { COLORS, MINIMAP, MINIMAP_GROUND } from '../visualConfig.ts';
 
 /**
  * A small map in the top left corner: buildings and water, every army as colored dots, and an
@@ -55,8 +55,15 @@ export class Minimap {
     const ctx = bg.getContext('2d');
     if (!ctx) return bg;
     const scale = bg.width / MAP.size;
-    ctx.fillStyle = MINIMAP.ground;
+    ctx.fillStyle = MINIMAP_GROUND[map] ?? MINIMAP.ground;
     ctx.fillRect(0, 0, bg.width, bg.height);
+    ctx.fillStyle = MINIMAP.ice;
+    for (const sheet of MAPS[map].ice ?? []) {
+      const [px, py] = this.toCanvas(sheet.x, sheet.z);
+      ctx.beginPath();
+      ctx.ellipse(px, py, sheet.radiusX * scale, sheet.radiusZ * scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
     if (MAPS[map].layout === 'siege') {
       ctx.fillStyle = COLORS.water;
       const step = 2;

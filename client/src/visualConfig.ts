@@ -27,6 +27,7 @@ export const COLORS = {
   edgeWall: '#FFD166',
   bubble: '#E9D8FF',
   water: '#3E8FC4',
+  ice: '#CDEBF7',
   splash: '#CFEFFF',
   shout: '#FFF1B8',
   edgePost: '#E8E2CF',
@@ -57,6 +58,29 @@ export const ROMAN = {
   blush: '#F08A8A',
   wine: '#6E1630',
   terracotta: '#C2693D',
+} as const;
+
+/** Viking looks: every warrior picks a beard, a pelt, a skin tone and maybe a helmet and a scar. */
+export const VIKING_LOOK = {
+  skins: ['#E8B08C', '#DDA27E', '#F0C2A0', '#D49272'],
+  skinShades: ['#D49A76', '#C98E6A', '#DFAE8C', '#BE7E5E'],
+  beards: ['#D9B45A', '#B8522A', '#6B4423', '#2A211C', '#C7C2B8', '#E3C77A'],
+  pelts: [
+    { fur: '#8D9094', tuft: '#C1C4C7' },
+    { fur: '#5B3E2B', tuft: '#7A5639' },
+    { fur: '#A39A88', tuft: '#D7CFBE' },
+  ],
+  wool: '#5E5248',
+  wraps: '#B8A98C',
+  leather: '#5A3A24',
+  iron: '#7C848B',
+  ironDark: '#545B61',
+  scar: '#B5545A',
+  armRing: '#D9B04A',
+  shieldRim: '#6E5A44',
+  hornCup: '#E6D6B0',
+  mead: '#D9A23A',
+  mail: '#8B939A',
 } as const;
 
 export interface ArmyPalette {
@@ -120,6 +144,10 @@ export interface MapTheme {
   /** Houses pick from these, so a street does not look copy-pasted. */
   plasters: readonly string[];
   roofs: readonly string[];
+  /** Frozen water, if the map has any. */
+  ice?: HslRange;
+  /** Snow falls around the camera. */
+  snow?: boolean;
 }
 
 export const MAP_THEMES: Record<MapId, MapTheme> = {
@@ -198,13 +226,53 @@ export const MAP_THEMES: Record<MapId, MapTheme> = {
     plasters: ['#EFE3C8', '#E9CBA0', '#DDB48A', '#F3E6CF', '#E3C2B0'],
     roofs: ['#B5533C', '#A3462F', '#C4643F', '#9C5236'],
   },
+  north: {
+    sky: '#B9CEDC',
+    fog: '#D4E2EA',
+    hemiSky: '#E4EEF6',
+    hemiGround: '#8FA2AE',
+    sun: '#F4F6FF',
+    ground: { hue: 0.57, saturation: 0.22, lightMin: 0.86, lightMax: 0.93 },
+    path: { hue: 0.08, saturation: 0.14, lightMin: 0.6, lightMax: 0.67 },
+    rock: { hue: 0.58, saturation: 0.06, lightMin: 0.55, lightMax: 0.62 },
+    rockHeight: 6,
+    treeTrunk: '#5A3E2A',
+    leaves: '#2F5A46',
+    leavesTop: '#EEF4F7',
+    rockColor: '#8E979C',
+    cactus: '#5E9E4A',
+    bush: '#3E6450',
+    bushCount: 40,
+    tuft: '#D9E4EA',
+    tuftCount: 300,
+    stone: '#7D8489',
+    plaster: '#6B4A32',
+    roof: '#EEF3F6',
+    // Dark timber longhouses under snow-covered roofs.
+    plasters: ['#6B4A32', '#5E4230', '#74503A'],
+    roofs: ['#EEF3F6', '#E3EBF0'],
+    ice: { hue: 0.54, saturation: 0.5, lightMin: 0.74, lightMax: 0.82 },
+    snow: true,
+  },
 };
 
 export const MAP_NAMES: Record<MapId, string> = {
   meadow: 'Green Meadow',
   castle: 'Castle Siege',
   city: 'The City',
+  north: 'The Frozen North',
 };
+
+/** Falling snow: flakes in a box around the camera, drifting down and sideways. */
+export const SNOW = {
+  flakes: 900,
+  radius: 28,
+  height: 18,
+  fallSpeed: 2.2,
+  drift: 0.8,
+  size: 0.07,
+  color: '#FFFFFF',
+} as const;
 
 /** Town houses: roof proportions and window rows. */
 export const HOUSE = {
@@ -245,6 +313,9 @@ export const CAMERA = {
   wallProbeStep: 0.2,
   /** It never gets closer than this, even with a wall right behind the commander. */
   wallMinDistance: 0.8,
+  /** A tree's branches reach this far out and up (times the tree's scale). */
+  treeCrown: 1.9,
+  treeHeight: 6,
 } as const;
 
 /** Looking through the commander's eyes: their head is hidden, the body, shield and sword stay. */
@@ -285,6 +356,8 @@ export const EFFECTS = {
   stuckArrowLifetime: 12,
   /** How deep a pilum sinks into whatever it hits. */
   pilumEmbedDepth: 0.35,
+  /** Thrown axes turn over this much per meter flown. */
+  axeSpinPerMeter: 1.6,
   maxStuckArrows: 300,
   particleCount: 240,
   deathSpinSpeed: 7,
@@ -342,14 +415,22 @@ export const SOUND = {
   /** After a win: a cheer or a laugh from somewhere in the crowd this often. */
   celebrateEvery: 0.35,
   cheerVoices: 8,
+  /** A Viking swinging roars this often. */
+  vikingRoarChance: 0.35,
   glugs: 5,
 } as const;
 
 /** The minimap in the top left corner. */
+/** The minimap's ground per map where it differs from green. */
+export const MINIMAP_GROUND: Partial<Record<MapId, string>> = {
+  north: 'rgba(120, 135, 150, 0.6)',
+};
+
 export const MINIMAP = {
   /** On-screen size (CSS px). */
   size: 170,
   ground: 'rgba(40, 60, 40, 0.55)',
+  ice: 'rgba(170, 220, 240, 0.8)',
   building: 'rgba(225, 215, 195, 0.85)',
   dot: 2.6,
   arrow: 6,

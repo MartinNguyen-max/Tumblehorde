@@ -4,7 +4,7 @@ import { dirToYaw, distanceXZ, normalizeXZ, type Vec2 } from './math.ts';
 import { advanceArmy, armyCenter, centroid, holdAt, issueOrder, livingSoldiers, splitArmy } from './orders.ts';
 import { fogOfWar } from './perception.ts';
 import { armySpawn, gatePost, isDefender } from './spawn.ts';
-import type { Army, BotStyle, MatchState, Order, Unit } from './types.ts';
+import type { Army, BotStyle, Formation, MatchState, Order, Unit } from './types.ts';
 import { nextRandom } from './random.ts';
 import { armiesHostile, canBeTargeted, getUnit, setWeapon } from './units.ts';
 
@@ -136,6 +136,16 @@ function pushForward(state: MatchState, army: Army, enemyCenter: Vec2, distance:
   return advanceArmy(state, army, enemyCenter, Math.min(BOT.phalanxStep, distance - BOT.phalanxContact));
 }
 
+/**
+ * The shape a bot army holds in: Romans in two lines; Vikings in a shield wall, a boar's head
+ * when they mean to charge, or a swarm when they wait for you.
+ */
+export function botFormation(army: Army): Formation {
+  if (army.faction !== 'viking') return FORMATION.defaultFormation;
+  if (army.bot.style === 'charge') return 'boar';
+  return army.bot.style === 'patient' ? 'swarm' : 'double';
+}
+
 /** Flankers hold a pincer: the middle keeps the enemy busy while the wings go round behind it. */
 function holdPincer(state: MatchState, army: Army, leaderless: boolean): boolean {
   if (army.formation === 'pincer' && army.groupOrders.every((g) => g.order === 'hold')) return false;
@@ -146,8 +156,8 @@ function holdPincer(state: MatchState, army: Army, leaderless: boolean): boolean
 function applyStance(state: MatchState, army: Army, stance: BotStance, leaderless: boolean, enemyCenter: Vec2, distance: number): boolean {
   if (stance === 'form') return false;
   if (stance === 'flank') return holdPincer(state, army, leaderless);
-  // Only flankers hold a pincer; everyone else forms up in their usual shape.
-  if (army.isBot && army.formation === 'pincer') army.formation = FORMATION.defaultFormation;
+  // Only flankers hold a pincer; everyone else forms up in their people's usual shape.
+  if (army.isBot) army.formation = botFormation(army);
   if (stance === 'push') return pushForward(state, army, enemyCenter, distance);
   if (leaderless && stance === 'march') return advanceArmy(state, army, enemyCenter, BOT.advanceStep);
   let changed = false;

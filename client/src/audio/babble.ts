@@ -45,6 +45,14 @@ export interface Babble {
 }
 
 /** A voice of one's own: soldier `id` speaks higher or lower, faster or slower. */
+/** Vikings speak lower and rougher than legionaries. */
+export function viking(b: Babble): Babble {
+  return { ...b, pitch: b.pitch * VIKING_PITCH, vibrato: b.vibrato + VIKING_GRIT };
+}
+
+const VIKING_PITCH = 0.72;
+const VIKING_GRIT = 0.03;
+
 export function personal(b: Babble, id: number): Babble {
   const a = Math.sin(id * 12.9898) * 43758.5453;
   const r = a - Math.floor(a);
@@ -162,6 +170,8 @@ export const SAY = {
   /** "Yaaaay!" */
   cheer: { syllables: 2, pitch: 320, rate: 0.12, contour: 'rise', loudness: 0.45, vibrato: 0.05, holdLast: 4, vowel: A },
   warCry: { syllables: 2, pitch: 290, rate: 0.12, contour: 'rise', loudness: 0.5, vibrato: 0.04, holdLast: 3.5, vowel: A },
+  /** A Viking's roar: low, long and rough. "RRAAAAGH!" */
+  roar: { syllables: 2, pitch: 150, rate: 0.14, contour: 'fall', loudness: 0.62, vibrato: 0.09, holdLast: 5, vowel: A },
   oof: { syllables: 1, pitch: 300, rate: 0.11, contour: 'fall', loudness: 0.45, vibrato: 0, holdLast: 1, vowel: O },
   /** "Waaaaah!", falling. */
   death: { syllables: 2, pitch: 420, rate: 0.12, contour: 'fall', loudness: 0.5, vibrato: 0.06, holdLast: 6, vowel: A },

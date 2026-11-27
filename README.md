@@ -63,8 +63,12 @@ npm run build        # production build of the client into client/dist
 | T | First person ⇄ third person (also on the start page) |
 | Esc | Pause (local) / release the mouse |
 
-Battlefields: Green Meadow, Castle Siege (one army holds the gate behind a moat) and The City
-(narrow streets; soldiers only see what is in plain sight).
+Battlefields: Green Meadow, Castle Siege (one army holds the gate behind a moat), The City
+(narrow streets; soldiers only see what is in plain sight) and The Frozen North (a Viking
+village and a frozen lake you slide on).
+
+Peoples: lead Romans or Vikings against Romans, Vikings or both (online: all Romans, all Vikings,
+or Romans vs Vikings by team).
 
 ## Layout
 

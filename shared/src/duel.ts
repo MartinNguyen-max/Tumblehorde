@@ -127,7 +127,7 @@ function canDodge(unit: Unit): boolean {
 /** Decides at a think whether the next blow at `target` is a shield bash: worth it against a raised shield. */
 export function planBash(state: MatchState, unit: Unit, target: Unit | null): void {
   unit.ai.bashNext =
-    target !== null && target.shieldUp && unit.weapon === 'sword' && canUseShield(unit) && !isMounted(unit) && nextRandom(state.rng) < DUEL.bashChance;
+    target !== null && target.shieldUp && (unit.weapon === 'sword' || unit.weapon === 'axe') && canUseShield(unit) && !isMounted(unit) && nextRandom(state.rng) < DUEL.bashChance;
 }
 
 function setMove(unit: Unit, x: number, z: number, amount: number): void {
