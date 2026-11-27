@@ -152,7 +152,7 @@ export const victoryFeast: Cutscene = {
 };
 
 /** Riders and the garrison in the burning capital. */
-const ATTACK = { riders: 12, defenders: 10 } as const;
+const ATTACK = { riders: 18, defenders: 14, people: 16, bodies: 18 } as const;
 
 function mountedRider(stage: Stage, role: 'mongol' | 'khan', name: string, x: number, z: number, yaw: number): { rider: Actor; horse: Horse } {
   const horse = stage.horse(role === 'khan' ? '#E8E0CC' : undefined);
@@ -166,7 +166,8 @@ function mountedRider(stage: Stage, role: 'mongol' | 'khan', name: string, x: nu
 export const capitalFalls: Cutscene = {
   id: 'capital-falls',
   create(stage: Stage): Beat[] {
-    stage.light('fireNight');
+    // Dusk and the city on fire: dark enough to frighten, light enough to see.
+    stage.light('dusk');
     CAPITAL.build(stage);
     stage.weather('embers');
     const fires: readonly [number, number, number, number][] = [
@@ -179,11 +180,32 @@ export const capitalFalls: Cutscene = {
     const defenders = Array.from({ length: ATTACK.defenders }, (_, i) =>
       cast(stage, 'legionary', `Defender ${i}`).place(-4 + (i % 5) * 2, -6 - Math.floor(i / 5) * 1.6, 0).setPose('raiseSword').setMood('afraid'),
     );
-    const people = Array.from({ length: 10 }, (_, i) =>
+    const people = Array.from({ length: ATTACK.people }, (_, i) =>
       cast(stage, 'villager', `Citizen ${i}`, { color: ['#8A7A5A', '#6A8A9A', '#9A6A5A'][i % 3], age: i % 4 === 0 ? 'child' : 'adult' })
         .place(-14 + (i % 5) * 1.6, -8 - Math.floor(i / 5) * 2, Math.PI)
         .setMood('afraid'),
     );
+    // What the square looks like when it is over.
+    const bodies = Array.from({ length: ATTACK.bodies }, (_, i) =>
+      cast(stage, i % 3 === 0 ? 'legionary' : 'villager', `Fallen ${i}`, i % 3 === 0 ? {} : { color: ['#8A7A5A', '#6A8A9A', '#9A6A5A', '#7A6A8A'][i % 4] })
+        .place(-16 + ((i * 7) % 30), -12 + ((i * 11) % 24), i * 1.3)
+        .setPose('lie', true),
+    );
+    for (const b of bodies) {
+      b.eyesClosed = true;
+      b.root.setEnabled(false);
+    }
+    const banner = stage.group('banner', 6, 0, -14);
+    stage.world.parts.part('box', '#5E3E22', banner, [0.16, 6, 0.16], [0, 3, 0]);
+    stage.world.parts.part('box', '#A8282A', banner, [1.6, 2.4, 0.06], [0.85, 4.6, 0]);
+    stage.world.parts.part('box', '#E0B040', banner, [0.5, 0.5, 0.08], [0.85, 4.9, 0.02], { metal: true });
+    const sacks = riders.slice(1, 6).map((r) => {
+      const sack = stage.group('sack', 0, 0, 0);
+      stage.world.parts.part('box', '#B89A6A', sack, [0.5, 0.6, 0.4], [0, 0, 0]);
+      sack.parent = r.rider.grips[1];
+      sack.setEnabled(false);
+      return sack;
+    });
     const livia = cast(stage, 'livia', 'Livia').place(-17, 10, -Math.PI / 2).setMood('afraid');
 
     return [
@@ -200,9 +222,25 @@ export const capitalFalls: Cutscene = {
       },
       {
         duration: 4,
-        sound: 'crowd',
+        sound: 'screams',
         shot: { from: [3, 1.4, 20], at: [0, 2, 36], fov: FOV.wide },
         narrate: 'They came through the south gate like water through a broken dam. Small horses. Curved swords. No end to them.',
+      },
+      {
+        duration: 5,
+        sound: 'screams',
+        shot: { from: [-9, 1.6, -16], at: [-12, 1.2, -6], fov: FOV.wide },
+        run: () => {
+          for (const [i, p] of people.entries()) p.setPose('cower').walkTo(-18 - (i % 4), -20 - (i % 3), 4);
+          riders[3]?.horse.runTo(-14, -12, 6);
+          riders[4]?.horse.runTo(-11, -14, 6);
+        },
+        during: (_s, p) => {
+          people.forEach((person, i) => {
+            if (i % 4 === 1 && p > 0.4 + i * 0.03) person.setPose('lie');
+          });
+        },
+        narrate: 'They rode down whoever was in the street. Men, women, old people. It made no difference to them.',
       },
       {
         duration: 3,
@@ -225,13 +263,27 @@ export const capitalFalls: Cutscene = {
       },
       {
         duration: 4,
-        shot: { from: [8, 2.4, -6], at: [0, 1.2, 0], fov: FOV.normal },
+        sound: 'clash',
+        shot: { from: [8, 2.4, -6], at: [0, 1.2, -4], fov: FOV.normal },
+        run: () => {
+          for (const d of defenders) d.setPose('punch').setMood('shout');
+          riders[6]!.horse.falling = true;
+          riders[7]!.horse.falling = true;
+          riders[6]!.rider.setPose('lie');
+          riders[7]!.rider.setPose('lie');
+        },
+        narrate: 'The old men fought. They pulled riders from their saddles and brought horses down with their spears.',
+      },
+      {
+        duration: 4,
+        sound: 'clash',
+        shot: { from: [-7, 2.2, -10], at: [0, 1.2, -5], fov: FOV.normal },
         during: (_s, p) => {
           defenders.forEach((d, i) => {
-            if (p > 0.15 + i * 0.07) d.setPose('lie').setMood('afraid');
+            if (p > 0.1 + i * 0.06) d.setPose('lie').setMood('afraid');
           });
         },
-        narrate: 'They did not last long. But they did not run.',
+        narrate: 'It was not enough. Nothing would have been enough. But they did not run.',
       },
       {
         duration: 4,
@@ -267,7 +319,31 @@ export const capitalFalls: Cutscene = {
       },
       {
         duration: 6,
-        narrate: 'What happened behind that door is hers to tell, not mine. I will only say this: the Mongols held the city for forty days.',
+        sound: 'fire',
+        fade: { to: 0, time: 1.5 },
+        shot: { from: [10, 9, 14], at: [0, 0.5, -4], to: [8, 7, 11], fov: FOV.wide },
+        run: () => {
+          for (const b of bodies) b.root.setEnabled(true);
+          for (const d of defenders) d.setPose('lie');
+          for (const sack of sacks) sack.setEnabled(true);
+          for (const [i, r] of riders.entries()) if (i > 0 && i < 6) r.horse.runTo(-6 + i * 2.5, 8, 2);
+          livia.root.setEnabled(false);
+        },
+        during: (_s, p) => {
+          banner.rotation.z = Math.min(1.45, p * p * 3);
+        },
+        narrate: 'By morning the square was full of the dead. They carried off everything that could be carried, and tore down the Emperor\'s eagle.',
+      },
+      {
+        duration: 4,
+        shot: () => portrait(riders[0]!.rider, { angle: 0.4, distance: 3.2, rise: -0.2 }),
+        run: () => riders[0]!.rider.setPose('cheer').setMood('happy'),
+        say: { who: 'Jorgai', as: 'Jorgai the Hawk', text: 'Rome. The great Rome. It burns like any village.', mood: 'happy' },
+        fade: { to: 1, time: 3.5 },
+      },
+      {
+        duration: 6,
+        narrate: 'What happened behind Livia\'s door is hers to tell, not mine. I will only say this: the Mongols held the city for forty days.',
       },
     ];
   },

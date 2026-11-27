@@ -19,7 +19,7 @@ export interface VoiceSpec {
   rate: number;
 }
 
-export type SoundCue = 'bell' | 'thunder' | 'fire' | 'door' | 'crowd' | 'horn' | 'chisel' | 'heartbeat' | 'wind';
+export type SoundCue = 'bell' | 'thunder' | 'fire' | 'door' | 'crowd' | 'horn' | 'chisel' | 'heartbeat' | 'wind' | 'screams' | 'clash';
 
 export interface Beat {
   /** Seconds; defaults to the time needed to read the line, or a short pause. */

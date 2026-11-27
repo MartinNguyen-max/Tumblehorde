@@ -202,6 +202,38 @@ const EFFECTS: Record<SoundCue, Effect> = {
   chisel: (e, ctx, out, t) => {
     for (let i = 0; i < 6; i++) filteredNoise(e, ctx, out, t + i * 0.42 + Math.random() * 0.1, 0.05, 'bandpass', 3200, 0.4, 0.002);
   },
+  /** Far-off screaming: voices wailing and falling, over the roar of a burning city. */
+  screams: (e, ctx, out, t) => {
+    filteredNoise(e, ctx, out, t, 5, 'bandpass', 600, 0.25, 0.6);
+    for (let i = 0; i < 9; i++) {
+      const start = t + Math.random() * 3.5;
+      const length = 0.6 + Math.random() * 0.9;
+      const high = 520 + Math.random() * 380;
+      const voice = ctx.createOscillator();
+      voice.type = 'sawtooth';
+      voice.frequency.setValueAtTime(high, start);
+      voice.frequency.exponentialRampToValueAtTime(high * 0.55, start + length);
+      const formant = ctx.createBiquadFilter();
+      formant.type = 'bandpass';
+      formant.frequency.value = 1100;
+      formant.Q.value = 4;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, start);
+      g.gain.linearRampToValueAtTime(0.09, start + 0.08);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + length);
+      voice.connect(formant).connect(g).connect(out);
+      voice.start(start);
+      voice.stop(start + length + 0.05);
+    }
+  },
+  /** Steel on steel, again and again. */
+  clash: (e, ctx, out, t) => {
+    for (let i = 0; i < 7; i++) {
+      const hit = t + i * 0.35 + Math.random() * 0.2;
+      for (const ratio of [1, 2.76, 5.4]) tone(ctx, out, 1300 * ratio * (0.9 + Math.random() * 0.2), hit, 0.25, 0.08, 'triangle');
+      filteredNoise(e, ctx, out, hit, 0.06, 'highpass', 3000, 0.3, 0.002);
+    }
+  },
   heartbeat: (_e, ctx, out, t) => {
     for (let i = 0; i < 4; i++) {
       tone(ctx, out, 55, t + i * 0.9, 0.18, 0.7);

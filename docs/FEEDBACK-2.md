@@ -20,7 +20,7 @@ The player played again after round 1. Work list; items are ticked as they land.
 - [x] Holding the capital is hard: almost everyone dies; Marcus and his riders do not get stuck
 
 ## Scenes
-- [ ] The Mongol raid: terror, screams, fighting, the dead
+- [x] The Mongol raid: terror, screams, fighting, the dead
 - [x] Mongols look like our characters (not penguins)
 - [x] Marcus as a baby, so you can see he is Mongolian
 - [x] Cassian in heaven with Varro, Anselm and the others after he dies
