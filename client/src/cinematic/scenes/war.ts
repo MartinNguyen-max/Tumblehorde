@@ -12,7 +12,7 @@ export const varroDeath: Cutscene = {
   id: 'varro-death',
   create(stage: Stage): Beat[] {
     stage.light('night');
-    stage.ground('#24301E', 140);
+    stage.ground('#24301E', 140, 'forest');
     forestRing(stage, 9, 40);
     campfire(stage, 3, -2, 0.5);
     stage.weather('ash');
@@ -131,7 +131,7 @@ L.`;
 
 /** A snowy camp with a brazier, for reading letters. */
 function northCamp(stage: Stage): void {
-  stage.ground(STORY_COLORS.snow, 160);
+  stage.ground(STORY_COLORS.snow, 160, 'snow');
   forestRing(stage, 16, 30, '#2A4A34');
   tents(stage, -9, -6, 5, 0.1);
   tents(stage, -8, 7, 4, -0.1);
@@ -246,7 +246,7 @@ export const letterTwo: Cutscene = {
 
 /** The battlefield before the last battle: snow, the legion in the middle, the horde across. */
 function lastField(stage: Stage): { legion: ReturnType<typeof cast>[]; horde: ReturnType<typeof cast>[] } {
-  stage.ground(STORY_COLORS.snow, 200);
+  stage.ground(STORY_COLORS.snow, 200, 'snow');
   forestRing(stage, 40, 40, '#2A4A34');
   stage.weather('snow');
   const legion = Array.from({ length: 12 }, (_, i) => cast(stage, 'legionary', `Legionary ${i}`).place(-5.5 + (i % 6) * 2.2, 4 + Math.floor(i / 6) * 1.6, Math.PI));
@@ -329,7 +329,7 @@ export const hrolfMirror: Cutscene = {
   id: 'hrolf-mirror',
   create(stage: Stage, story: StoryContext): Beat[] {
     stage.light('dusk');
-    stage.ground(STORY_COLORS.snow, 160);
+    stage.ground(STORY_COLORS.snow, 160, 'snow');
     forestRing(stage, 24, 30, '#2A4A34');
     stage.weather('snow');
     for (let i = 0; i < 10; i++) cast(stage, 'viking', `Fallen ${i}`).place(-8 + (i % 5) * 4, -6 + Math.floor(i / 5) * 8, i).setPose('lie', true).eyesClosed = true;

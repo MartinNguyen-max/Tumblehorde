@@ -1,3 +1,4 @@
+import type { TransformNode } from '../../render/babylon.ts';
 import { childNode } from '../../render/parts.ts';
 import { cast } from '../cast.ts';
 import { torch, upright, woodenCross } from '../props.ts';
@@ -24,24 +25,50 @@ function river(stage: Stage): void {
   stage.box(SET_COLORS.dirt, [2, 0.1, 120], [RIVER_X - 6, 0.0, -20], 0, { castShadow: false });
 }
 
+/** The fleet: a first wave beaching at once, a second rounding the bend behind it. */
+const FLEET = {
+  first: [
+    { x: RIVER_X, from: -45, to: -11 },
+    { x: RIVER_X + 4, from: -55, to: -17 },
+    { x: RIVER_X - 1.5, from: -66, to: -24 },
+  ],
+  second: [
+    { x: RIVER_X + 2, from: -95, to: -31 },
+    { x: RIVER_X + 5.5, from: -104, to: -38 },
+    { x: RIVER_X - 1, from: -112, to: -45 },
+    { x: RIVER_X + 3, from: -122, to: -52 },
+    { x: RIVER_X + 6, from: -130, to: -60 },
+  ],
+} as const;
+/** Where the brothers stand in the yard, and where the raider who reaches each one ends up. */
+const BROTHERS = [
+  { x: -5, z: -3 }, { x: 3, z: -4 }, { x: -2.5, z: -6 }, { x: 5.5, z: 0.5 }, { x: -7, z: 1.5 }, { x: 1, z: -1.5 },
+] as const;
+const BROTHER_NAMES = ['Brother Paul', 'Brother Tomas', 'Brother Ivo', 'Brother Benet', 'Brother Odo', 'Brother Simon'] as const;
+const RAIDERS = 14;
+
 export const prologueRaid: Cutscene = {
   id: 'prologue-raid',
   create(stage: Stage): Beat[] {
-    buildMonastery(stage);
+    const tower = buildMonastery(stage);
     river(stage);
     stage.light('night');
-    const boats = [dragonBoat(stage, RIVER_X, -45, 0), dragonBoat(stage, RIVER_X + 4, -55, 0)];
+    const first = FLEET.first.map((b) => dragonBoat(stage, b.x, b.from, 0));
+    const second = FLEET.second.map((b) => dragonBoat(stage, b.x, b.from, 0));
     const cassian = cast(stage, 'cassianYoung', 'Cassian').place(0.5, 2, Math.PI / 2);
     const cross = upright(woodenCross(stage.world.parts, cassian.grips[0], 1.3));
     const anselm = cast(stage, 'anselm', 'Anselm').place(-3, -5, 0.4);
-    const monks = [cast(stage, 'monk', 'Brother Paul').place(-5, -3, 0.2), cast(stage, 'monk', 'Brother Tomas', { hair: HAIR_BLACK }).place(3, -4, -0.4)];
+    const monks = BROTHERS.map((at, i) => cast(stage, 'monk', BROTHER_NAMES[i] ?? 'Brother', i % 2 === 1 ? { hair: HAIR_BLACK } : {}).place(at.x, at.z, 0.2 + i * 0.7));
     const hrolf = cast(stage, 'hrolf', 'Hrolf').place(RIVER_X - 4, -8, -Math.PI / 2);
-    const raiders = [-2, 2, 4].map((dz, i) => cast(stage, 'viking', `Raider ${i}`).place(RIVER_X - 3 + i, -8 + dz, -Math.PI / 2));
-    for (const raider of [hrolf, ...raiders]) {
-      const t = torch(stage.world.parts, raider.grips[0]);
-      t.rotation.x = Math.PI;
-      const head = childNode('torch-head', t, 0, TORCH_HEAD, 0);
-      stage.flame(head);
+    const raiders = Array.from({ length: RAIDERS }, (_, i) =>
+      cast(stage, 'viking', `Raider ${i}`, i % 3 === 0 ? { hair: '#C8823A', beardColor: '#C8823A' } : {}).place(RIVER_X - 3 - (i % 4) * 1.2, -6 - Math.floor(i / 4) * 2.5 - (i % 2), -Math.PI / 2),
+    );
+    for (const [i, raider] of [hrolf, ...raiders].entries()) {
+      if (i % 2 === 0) {
+        const t = torch(stage.world.parts, raider.grips[0]);
+        t.rotation.x = Math.PI;
+        stage.flame(childNode('torch-head', t, 0, TORCH_HEAD, 0));
+      }
       raider.root.setEnabled(false);
       raider.setPose('raiseSword');
     }
@@ -52,13 +79,41 @@ export const prologueRaid: Cutscene = {
       stage.fire(7, -5, 1.8, 4.0);
       stage.fire(2.5, -9.5, 1.4, 9.5);
       stage.fire(-6.5, -2.5, 1.2, 3.5);
+      stage.fire(-9, -9, 1.6, 2.5);
+      stage.fire(9, 3, 1.2, 1.5);
     };
     let burning = false;
+    const fallen = new Set<number>();
+    /** Brother `i` is cut down by the raider sent to him; no blood, he just falls. */
+    const cutDown = (i: number): void => {
+      if (fallen.has(i)) return;
+      fallen.add(i);
+      monks[i]?.setPose('lie').setMood('afraid');
+      raiders[i]?.setPose('punch');
+    };
+    let toppled = false;
+    const topple = (p: number): void => {
+      // The tower leans, then goes over all at once, and burns where it lands.
+      const fall = Math.min(1, p * p * 1.6);
+      tower.rotation.z = -fall * 1.45;
+      tower.position.x = 2.5 + fall * 1.2;
+      if (fall >= 1 && !toppled) {
+        toppled = true;
+        stage.fire(9, -9.5, 2.4, 0.8);
+        stage.fire(13, -9.5, 1.8, 0.6);
+      }
+    };
     const dropCross = (): void => {
       if (cross.parent === stage.root) return;
       cross.parent = stage.root;
       cross.position.set(DROP.x, 0.05, DROP.z);
       cross.rotation.set(Math.PI / 2, 0.6, 0);
+    };
+    const sail = (boats: readonly TransformNode[], plan: readonly { from: number; to: number }[], p: number): void => {
+      boats.forEach((boat, i) => {
+        const b = plan[i];
+        if (b) boat.position.z = b.from + (b.to - b.from) * Math.min(1, p);
+      });
     };
     const horse = stage.horse();
     horse.place(-2, 6, Math.PI / 2);
@@ -70,50 +125,88 @@ export const prologueRaid: Cutscene = {
         music: 'silence',
         sound: 'wind',
         shot: { from: [RIVER_X - 10, 3, -12], at: [RIVER_X, 1.5, -35], to: [RIVER_X - 9, 2.5, -10], fov: FOV.normal },
-        during: (_s, p) => {
-          boats[0]!.position.z = -45 + p * 34;
-          boats[1]!.position.z = -55 + p * 38;
-        },
+        during: (_s, p) => sail(first, FLEET.first, p * 0.8),
         narrate: 'Then, one autumn night, the river brought dragons.',
       },
       {
         shot: () => portrait(cassian, { angle: 0.3 }),
         run: () => {
-          boats[0]!.position.z = -11;
-          boats[1]!.position.z = -17;
+          sail(first, FLEET.first, 0.85);
           cassian.setMood('surprised').lookAt({ x: RIVER_X, y: 2, z: -10 });
         },
         sound: 'horn',
         say: { who: 'Cassian', text: 'Brothers? Brothers! There are ships on the river!', mood: 'afraid' },
       },
       {
+        duration: 6,
+        sound: 'horn',
+        shot: { from: [RIVER_X - 6, 9, -4], at: [RIVER_X + 2, 0, -60], to: [RIVER_X - 4, 12, -8], fov: FOV.wide },
+        during: (_s, p) => {
+          sail(first, FLEET.first, 0.85 + p * 0.15);
+          sail(second, FLEET.second, p);
+        },
+        narrate: 'Not one ship. Not three. They kept coming round the bend, one dragon after another.',
+      },
+      {
+        shot: () => portrait(cassian, { angle: -0.4, distance: 1.6 }),
+        run: () => cassian.setMood('afraid'),
+        say: { who: 'Cassian', text: 'Eight... nine... how many are there?!', mood: 'afraid' },
+      },
+      {
         duration: 4,
         music: 'dread',
         shot: () => portrait(hrolf, { angle: 0.2, distance: 3.2, rise: -0.45 }),
         run: () => {
+          sail(second, FLEET.second, 1);
           for (const raider of [hrolf, ...raiders]) raider.root.setEnabled(true);
           hrolf.setMood('angry');
         },
       },
       {
         shot: () => portrait(hrolf, { angle: 0.1, distance: 2.6, rise: -0.3, push: 0.4 }),
-        say: { who: 'Hrolf', text: 'Burn it. All of it.', mood: 'shout', as: 'The red-haired man' },
+        say: { who: 'Hrolf', text: 'Burn it. All of it. Leave nothing standing.', mood: 'shout', as: 'The red-haired man' },
       },
       {
         duration: 5,
+        sound: 'crowd',
+        shot: { from: [RIVER_X + 1, 3, 2], at: [RIVER_X - 8, 1.5, -10], to: [RIVER_X - 1, 3.5, 4], fov: FOV.wide },
+        run: () => {
+          raiders.forEach((raider, i) => {
+            const brother = BROTHERS[i];
+            const goal = brother ? { x: brother.x + 1.1, z: brother.z - 0.4 } : { x: -4 + (i % 5) * 3, z: -9 + (i % 3) * 2 };
+            raider.setMood('shout').walkTo(goal.x, goal.z, 4.5 + (i % 3) * 0.6);
+          });
+          hrolf.walkTo(6, -2, 2.2);
+        },
+        narrate: 'They came up from the river screaming, all of them at once.',
+      },
+      {
+        duration: 6,
         sound: 'fire',
         shot: { from: [-8, 6, 14], at: [0, 3, -6], to: [-6, 4, 11], fov: FOV.wide },
         run: () => {
           if (!burning) burn();
           burning = true;
-          for (const [i, raider] of raiders.entries()) raider.walkTo(4 - i * 3, -6 + i, 2.4);
-          hrolf.walkTo(6, -2, 1.6);
           for (const monk of monks) monk.setPose('cower').setMood('afraid');
         },
+        during: (_s, p) => {
+          monks.forEach((_m, i) => {
+            if (p > 0.25 + i * 0.11) cutDown(i);
+          });
+        },
+        narrate: 'The brothers had never held a sword. Not one of them ran.',
+      },
+      {
+        duration: 4.5,
+        sound: 'thunder',
+        shot: { from: [-6, 2.5, 4], at: [4, 6, -9], fov: FOV.wide },
+        during: (_s, p) => topple(p),
       },
       {
         shot: () => overShoulder(anselm, cassian),
         run: () => {
+          topple(1);
+          monks.forEach((_m, i) => cutDown(i));
           anselm.place(-1.0, 1.2, Math.atan2(1.8, 0.9));
           cassian.place(0.8, 2.1, Math.atan2(-1.8, -0.9));
           anselm.lookAt(cassian.headPosition()).setPose('reach');
@@ -148,6 +241,8 @@ export const prologueRaid: Cutscene = {
           stage.mount(cassian, horse);
           cassian.setPose('reach').setMood('crying');
           horse.runTo(-16, 26, 7);
+          hrolf.setPose('punch');
+          anselm.setPose('lie');
         },
         during: (_s, p) => {
           if (p > DROP.at) dropCross();
@@ -164,45 +259,125 @@ export const prologueRaid: Cutscene = {
   },
 };
 
+/** The road south: pines pressed close on both sides, dead trees, mud. */
+const ROAD = { length: 150, step: 2.3, rows: [3.4, 6.2, 9.5, 13.5] } as const;
+const PINES = ['#24402C', '#2C4A32', '#1E3626'] as const;
+/** A mushroom, eaten on the fourth day. */
+const MUSHROOM = { cap: '#C8423A', stem: '#E8E0CC' } as const;
+
+function roadForest(stage: Stage): void {
+  stage.box(SET_COLORS.dirt, [3, 0.06, ROAD.length], [0, 0, 0], 0, { castShadow: false });
+  let i = 0;
+  for (let z = -ROAD.length / 2; z < ROAD.length / 2; z += ROAD.step) {
+    for (const [row, x] of ROAD.rows.entries()) {
+      for (const side of [-1, 1]) {
+        i++;
+        const jitter = Math.sin(i * 12.9898) * 0.8;
+        const s = 1.1 + ((i * 7) % 5) * 0.18 + row * 0.15;
+        const px = side * (x + jitter);
+        const pz = z + Math.cos(i * 4.1) * 0.7;
+        if (i % 11 === 0) {
+          // A dead tree, bare and black.
+          stage.box('#3A2E24', [0.3, 3 + (i % 3), 0.3], [px, 1.6, pz], 0, { castShadow: row === 0 });
+          stage.box('#3A2E24', [1.4, 0.15, 0.15], [px + 0.4, 2.8, pz], 0.4, { castShadow: false });
+          continue;
+        }
+        stage.box('#4A3424', [0.4 * s, 1.6 * s, 0.4 * s], [px, 0.8 * s, pz], 0, { castShadow: false });
+        stage.shape('cone', PINES[i % PINES.length] ?? STORY_COLORS.pine, [1.5 * s, 3.4 * s, 1.5 * s], [px, 3.0 * s, pz], { castShadow: row === 0 });
+        stage.shape('cone', PINES[(i + 1) % PINES.length] ?? STORY_COLORS.pine, [1.0 * s, 2.4 * s, 1.0 * s], [px, 4.6 * s, pz], { castShadow: false });
+      }
+    }
+  }
+  // Puddles on the road.
+  for (let k = 0; k < 12; k++) stage.box('#3A4A5A', [1.2 + (k % 3) * 0.4, 0.07, 0.9], [((k % 3) - 1) * 0.6, 0.01, -60 + k * 11], k * 0.7, { castShadow: false });
+}
 
 export const prologueRoad: Cutscene = {
   id: 'prologue-road',
   create(stage: Stage): Beat[] {
-    stage.light('rain');
-    stage.weather('rain');
-    stage.ground('#4A5A3A', 160);
-    stage.box(SET_COLORS.dirt, [3, 0.06, 160], [0, 0, 0], 0, { castShadow: false });
-    for (let i = 0; i < 14; i++) {
-      const side = i % 2 === 0 ? -1 : 1;
-      const z = -60 + i * 9;
-      stage.box('#3A2E24', [0.3, 3 + (i % 3), 0.3], [side * (5 + (i % 4)), 1.6, z]);
-      stage.box('#3A2E24', [1.4, 0.15, 0.15], [side * (5 + (i % 4)) + 0.4, 2.8, z], 0.4);
-    }
+    stage.light('night');
+    stage.ground('#3A4A30', 160, 'forest');
+    roadForest(stage);
     const cassian = cast(stage, 'cassianYoung', 'Cassian');
     const horse = stage.horse();
-    horse.place(0, 20, Math.PI);
+    horse.place(0, 62, Math.PI);
     stage.mount(cassian, horse);
-    cassian.setPose('slump').setMood('sad');
+    cassian.setPose('reach').setMood('crying');
+    const mushroom = stage.group('mushroom', 2.6, 0, 14.6);
+    stage.world.parts.part('box', MUSHROOM.stem, mushroom, [0.08, 0.14, 0.08], [0, 0.07, 0]);
+    stage.world.parts.part('dome', MUSHROOM.cap, mushroom, [0.22, 0.14, 0.22], [0, 0.14, 0]);
     const bandits = [cast(stage, 'bandit', 'Bandit'), cast(stage, 'bandit', 'Bandit 2', { hair: '#5A3A22' }), cast(stage, 'bandit', 'Bandit 3')];
     bandits.forEach((b, i) => b.place(-6 + i * 6, -28 - (i % 2) * 2, (i - 1) * -0.6).root.setEnabled(false));
+    const day = (light: 'rain' | 'dusk' | 'night', rain: boolean): void => {
+      stage.light(light);
+      stage.weather(rain ? 'rain' : 'none');
+    };
 
     return [
       {
-        duration: 7,
-        fade: { from: 1, to: 0, time: 2.5 },
+        duration: 6,
+        fade: { from: 1, to: 0, time: 1.5 },
         music: 'sorrow',
-        shot: { from: [4, 2, 8], at: cassian, to: [3, 2.2, -2], fov: FOV.normal },
-        run: () => horse.runTo(0, 4, 1.6),
-        narrate: 'It rained for nine days. I do not remember where I meant to go.',
+        sound: 'wind',
+        shot: { from: [2.4, 2.2, 54], at: cassian, to: [2.2, 2.0, 34], fov: FOV.wide },
+        run: () => horse.runTo(0, 32, 8),
+        narrate: 'I rode into the forest and did not stop. The trees closed behind me like a door.',
+      },
+      {
+        duration: 6,
+        shot: { from: [4, 2, 30], at: cassian, to: [3, 2.2, 20], fov: FOV.normal },
+        run: () => {
+          day('rain', true);
+          horse.place(0, 31, Math.PI);
+          horse.runTo(0, 20, 1.4);
+          cassian.setPose('slump').setMood('sad');
+        },
+        narrate: 'Then it rained. It rained for nine days.',
+      },
+      {
+        duration: 4,
+        shot: () => portrait(cassian, { angle: 0.8, distance: 2.6, rise: 0.2 }),
+        run: () => {
+          horse.place(0.4, 15.6, Math.PI);
+          cassian.root.parent = stage.root;
+          cassian.place(2.2, 15.2, Math.PI * 0.6).setStance('sit').setPose('hunch').setMood('sad');
+          cassian.trembling = true;
+        },
+        narrate: 'The fourth day. Nothing to eat but what the forest gave.',
+      },
+      {
+        duration: 3,
+        shot: { from: [1.0, 1.0, 13.8], at: [2.4, 0.6, 14.9], fov: FOV.close },
+        run: () => {
+          cassian.trembling = false;
+          mushroom.parent = cassian.grips[0];
+          mushroom.position.set(0, 0.05, 0.05);
+          cassian.setPose('offer').setMood('happy');
+        },
+      },
+      {
+        duration: 3.5,
+        shot: () => portrait(cassian, { angle: 0.4, distance: 1.7 }),
+        run: () => {
+          mushroom.setEnabled(false);
+          cassian.setPose('clutch').setMood('afraid');
+          cassian.trembling = true;
+        },
+        narrate: 'The forest gave me a very bad mushroom.',
       },
       {
         duration: 4,
         shot: { from: [3, 1.2, 1], at: [0, 1.0, 4], fov: FOV.normal },
         run: () => {
+          cassian.trembling = false;
+          cassian.setStance('pose');
+          day('dusk', true);
+          stage.mount(cassian, horse);
+          cassian.setPose('slump').setMood('sad');
           horse.place(0, 4, Math.PI);
           horse.falling = true;
-          cassian.setMood('afraid');
         },
+        narrate: 'The sixth day.',
       },
       {
         shot: () => portrait(cassian, { angle: 0.5, distance: 2.4 }),
@@ -216,15 +391,28 @@ export const prologueRoad: Cutscene = {
         duration: 6,
         shot: { from: [-3, 9, 18], at: [0, 0.8, -6], to: [-2, 12, 24], fov: FOV.normal },
         run: () => {
+          day('night', true);
           cassian.setStance('pose').setPose('slump').setMood('sad');
-          cassian.walkTo(0, -22, 1.0);
+          cassian.walkTo(0, -14, 0.9);
         },
         narrate: 'I walked. I was hungry, and then I was something worse than hungry.',
       },
       {
-        duration: 3.5,
-        shot: { from: [5, 1.6, -18], at: [0, 1.2, -25], fov: FOV.normal },
+        duration: 5,
+        shot: { from: [2.2, 0.9, -11.5], at: [0, 0.3, -14.5], fov: FOV.normal },
         run: () => {
+          cassian.place(0.3, -14.5, Math.PI / 2).setPose('lie').setMood('sad');
+          cassian.eyesClosed = true;
+        },
+        narrate: 'The ninth night I lay down in the mud and did not care if I got up.',
+      },
+      {
+        duration: 3.5,
+        shot: { from: [1.2, 1.6, -17], at: [0, 1.2, -25], fov: FOV.normal },
+        tags: [{ who: 'Bandit 2', text: 'Bandits' }],
+        run: () => {
+          day('rain', false);
+          cassian.eyesClosed = false;
           cassian.place(0, -22, Math.PI);
           for (const b of bandits) {
             b.root.setEnabled(true);
@@ -280,6 +468,16 @@ export const prologuePrison: Cutscene = {
     show(young);
     const door = stage.box('#FFF6E0', [0.1, 2.2, 1.2], [2.38, 1.1, 1.2], 0, { castShadow: false });
     door.setEnabled(false);
+    // The daily bowl, and the rat that shares it.
+    const bowl = stage.group('bowl', 1.9, 0, 1.2);
+    stage.world.parts.part('cylinder', '#6A5A48', bowl, [0.22, 0.12, 0.22], [0, 0.06, 0]);
+    stage.world.parts.part('cylinder', '#8E8A7A', bowl, [0.18, 0.02, 0.18], [0, 0.12, 0]);
+    bowl.setEnabled(false);
+    const rat = stage.group('rat', 1.2, 0, -1.8);
+    stage.world.parts.part('box', '#6E6A66', rat, [0.16, 0.12, 0.3], [0, 0.06, 0]);
+    stage.world.parts.part('box', '#6E6A66', rat, [0.1, 0.09, 0.12], [0, 0.08, 0.2]);
+    stage.world.parts.part('box', '#C89A9A', rat, [0.03, 0.03, 0.34], [0, 0.04, -0.3]);
+    rat.setEnabled(false);
 
     return [
       {
@@ -290,11 +488,37 @@ export const prologuePrison: Cutscene = {
         narrate: 'A Roman cell. No trial. No name. Only a number painted on the door.',
       },
       {
+        duration: 5,
+        sound: 'door',
+        shot: { from: [-0.2, 1.1, 2.8], at: [1.5, 0.2, 0.0], fov: FOV.normal },
+        run: () => {
+          bowl.setEnabled(true);
+          rat.setEnabled(true);
+        },
+        during: (_s, p) => {
+          // The rat gets there first.
+          rat.position.set(1.2 + p * 0.55, 0, -1.8 + p * 2.8);
+          rat.rotation.y = Math.atan2(0.55, 2.8);
+        },
+        narrate: 'Once a day, a bowl of something grey. I shared it with a rat. I named him Augustus.',
+      },
+      {
+        duration: 3.5,
+        shot: { from: [-0.6, 1.3, 2.6], at: young, fov: FOV.normal },
+        run: () => {
+          young.setStance('pose').place(1.2, 0.5, Math.PI * 0.35).setPose('reach').setMood('angry');
+          rat.position.set(1.75, 0, 1.0);
+        },
+        say: { who: 'Cassian', text: 'Augustus. That is MY half.', mood: 'angry' },
+      },
+      {
         duration: 4,
         sound: 'chisel',
         shot: { from: [0.4, 1.4, -1.0], at: [-1.6, 1.1, -2.2], fov: FOV.close },
         run: () => {
-          young.setStance('pose').place(-1.4, -1.6, Math.PI).setPose('reach');
+          bowl.setEnabled(false);
+          rat.setEnabled(false);
+          young.setStance('pose').place(-1.4, -1.6, Math.PI).setPose('reach').setMood('sad');
         },
         during: (_s, p) => cell.tally(Math.ceil(p * 5)),
       },
@@ -306,6 +530,19 @@ export const prologuePrison: Cutscene = {
           cell.tally(5 + Math.floor(p * 90));
         },
         narrate: 'Seasons came and went in a square of sky.',
+      },
+      {
+        duration: 5,
+        shot: () => portrait(young, { angle: -0.5, distance: 2.2, rise: 0.3 }),
+        run: () => {
+          season(2);
+          young.place(-1.8, -0.2, Math.PI / 2).setStance('sit').setPose('hunch').setMood('crying');
+          young.trembling = true;
+        },
+        during: (_s, p) => {
+          if (p > 0.9) young.trembling = false;
+        },
+        narrate: 'Winters were the worst. The stone drank the warmth out of you. I stopped counting the days. The wall did not.',
       },
       {
         duration: 5,

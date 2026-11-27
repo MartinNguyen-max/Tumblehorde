@@ -30,6 +30,8 @@ export interface Beat {
   say?: { who: string; text: string; mood?: Mood; as?: string };
   /** Old Cassian, telling the story. */
   narrate?: string;
+  /** Name labels over actors (by stage name) for the beat, so it is clear who is coming. */
+  tags?: readonly { who: string; text: string }[];
   title?: { text: string; sub?: string };
   /** A letter on parchment, read in silence. */
   letter?: string;

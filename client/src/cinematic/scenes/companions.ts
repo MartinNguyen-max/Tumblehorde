@@ -87,7 +87,7 @@ export const forgeNight: Cutscene = {
 };
 
 function forestClearing(stage: Stage, night: boolean): void {
-  stage.ground(night ? '#2A3A24' : '#3E5A30', 120);
+  stage.ground(night ? '#2A3A24' : '#3E5A30', 120, 'forest');
   stage.box(SET_COLORS.dirt, [3.4, 0.05, 120], [0, 0, 0], 0, { castShadow: false });
   forestRing(stage, 11, 36);
 }

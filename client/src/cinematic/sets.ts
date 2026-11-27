@@ -1,3 +1,4 @@
+import type { TransformNode } from '../render/babylon.ts';
 import type { Stage } from './stage.ts';
 
 /**
@@ -44,7 +45,7 @@ export function house(stage: Stage, x: number, z: number, w: number, d: number, 
 }
 
 /** A square bell tower with an open top and a bell. */
-export function bellTower(stage: Stage, x: number, z: number, height = 9): void {
+export function bellTower(stage: Stage, x: number, z: number, height = 9): TransformNode {
   const g = stage.group('bell-tower', x, 0, z);
   const parts = stage.world.parts;
   parts.part('box', SET_COLORS.stone, g, [2.6, height, 2.6], [0, height / 2, 0]);
@@ -52,6 +53,7 @@ export function bellTower(stage: Stage, x: number, z: number, height = 9): void 
   parts.part('box', SET_COLORS.roof, g, [3.0, 0.4, 3.0], [0, height + 2.2, 0]);
   parts.part('cone', SET_COLORS.roofDark, g, [1.8, 1.6, 1.8], [0, height + 3.2, 0]);
   parts.part('box', SET_COLORS.bell, g, [0.8, 0.9, 0.8], [0, height + 1.0, 0], { metal: true });
+  return g;
 }
 
 export function tree(stage: Stage, x: number, z: number, size = 1): void {

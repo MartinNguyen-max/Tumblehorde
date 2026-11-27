@@ -1,3 +1,4 @@
+import { type Backdrop, buildBackdrop } from './backdrop.ts';
 import { PointLight } from '@babylonjs/core/Lights/pointLight';
 import { Color3, Color4, FreeCamera, type InstancedMesh, type Scene, TransformNode, Vector3 } from '../render/babylon.ts';
 import type { PartOptions } from '../render/parts.ts';
@@ -158,8 +159,10 @@ export class Stage {
     return node;
   }
 
-  ground(color: string, size = 80): void {
+  /** The ground of the set; beyond it the land runs on to hills, a forest or snowy peaks. */
+  ground(color: string, size = 80, backdrop: Backdrop = 'hills'): void {
     this.box(color, [size, 0.1, size], [0, -0.05, 0], 0, { castShadow: false });
+    if (backdrop !== 'none') buildBackdrop(this.world.parts, this.root, color, size, backdrop);
   }
 
   light(name: LightName): void {

@@ -288,3 +288,24 @@
   font-size: 15px;
   color: #d9a07a;
 }
+
+/* Who is who in a scene: a label over the head. */
+.cine-tags {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 39;
+}
+.cine-tag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 3px 10px;
+  border-radius: 8px;
+  background: rgba(14, 18, 26, 0.72);
+  border: 1.5px solid rgba(255, 210, 58, 0.8);
+  color: #ffe6a0;
+  font-weight: 800;
+  font-size: 14px;
+  white-space: nowrap;
+}

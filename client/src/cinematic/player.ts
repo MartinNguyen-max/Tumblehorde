@@ -10,6 +10,7 @@ import { CUTSCENE,
   type Timeline,
   type TimelineStep,
 } from '@tumblehorde/shared';
+import { Matrix, Vector3 } from '../render/babylon.ts';
 import type { World } from '../render/world.ts';
 import type { CinematicOverlay } from './overlay.ts';
 import type { Beat, CinematicSound, Cutscene, StoryContext } from './script.ts';
@@ -34,6 +35,9 @@ function setTalking(stage: Stage, who: string, on: boolean): void {
 }
 
 /** Plays one cutscene at a time on its own stage. */
+/** How far over an actor's head their name label floats (m). */
+const TAG_LIFT = 0.55;
+
 export class CutscenePlayer {
   private readonly world: World;
   private readonly overlay: CinematicOverlay;
@@ -82,6 +86,7 @@ export class CutscenePlayer {
   /** Ends the scene without calling back (leaving the campaign). */
   stop(): void {
     if (!this.stage) return;
+    this.overlay.setTags([]);
     this.sound?.stop();
     this.stage.dispose();
     this.stage = null;
@@ -117,8 +122,33 @@ export class CutscenePlayer {
     }
     if (this.shot) stage.focus.copyFrom(frameShot(stage.camera, this.shot, progress, this.time));
     stage.update(dt);
+    this.placeTags(stage, beat?.tags ?? []);
     this.sound?.refresh();
     this.overlay.setSkip(skipProgress(this.timeline), skipHeld || this.time < SKIP_HINT_TIME);
+  }
+
+  /** Name labels just over the heads of the actors a beat names. */
+  private placeTags(stage: Stage, tags: readonly { who: string; text: string }[]): void {
+    if (tags.length === 0) {
+      this.overlay.setTags([]);
+      return;
+    }
+    const engine = this.world.engine;
+    const rect = engine.getRenderingCanvasClientRect();
+    const width = engine.getRenderWidth();
+    const height = engine.getRenderHeight();
+    const transform = stage.scene.getTransformMatrix();
+    const viewport = stage.camera.viewport.toGlobal(width, height);
+    const placed: { text: string; x: number; y: number }[] = [];
+    for (const tag of tags) {
+      const actor = stage.actors.get(tag.who);
+      if (!actor || !actor.root.isEnabled()) continue;
+      const head = actor.headPosition();
+      const p = Vector3.Project(new Vector3(head.x, head.y + TAG_LIFT, head.z), Matrix.IdentityReadOnly, transform, viewport);
+      if (p.z < 0 || p.z > 1 || !rect) continue;
+      placed.push({ text: tag.text, x: rect.left + (p.x / width) * rect.width, y: rect.top + (p.y / height) * rect.height });
+    }
+    this.overlay.setTags(placed);
   }
 
   private apply(step: TimelineStep): void {

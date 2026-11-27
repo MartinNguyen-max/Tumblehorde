@@ -352,7 +352,7 @@ export const CAPITAL: DistrictSet = {
   people: PEOPLE,
   spots: [{ id: 'workout', x: STONE.x, z: STONE.z, label: 'Work out' }],
   build(stage: Stage): void {
-    stage.ground(SET_COLORS.grass, 320);
+    stage.ground(SET_COLORS.grass, 320, 'none');
     const b = new CityBuilder(stage);
     squarePaving(b);
     houses(b);

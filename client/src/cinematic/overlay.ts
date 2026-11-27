@@ -36,6 +36,21 @@ export class CinematicOverlay {
   private readonly promptBox: HTMLDivElement;
   private readonly statusBox: HTMLDivElement;
 
+  private readonly tagLayer: HTMLDivElement;
+  private readonly tagPool: HTMLDivElement[] = [];
+
+  /** Floating labels at screen points (CSS px); an empty list hides them all. */
+  setTags(tags: readonly { text: string; x: number; y: number }[]): void {
+    while (this.tagPool.length < tags.length) this.tagPool.push(el('div', 'cine-tag', this.tagLayer));
+    this.tagPool.forEach((tag, i) => {
+      const t = tags[i];
+      tag.hidden = !t;
+      if (!t) return;
+      if (tag.textContent !== t.text) tag.textContent = t.text;
+      tag.style.transform = `translate(${t.x}px, ${t.y}px) translate(-50%, -100%)`;
+    });
+  }
+
   constructor() {
     this.root = el('div', 'cine', document.body);
     this.root.hidden = true;
@@ -43,6 +58,7 @@ export class CinematicOverlay {
     this.fadeLayer = el('div', 'cine-fade', this.root);
     el('div', 'cine-bar top', this.root);
     el('div', 'cine-bar bottom', this.root);
+    this.tagLayer = el('div', 'cine-tags', this.root);
     this.title = el('div', 'cine-title', this.root);
     this.letter = el('div', 'cine-letter', this.root);
     this.letterText = el('div', '', this.letter);

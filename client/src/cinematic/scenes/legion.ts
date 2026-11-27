@@ -146,7 +146,7 @@ export const emperor: Cutscene = {
   create(stage: Stage, story: StoryContext): Beat[] {
     // The street: both sides full of cheering people.
     stage.light('city');
-    stage.ground('#8E8474', 200);
+    stage.ground('#8E8474', 200, 'none');
     for (let i = 0; i < 8; i++) {
       for (const side of [-1, 1]) house(stage, side * 9, 18 - i * 9, 6, 8, 6 + (i % 3) * 2, side * Math.PI / 2, ['#E6D3B0', '#E8C49A', '#E3B4A0'][i % 3]);
     }

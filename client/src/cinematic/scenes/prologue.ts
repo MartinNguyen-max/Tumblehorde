@@ -1,3 +1,4 @@
+import type { TransformNode } from '../../render/babylon.ts';
 import { HAIR, SKIN } from '../config.ts';
 import { knife, upright, woodBlock, woodenCross } from '../props.ts';
 import type { Beat, Cutscene } from '../script.ts';
@@ -14,12 +15,13 @@ const BENCH_Z = 0;
 const ANSELM_X = -0.5;
 const CASSIAN_X = 0.5;
 
-export function buildMonastery(stage: Stage): void {
+/** The monastery; returns its bell tower, which the raiders bring down. */
+export function buildMonastery(stage: Stage): TransformNode {
   stage.ground(SET_COLORS.grass);
   stage.box(SET_COLORS.flagstone, [9, 0.04, 7], [0, 0.0, -1.5], 0, { castShadow: false });
   house(stage, -5, -9, 9, 5, 4.2, 0);
   house(stage, 7, -5, 5, 8, 3.6, Math.PI / 2);
-  bellTower(stage, 2.5, -9.5);
+  const tower = bellTower(stage, 2.5, -9.5);
   wall(stage, -11, 2, 10, Math.PI / 2);
   wall(stage, 11, 4, 8, Math.PI / 2);
   tree(stage, -6.5, -2.5, 1.1);
@@ -27,6 +29,7 @@ export function buildMonastery(stage: Stage): void {
   tree(stage, -14, -1, 1.5);
   bench(stage, 0, BENCH_Z);
   scatter(stage, 0, 4, 12, 40);
+  return tower;
 }
 
 export const prologueMorning: Cutscene = {
