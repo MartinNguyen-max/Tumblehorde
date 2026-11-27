@@ -8,11 +8,13 @@ import {
   RIDER,
   SHIELD,
   SWORDSMAN,
+  VIKING,
+  VIKING_COMMANDER_WEAPONS,
   type MeleeStats,
   type RangedStats,
 } from './config.ts';
 import type { Vec3 } from './math.ts';
-import type { EntityId, Intent, MatchState, Unit, UnitKind, Weapon } from './types.ts';
+import type { EntityId, Faction, Intent, MatchState, Unit, UnitKind, Weapon } from './types.ts';
 
 export function emptyIntent(yaw: number): Intent {
   return { moveX: 0, moveZ: 0, faceYaw: yaw, jump: false, attack: false, shield: false, crouch: false, aim: null };
@@ -42,20 +44,32 @@ const CARRIED: Record<UnitKind, readonly Weapon[]> = {
   horse: [],
 };
 
-export function carriedWeapons(kind: UnitKind): readonly Weapon[] {
-  return CARRIED[kind];
+const VIKING_CARRIED: Partial<Record<UnitKind, readonly Weapon[]>> = {
+  commander: VIKING_COMMANDER_WEAPONS,
+  // Spear for marching and the shield wall, the axe comes out to attack.
+  swordsman: ['spear', 'axe'],
+};
+
+export function carriedWeapons(kind: UnitKind, faction: Faction = 'roman'): readonly Weapon[] {
+  return (faction === 'viking' ? VIKING_CARRIED[kind] : undefined) ?? CARRIED[kind];
 }
 
-export function defaultWeapon(kind: UnitKind): Weapon {
-  return CARRIED[kind][0] ?? 'sword';
+/** The close-combat weapon a soldier draws to attack. */
+export function attackWeapon(faction: Faction): Weapon {
+  return faction === 'viking' ? 'axe' : 'sword';
 }
 
-export function createUnit(id: EntityId, kind: UnitKind, armyId: number, pos: Vec3, yaw: number): Unit {
+export function defaultWeapon(kind: UnitKind, faction: Faction = 'roman'): Weapon {
+  return carriedWeapons(kind, faction)[0] ?? 'sword';
+}
+
+export function createUnit(id: EntityId, kind: UnitKind, armyId: number, pos: Vec3, yaw: number, faction: Faction = 'roman'): Unit {
   const hp = maxHpFor(kind);
   return {
     id,
     kind,
     armyId,
+    faction,
     hp,
     maxHp: hp,
     alive: true,
@@ -71,13 +85,14 @@ export function createUnit(id: EntityId, kind: UnitKind, armyId: number, pos: Ve
     mountId: null,
     riderId: null,
     group: 0,
-    weapon: defaultWeapon(kind),
+    weapon: defaultWeapon(kind, faction),
     sinceHurt: 0,
     lastHitByArmy: null,
     invulnerableTimer: 0,
     respawnTimer: 0,
     drunk: false,
     wet: false,
+    onIce: false,
     crouching: false,
     spearThrown: false,
     intent: emptyIntent(yaw),
@@ -116,8 +131,10 @@ export function meleeStatsForKind(kind: UnitKind, mounted: boolean, weapon: Weap
     case 'commander':
       if (weapon === 'bow') return null;
       if (weapon === 'spear') return mounted ? COMMANDER.mountedSpear : COMMANDER.spear;
+      if (weapon === 'axe') return mounted ? VIKING.mountedAxe : VIKING.commanderAxe;
       return mounted ? COMMANDER.mountedMelee : COMMANDER.melee;
     case 'swordsman':
+      if (weapon === 'axe') return VIKING.axe;
       return weapon === 'spear' ? SWORDSMAN.spear : SWORDSMAN.melee;
     case 'archer':
       return ARCHER.melee;
@@ -129,6 +146,7 @@ export function meleeStatsForKind(kind: UnitKind, mounted: boolean, weapon: Weap
 }
 
 export function meleeStatsFor(unit: Unit): MeleeStats | null {
+  if (unit.faction === 'viking' && unit.kind === 'swordsman' && unit.weapon === 'spear') return VIKING.spear;
   return meleeStatsForKind(unit.kind, isMounted(unit), unit.weapon);
 }
 
@@ -145,7 +163,7 @@ export function canUseShield(unit: Unit): boolean {
 
 /** Switches to another carried weapon; it takes a moment and cancels a swing. */
 export function setWeapon(unit: Unit, weapon: Weapon): boolean {
-  if (!unit.alive || unit.weapon === weapon || !carriedWeapons(unit.kind).includes(weapon)) return false;
+  if (!unit.alive || unit.weapon === weapon || !carriedWeapons(unit.kind, unit.faction).includes(weapon)) return false;
   unit.weapon = weapon;
   unit.action = 'none';
   unit.actionTimer = 0;
@@ -160,7 +178,7 @@ export function footSpeed(unit: Unit): number {
     case 'commander':
       return COMMANDER.speed;
     case 'swordsman':
-      return SWORDSMAN.speed;
+      return unit.faction === 'viking' ? VIKING.speed : SWORDSMAN.speed;
     case 'archer':
       return ARCHER.speed;
     case 'rider':

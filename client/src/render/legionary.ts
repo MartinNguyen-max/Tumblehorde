@@ -13,11 +13,11 @@ const GLOSS: PartOptions = { gloss: true };
 const METAL: PartOptions = { metal: true };
 const SMALL: PartOptions = { gloss: true, castShadow: false };
 
-const HIP_HEIGHT = 0.6;
-const SHOULDER_HEIGHT = 1.28;
-const HEAD_HEIGHT = 1.68;
-const HEAD = 0.54;
-const FACE_Z = HEAD / 2 + 0.005;
+export const HIP_HEIGHT = 0.6;
+export const SHOULDER_HEIGHT = 1.28;
+export const HEAD_HEIGHT = 1.68;
+export const HEAD = 0.54;
+export const FACE_Z = HEAD / 2 + 0.005;
 export const PUPIL_X = 0.12;
 
 /** Where the shield sits at rest (beside the body) and raised (in front of it). */
@@ -47,8 +47,10 @@ export interface PersonBody {
   shield: TransformNode | null;
   shieldPose: ShieldPose;
   weapons: Partial<Record<Weapon, TransformNode>>;
-  /** The sword in its scabbard, shown while another weapon is in hand. */
+  /** The sidearm on the hip (sword in its scabbard, or the axe in the belt), shown while another weapon is in hand. */
   sheathed: TransformNode | null;
+  /** Which weapon `sheathed` is. */
+  sideArm: Weapon;
   /** A wine cup for the banquet. */
   cup: TransformNode | null;
   cape: TransformNode | null;
@@ -74,9 +76,19 @@ function addArm(parts: PartFactory, torso: TransformNode, side: number, sleeve: 
   return arm;
 }
 
+export interface FaceLook {
+  skin: string;
+  skinShade: string;
+  brow: string;
+  /** Bushy brows are taller. */
+  browHeight: number;
+}
+
+const ROMAN_FACE: FaceLook = { skin: ROMAN.skin, skinShade: ROMAN.skinShade, brow: ROMAN.brow, browHeight: 0.035 };
+
 /** Box eyes with pupils, brows that can scowl, a nose and a mouth. */
-function addFace(parts: PartFactory, head: TransformNode): Pick<PersonBody, 'pupils' | 'brows' | 'mouth' | 'mouthOpen' | 'deadEyes' | 'drunkFace' | 'drool'> {
-  parts.part('box', ROMAN.skin, head, [HEAD, HEAD, HEAD], [0, 0, 0], GLOSS);
+export function addFace(parts: PartFactory, head: TransformNode, look: FaceLook = ROMAN_FACE): Pick<PersonBody, 'pupils' | 'brows' | 'mouth' | 'mouthOpen' | 'deadEyes' | 'drunkFace' | 'drool'> {
+  parts.part('box', look.skin, head, [HEAD, HEAD, HEAD], [0, 0, 0], GLOSS);
   const pupils: InstancedMesh[] = [];
   const brows: InstancedMesh[] = [];
   const deadEyes = childNode('dead-eyes', head);
@@ -84,13 +96,13 @@ function addFace(parts: PartFactory, head: TransformNode): Pick<PersonBody, 'pup
     const x = side * PUPIL_X;
     parts.part('box', COLORS.eyeWhite, head, [0.13, 0.13, 0.02], [x, 0.03, FACE_Z], SMALL);
     pupils.push(parts.part('box', COLORS.pupil, head, [0.065, 0.075, 0.02], [x, 0.025, FACE_Z + 0.012], SMALL));
-    brows.push(parts.part('box', ROMAN.brow, head, [0.15, 0.035, 0.03], [x, 0.125, FACE_Z + 0.01], SMALL));
+    brows.push(parts.part('box', look.brow, head, [0.15, look.browHeight, 0.03], [x, 0.125, FACE_Z + 0.01], SMALL));
     const cross = childNode('x-eye', deadEyes, x, 0.03, FACE_Z + 0.02);
     parts.part('box', COLORS.pupil, cross, [0.15, 0.03, 0.01], [0, 0, 0], SMALL).rotation.z = 0.8;
     parts.part('box', COLORS.pupil, cross, [0.15, 0.03, 0.01], [0, 0, 0], SMALL).rotation.z = -0.8;
   }
   deadEyes.setEnabled(false);
-  parts.part('box', ROMAN.skinShade, head, [0.08, 0.12, 0.07], [0, -0.06, FACE_Z + 0.025], SMALL);
+  parts.part('box', look.skinShade, head, [0.08, 0.12, 0.07], [0, -0.06, FACE_Z + 0.025], SMALL);
   const mouth = parts.part('box', ROMAN.mouth, head, [0.14, 0.03, 0.02], [0, -0.17, FACE_Z], SMALL);
   const mouthOpen = parts.part('box', ROMAN.mouthInside, head, [0.14, 0.1, 0.02], [0, -0.17, FACE_Z], SMALL);
   mouthOpen.setEnabled(false);
@@ -99,7 +111,7 @@ function addFace(parts: PartFactory, head: TransformNode): Pick<PersonBody, 'pup
   for (const side of [-1, 1]) {
     parts.part('box', ROMAN.blush, drunkFace, [0.1, 0.06, 0.02], [side * 0.17, -0.09, FACE_Z + 0.004], SMALL);
     // Heavy eyelids, half shut.
-    parts.part('box', ROMAN.skinShade, drunkFace, [0.14, 0.07, 0.03], [side * PUPIL_X, 0.075, FACE_Z + 0.02], SMALL);
+    parts.part('box', look.skinShade, drunkFace, [0.14, 0.07, 0.03], [side * PUPIL_X, 0.075, FACE_Z + 0.02], SMALL);
   }
   const drool = parts.part('box', ROMAN.drool, drunkFace, [0.035, 1, 0.035], [0.05, -0.22, FACE_Z], SMALL);
   drunkFace.setEnabled(false);
@@ -142,7 +154,7 @@ function addOfficerShield(parts: PartFactory, torso: TransformNode, palette: Arm
 }
 
 /** A plain spear: wooden shaft and a steel point. Held near the middle. */
-function addSpear(parts: PartFactory, grip: TransformNode): TransformNode {
+export function addSpear(parts: PartFactory, grip: TransformNode): TransformNode {
   const spear = childNode('spear', grip);
   parts.part('box', ROMAN.wood, spear, [0.07, 2.0, 0.07], [0, -0.3, 0], GLOSS);
   parts.part('cone', ROMAN.steel, spear, [0.09, 0.32, 0.09], [0, -1.44, 0], METAL).rotation.x = Math.PI;
@@ -243,6 +255,7 @@ export function buildRoman(parts: PartFactory, body: TransformNode, palette: Arm
     shieldPose: officer ? COMMANDER_SHIELD_POSE : SCUTUM_POSE,
     weapons,
     sheathed,
+    sideArm: 'sword',
     cup,
     cape,
   };

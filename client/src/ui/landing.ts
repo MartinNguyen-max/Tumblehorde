@@ -1,4 +1,4 @@
-import { type ArmySetup, type ArmySize, DEFENDER_TEAM, type GameMode, isMapId, MAP, type MapId, MAPS, mapFromRandom, type MatchSettings } from '@tumblehorde/shared';
+import { type ArmySetup, type ArmySize, DEFENDER_TEAM, type Faction, type GameMode, isMapId, MAP, type MapId, MAPS, mapFromRandom, type MatchSettings } from '@tumblehorde/shared';
 import { paletteForArmy } from '../palettes.ts';
 import { byId, escapeHtml, segmented } from './dom.ts';
 import { readViewMode, storeViewMode } from './viewSetting.ts';
@@ -52,6 +52,8 @@ export class Landing {
     this.renderTeams();
     this.preview();
   });
+  private readonly people = segmented(byId('opt-people'), () => this.preview());
+  private readonly enemies = segmented(byId('opt-enemies'), () => this.preview());
   private readonly view = segmented(byId('opt-view'), (value) => storeViewMode(value === 'first' ? 'first' : 'third'));
   private readonly teamField = byId('team-field');
   private readonly teamList = byId('team-list');
@@ -97,11 +99,21 @@ export class Landing {
     const count = Number(this.bots.get()) + 1;
     const teams = this.teams.slice(0, count);
     const placeholder = teams.map((team, id) => ({ id, team }));
-    return teams.map((team, i) => ({
-      name: i === 0 ? 'You' : `${paletteForArmy(placeholder, i, mode).name} Bot`,
-      team: mode === 'ffa' ? i : team,
-      isBot: i !== 0,
-    }));
+    return teams.map((team, i) => {
+      const side = mode === 'ffa' ? i : team;
+      const faction = this.factionOf(i, mode === 'teams' && side === teams[0]);
+      const host = faction === 'viking' ? 'Vikings' : 'Legion';
+      return { name: i === 0 ? 'You' : `${paletteForArmy(placeholder, i, mode).name} ${host}`, team: side, isBot: i !== 0, faction };
+    });
+  }
+
+  /** You lead your people; allies are your people too; enemies are whom you picked (mixed: every other one). */
+  private factionOf(index: number, ally: boolean): Faction {
+    const mine: Faction = this.people.get() === 'viking' ? 'viking' : 'roman';
+    if (index === 0 || ally) return mine;
+    const enemies = this.enemies.get();
+    if (enemies === 'mixed') return index % 2 === 1 ? 'viking' : 'roman';
+    return enemies === 'viking' ? 'viking' : 'roman';
   }
 
   private renderTeams(): void {

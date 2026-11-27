@@ -45,15 +45,15 @@ describe.each(MAP_IDS)('terrain of %s', (map) => {
 });
 
 describe('maps', () => {
-  it('are a meadow, a castle and a city', () => {
-    expect(MAP_IDS).toEqual(['meadow', 'castle', 'city']);
+  it('are a meadow, a castle, a city and the frozen north', () => {
+    expect(MAP_IDS).toEqual(['meadow', 'castle', 'city', 'north']);
     expect(new Set(MAP_IDS.map((m) => MAPS[m].layout)).size).toBe(3);
   });
 
   it('are picked at random for online battles when the lobby asks for it', () => {
     expect(mapFromRandom(0)).toBe('meadow');
-    expect(mapFromRandom(0.999)).toBe('city');
-    const lobby = { code: 'ABCDE', hostId: 'a', phase: 'lobby' as const, mode: 'ffa' as const, armySize: 15 as const, map: 'random' as const, players: [] };
+    expect(mapFromRandom(0.999)).toBe('north');
+    const lobby = { code: 'ABCDE', hostId: 'a', phase: 'lobby' as const, peoples: 'romans' as const, mode: 'ffa' as const, armySize: 15 as const, map: 'random' as const, players: [] };
     const picked = new Set(Array.from({ length: 40 }, (_, seed) => battleSettings(lobby, seed).map));
     expect(picked.size).toBe(MAP_IDS.length);
   });

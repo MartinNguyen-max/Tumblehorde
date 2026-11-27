@@ -1,7 +1,8 @@
 import { Vector3 } from '../render/babylon.ts';
 import {
+  carriedWeapons,
   type CommanderInput,
-  COMMANDER_WEAPONS,
+  type Faction,
   HALVES,
   neutralInput,
   distanceToEdge,
@@ -15,7 +16,7 @@ import {
 } from '@tumblehorde/shared';
 import type { BattleAudio } from '../audio/battleAudio.ts';
 import type { AudioEngine } from '../audio/engine.ts';
-import { FormationWheel } from '../input/formationWheel.ts';
+import { FormationWheel, wheelOptions } from '../input/formationWheel.ts';
 import type { InputState } from '../input/input.ts';
 import type { BattleRenderer } from '../render/battle.ts';
 import type { FollowCamera } from '../render/camera.ts';
@@ -45,6 +46,8 @@ export interface ControllerHooks {
 /** Runs one battle on screen: reads input, drives the session, and updates camera, renderer and HUD. */
 export class GameController {
   private overview = false;
+  /** The player's people, once known: it decides the formation wheel and the HUD's words. */
+  private faction: Faction | null = null;
   private paused = true;
   private finished = false;
   private lastFocus = { x: 0, y: 0, z: 0 };
@@ -80,6 +83,15 @@ export class GameController {
     this.hooks = hooks;
     this.input.onPointerLockChange = (locked) => this.setPaused(!locked);
     this.camera.setMode(readViewMode());
+  }
+
+  private adoptFaction(view: MatchView): void {
+    const id = this.session.myArmyId;
+    const faction = id === null ? null : (view.armies[id]?.faction ?? null);
+    if (!faction || faction === this.faction) return;
+    this.faction = faction;
+    this.wheel.options = wheelOptions(faction);
+    this.hud.setFaction(faction);
   }
 
   /** `T`: first person ⇄ third person, remembered for next time. */
@@ -178,10 +190,12 @@ export class GameController {
   }
 
   private cycleWeapon(): void {
-    const me = this.myCommander(this.session.view());
-    if (!me) return;
-    const index = COMMANDER_WEAPONS.findIndex((w) => w === me.weapon);
-    const next = COMMANDER_WEAPONS[(index + 1) % COMMANDER_WEAPONS.length] ?? 'sword';
+    const view = this.session.view();
+    const me = this.myCommander(view);
+    if (!me || !view) return;
+    const weapons = carriedWeapons('commander', view.armies[me.armyId]?.faction ?? 'roman');
+    const index = weapons.findIndex((w) => w === me.weapon);
+    const next = weapons[(index + 1) % weapons.length] ?? 'sword';
     this.session.command({ type: 'weapon', weapon: next });
   }
 
@@ -246,6 +260,7 @@ export class GameController {
 
     const view = this.session.view();
     if (!view) return;
+    this.adoptFaction(view);
     if (!this.isSplit()) this.selectedGroup = null;
     this.renderer.highlight(this.session.myArmyId, this.listening());
     this.renderer.sync(view, active ? dt : 0, now);

@@ -69,6 +69,7 @@ export class OnlineLobby {
   private readonly sizeSeg = segmented(byId('lobby-size'), () => this.sendSettings());
   private readonly modeSeg = segmented(byId('lobby-mode'), () => this.sendSettings());
   private readonly mapSeg = segmented(byId('lobby-map'), () => this.sendSettings());
+  private readonly peoplesSeg = segmented(byId('lobby-peoples'), () => this.sendSettings());
   private room: Room | null = null;
   private lobby: LobbyMessage | null = null;
   private readonly hooks: LobbyHooks;
@@ -169,7 +170,7 @@ export class OnlineLobby {
   }
 
   private sendSettings(): void {
-    this.room?.send('settings', { mode: this.modeSeg.get(), armySize: Number(this.sizeSeg.get()), map: this.mapSeg.get() });
+    this.room?.send('settings', { mode: this.modeSeg.get(), armySize: Number(this.sizeSeg.get()), map: this.mapSeg.get(), peoples: this.peoplesSeg.get() });
   }
 
   private render(): void {
@@ -184,6 +185,7 @@ export class OnlineLobby {
     this.sizeSeg.set(String(lobby.armySize));
     this.modeSeg.set(lobby.mode);
     this.mapSeg.set(lobby.map);
+    this.peoplesSeg.set(lobby.peoples);
     const siege = lobby.map === 'castle';
     for (const b of this.overlay.querySelectorAll<HTMLButtonElement>('#lobby-settings button')) b.disabled = !isHost;
     const armies = lobby.players.map((p, i) => ({ id: i, team: lobby.mode === 'ffa' ? i : p.team }));

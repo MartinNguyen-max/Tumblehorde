@@ -108,6 +108,10 @@ export interface MeleeStats {
   knockback: KnockbackStats;
   /** The shove lands even on a raised shield (spear thrusts keep attackers off the line). */
   shovesThroughShield?: boolean;
+  /** Share of the damage that gets through a raised shield anyway (axes bite into it). */
+  pierce?: number;
+  /** Chance that a blocked blow pulls the shield aside (a bearded axe hooks it). */
+  hookChance?: number;
 }
 
 export interface RangedStats {
@@ -212,6 +216,73 @@ export const SWORDSMAN = {
   } satisfies MeleeStats,
   /** Time to swap spear and sword when the order changes. */
   weaponSwapTime: 0.5,
+} as const;
+
+/**
+ * Vikings: the same bodies as legionaries, but axes that bite into and hook shields, round shields
+ * that make a looser wall, a little more speed, and throwing axes instead of pila. Tuned so that
+ * bot battles between equal armies come out about even (see `test/factions.test.ts`).
+ */
+export const VIKING = {
+  hp: 180,
+  speed: 5.3,
+  /** Attack: the bearded axe. */
+  axe: {
+    damage: 27,
+    range: 1.9,
+    cooldown: 1.1,
+    windup: 0.42,
+    arcHalfAngle: 60 * DEG,
+    maxTargets: 1,
+    knockback: { strength: 3.5, stun: 0.45 },
+    /** An axe bites through a raised shield: this share of its damage lands anyway... */
+    pierce: 0.35,
+    /** ...and this often its beard hooks the shield aside. */
+    hookChance: 0.35,
+  } satisfies MeleeStats,
+  /** Follow and Hold: a spear, shorter in reach and shove than the legion's. */
+  spear: {
+    damage: 14,
+    range: 2.6,
+    cooldown: 1.1,
+    windup: 0.3,
+    arcHalfAngle: 40 * DEG,
+    maxTargets: 1,
+    knockback: { strength: 8, stun: 0.65 },
+    shovesThroughShield: true,
+  } satisfies MeleeStats,
+  /** The jarl's axe. */
+  commanderAxe: {
+    damage: 36,
+    range: 2.1,
+    cooldown: 0.65,
+    windup: 0.24,
+    arcHalfAngle: 70 * DEG,
+    maxTargets: 2,
+    knockback: { strength: 4, stun: 0.5 },
+    pierce: 0.3,
+    hookChance: 0.35,
+  } satisfies MeleeStats,
+  mountedAxe: {
+    damage: 36,
+    range: 3.0,
+    cooldown: 0.65,
+    windup: 0.22,
+    arcHalfAngle: 70 * DEG,
+    maxTargets: 2,
+    knockback: { strength: 7, stun: 0.9 },
+    pierce: 0.3,
+  } satisfies MeleeStats,
+  /** Round shields: a raised one blocks a little less, and a wall of them holds less. */
+  blockFraction: 0.9,
+  wallBlockFraction: 0.93,
+  /** A hooked shield is pulled down for this long. */
+  hookStun: 0.55,
+  /** The volley: throwing axes, shorter range than pila but they spin into the line. */
+  throwRange: 22,
+  throwDamage: 42,
+  throwPierce: 0.45,
+  throwKnockback: { strength: 8, stun: 1.2 } satisfies KnockbackStats,
 } as const;
 
 export const ARCHER = {
@@ -359,8 +430,16 @@ export const FORMATION = {
   rankGap: 1.0,
   /** Line formations stand this far ahead of the commander, so they stand right behind it. */
   holdLineAhead: 2.6,
-  /** A wedge's ranks grow by this many soldiers from its tip backwards. */
+  /** A wedge's ranks grow by this many soldiers from its tip backwards... */
   wedgeGrowth: 2,
+  /** ...a boar's head by one: deep and narrow, to punch through. */
+  boarGrowth: 1,
+  /** A swarm stands loose, this far apart, rank behind rank this far, in ranks this wide. */
+  swarmSpacing: 1.5,
+  swarmRankGap: 1.4,
+  swarmRankSize: 6,
+  /** Each swarming warrior stands up to this far off their place, so it looks like a mob. */
+  swarmJitter: 0.45,
 
   /** Advance moves a holding formation this far forward... */
   advanceStep: 4,
@@ -652,6 +731,18 @@ export const ALLIANCE = {
   offerTime: 10,
 } as const;
 
+/** Frozen water: little grip to start, stop or turn, and soldiers who run on it may go down. */
+export const ICE = {
+  tractionFactor: 0.22,
+  frictionFactor: 0.12,
+  /** Soldiers running faster than this slip at this rate (chance per second)... */
+  slipMinSpeed: 3,
+  slipPerSecond: 0.15,
+  /** ...landing on their backside for this long. */
+  slipStun: 1.2,
+  slipPop: 2,
+} as const;
+
 /** Crouching walks slowly. */
 export const CROUCH = {
   speedFactor: 0.45,
@@ -698,7 +789,18 @@ export const NET = {
 } as const;
 
 /** Every weapon in the game, in network order. */
-export const WEAPONS = ['sword', 'spear', 'bow'] as const;
+export const WEAPONS = ['sword', 'spear', 'bow', 'axe'] as const;
 /** What a commander carries. The bow is parked along with archers for now. */
 export const COMMANDER_WEAPONS = ['sword', 'spear'] as const;
-export const FORMATIONS = ['line', 'double', 'circle', 'wedge', 'pincer', 'square'] as const;
+export const VIKING_COMMANDER_WEAPONS = ['axe', 'spear'] as const;
+export const FORMATIONS = ['line', 'double', 'circle', 'wedge', 'pincer', 'square', 'boar', 'swarm'] as const;
+export const FACTIONS = ['roman', 'viking'] as const;
+/**
+ * The formations each people knows. Vikings: the shield wall (skjaldborg, two tight ranks), the
+ * boar's head (svinfylking, a deep narrow wedge), the shield ring, the horns (wings that go round
+ * behind the enemy) and the swarm (a loose screaming mob).
+ */
+export const FACTION_FORMATIONS = {
+  roman: ['line', 'double', 'wedge', 'circle', 'square', 'pincer'],
+  viking: ['double', 'boar', 'circle', 'pincer', 'swarm'],
+} as const;

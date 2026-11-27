@@ -1,5 +1,5 @@
 import { FreeCamera, type Scene, Vector3 } from './babylon.ts';
-import { clamp, insideStructure, type MapId, structuresNear, terrainHeightAt, wrapAngle, type Vec3 } from '@tumblehorde/shared';
+import { clamp, insideStructure, type MapId, mapObstacles, structuresNear, terrainHeightAt, wrapAngle, type Vec3 } from '@tumblehorde/shared';
 import { CAMERA, FIRST_PERSON } from '../visualConfig.ts';
 import type { ViewMode } from '../ui/viewSetting.ts';
 
@@ -115,12 +115,24 @@ export class FollowCamera {
       const x = from.x + dir.x * t;
       const y = from.y + dir.y * t;
       const z = from.z + dir.z * t;
-      const blocked = structuresNear(this.map, x, z).some(
-        (s) => insideStructure(s, x, z, CAMERA.wallMargin) && y < terrainHeightAt(this.map, s.x, s.z) + s.height + ROOF_MARGIN,
-      );
+      const blocked =
+        structuresNear(this.map, x, z).some(
+          (s) => insideStructure(s, x, z, CAMERA.wallMargin) && y < terrainHeightAt(this.map, s.x, s.z) + s.height + ROOF_MARGIN,
+        ) || this.insideTree(x, y, z);
       if (blocked) return Math.max(CAMERA.wallMinDistance, t - CAMERA.wallProbeStep);
     }
     return wanted;
+  }
+
+  /** Trees are drawn much wider and taller than their trunk: keep the camera out of the branches. */
+  private insideTree(x: number, y: number, z: number): boolean {
+    for (const o of mapObstacles(this.map)) {
+      if (o.kind !== 'tree' || o.radius <= 0) continue;
+      const reach = CAMERA.treeCrown * o.scale;
+      if (Math.abs(o.x - x) > reach || Math.abs(o.z - z) > reach) continue;
+      if (Math.hypot(o.x - x, o.z - z) < reach && y < terrainHeightAt(this.map, o.x, o.z) + CAMERA.treeHeight * o.scale) return true;
+    }
+    return false;
   }
 
   focusPoint(): Vector3 {

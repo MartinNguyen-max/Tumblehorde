@@ -1,9 +1,10 @@
-import { BODY, COMMANDER, CROUCH, DUEL, HORSE, MAP, MOVEMENT, SHIELD, SIM, WATER } from './config.ts';
+import { BODY, COMMANDER, CROUCH, DUEL, HORSE, ICE, MAP, MOVEMENT, SHIELD, SIM, WATER } from './config.ts';
 import { applyHit, applyKnockback, knockbackVector } from './combat.ts';
 import { dirToYaw, normalizeXZ, turnTowards, wrapAngle, yawToDir } from './math.ts';
 import { syncRiderToHorse } from './mounts.ts';
+import { nextRandom } from './random.ts';
 import { resolveStructures } from './structures.ts';
-import { inWater, mapObstacles, terrainHeightAt } from './terrain.ts';
+import { inWater, mapObstacles, onIce, terrainHeightAt } from './terrain.ts';
 import type { MapId } from './maps.ts';
 import type { MatchState, Unit } from './types.ts';
 import { areEnemies, bodyMass, bodyRadius, footSpeed, getUnit, isHorse, isMounted, isSoldier } from './units.ts';
@@ -27,7 +28,12 @@ function accelerateTowards(unit: Unit, targetX: number, targetZ: number, maxDelt
 }
 
 function applyFriction(unit: Unit, dt: number): void {
-  if (unit.onGround) accelerateTowards(unit, 0, 0, SIM.groundFriction * dt);
+  if (unit.onGround) accelerateTowards(unit, 0, 0, SIM.groundFriction * (unit.onIce ? ICE.frictionFactor : 1) * dt);
+}
+
+/** Grip underfoot: on ice every start, stop and turn takes much longer. */
+function traction(unit: Unit): number {
+  return unit.onIce && unit.onGround ? ICE.tractionFactor : 1;
 }
 
 export function clampedMove(unit: Unit): { x: number; z: number; amount: number } {
@@ -56,7 +62,7 @@ export function steerPerson(unit: Unit, dt: number): void {
   }
   const move = clampedMove(unit);
   const speed = personSpeed(unit) * move.amount;
-  const accel = unit.onGround ? SIM.groundAccel : SIM.airAccel;
+  const accel = unit.onGround ? SIM.groundAccel * traction(unit) : SIM.airAccel;
   accelerateTowards(unit, move.x * speed, move.z * speed, accel * dt);
   unit.yaw = turnTowards(unit.yaw, unit.intent.faceYaw, BODY.personTurnRate * dt);
   if (unit.intent.jump && unit.onGround) {
@@ -83,7 +89,7 @@ export function steerHorse(state: MatchState, horse: Unit, dt: number): void {
   const alignment = Math.max(MOVEMENT.horseMinTurnSpeedFactor, Math.cos(wrapAngle(wanted - horse.yaw)));
   const forward = yawToDir(horse.yaw);
   const speed = HORSE.speed * move.amount * alignment * (horse.wet ? WATER.wadeSpeedFactor : 1);
-  accelerateTowards(horse, forward.x * speed, forward.z * speed, BODY.horseAccel * dt);
+  accelerateTowards(horse, forward.x * speed, forward.z * speed, BODY.horseAccel * traction(horse) * dt);
   jumpHorse(horse, rider);
 }
 
@@ -284,6 +290,16 @@ function slideDownedCommander(state: MatchState, unit: Unit, dt: number): void {
  * Stepping into the moat makes a splash. Soldiers blunder in and fall flat for a moment;
  * commanders and horses just wade. Getting wet does no harm.
  */
+/** Running soldiers go down on the ice now and then, legs everywhere. */
+function slipOnIce(state: MatchState, unit: Unit, dt: number): void {
+  unit.onIce = onIce(state.settings.map, unit.pos.x, unit.pos.z);
+  if (!unit.onIce || !unit.onGround || !isSoldier(unit) || unit.stunTimer > 0) return;
+  const speed = Math.hypot(unit.vel.x, unit.vel.z);
+  if (speed < ICE.slipMinSpeed || nextRandom(state.rng) > ICE.slipPerSecond * dt) return;
+  applyKnockback(unit, knockbackVector(normalizeXZ(unit.vel.x, unit.vel.z), ICE.slipPop), ICE.slipStun);
+  state.events.push({ type: 'stumble', unitId: unit.id });
+}
+
 function updateWading(state: MatchState, unit: Unit): void {
   const wet = unit.onGround && inWater(state.settings.map, unit.pos.x, unit.pos.z);
   if (wet && !unit.wet) {
@@ -315,6 +331,7 @@ export function stepMovement(state: MatchState, dt: number): void {
     resolveObstacles(unit, state.settings.map);
     resolveStructures(unit, state.settings.map);
     updateWading(state, unit);
+    slipOnIce(state, unit, dt);
   }
   separateBodies(state);
   for (const unit of state.units) {

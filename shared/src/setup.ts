@@ -8,7 +8,7 @@ import { createRandom } from './random.ts';
 import { nearestWalkable } from './navigation.ts';
 import { armySpawn } from './spawn.ts';
 import { terrainHeightAt } from './terrain.ts';
-import type { Army, ArmyMix, ArmySize, MatchSettings, MatchState, SoldierKind, Unit } from './types.ts';
+import type { Army, ArmyMix, ArmySize, Faction, MatchSettings, MatchState, SoldierKind, Unit } from './types.ts';
 import { createUnit } from './units.ts';
 
 export function soldierKindsFor(size: ArmySize, armyMix: ArmyMix = ARMY.defaultMix): SoldierKind[] {
@@ -58,9 +58,9 @@ function groundPos(settings: MatchSettings, x: number, z: number): { x: number; 
 }
 
 /** Commanders start on horseback. */
-function addCommander(state: MatchState, armyId: number, pos: Vec3, yaw: number): Unit {
-  const commander = addUnit(state, (id) => createUnit(id, 'commander', armyId, pos, yaw));
-  const horse = addUnit(state, (id) => createUnit(id, 'horse', armyId, pos, yaw));
+function addCommander(state: MatchState, armyId: number, pos: Vec3, yaw: number, faction: Faction): Unit {
+  const commander = addUnit(state, (id) => createUnit(id, 'commander', armyId, pos, yaw, faction));
+  const horse = addUnit(state, (id) => createUnit(id, 'horse', armyId, pos, yaw, faction));
   horse.riderId = commander.id;
   commander.mountId = horse.id;
   commander.pos.y = horse.pos.y + BODY.saddleHeight;
@@ -87,7 +87,8 @@ function createArmy(
     spawn.position.x + forward.x * FORMATION.commanderSpawnAhead,
     spawn.position.z + forward.z * FORMATION.commanderSpawnAhead,
   );
-  const commander = isBot && !ARMY.botCommanders ? null : addCommander(state, armyId, commanderPos, spawn.yaw);
+  const faction = settings.armies[armyId]?.faction ?? 'roman';
+  const commander = isBot && !ARMY.botCommanders ? null : addCommander(state, armyId, commanderPos, spawn.yaw, faction);
 
   const kinds = soldierKindsFor(settings.armySize, settings.mix);
   const slots = startingSlots(kinds, spawn.position, spawn.yaw).map((slot) => nearestWalkable(settings.map, slot));
@@ -95,13 +96,13 @@ function createArmy(
   const soldiers: Unit[] = [];
   kinds.forEach((kind, i) => {
     const slot = slots[i] ?? spawn.position;
-    const soldier = addUnit(state, (id) => createUnit(id, kind, armyId, groundPos(settings, slot.x, slot.z), spawn.yaw));
+    const soldier = addUnit(state, (id) => createUnit(id, kind, armyId, groundPos(settings, slot.x, slot.z), spawn.yaw, faction));
     soldier.group = groupForKind(kind, ARMY_GROUPS);
     soldierIds.push(soldier.id);
     soldiers.push(soldier);
     if (kind === 'rider') {
       const horse = addUnit(state, (id) =>
-        createUnit(id, 'horse', armyId, groundPos(settings, slot.x, slot.z), spawn.yaw),
+        createUnit(id, 'horse', armyId, groundPos(settings, slot.x, slot.z), spawn.yaw, faction),
       );
       horse.riderId = soldier.id;
       soldier.mountId = horse.id;
@@ -114,6 +115,7 @@ function createArmy(
     team,
     name,
     isBot,
+    faction,
     commanderId: commander?.id ?? null,
     soldierIds,
     groupCount: ARMY_GROUPS,

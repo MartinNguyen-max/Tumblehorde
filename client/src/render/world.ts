@@ -24,7 +24,10 @@ import HavokPhysics from '@babylonjs/havok';
 import havokWasmUrl from '@babylonjs/havok/lib/esm/HavokPhysics.wasm?url';
 import {
   createRandom,
+  type IceSheet,
   isOnPath,
+  NORTH,
+  onIce,
   MAP,
   type MapId,
   mapObstacles,
@@ -45,6 +48,7 @@ import {
 } from '@tumblehorde/shared';
 import { COLORS, HOUSE, type HslRange, LIGHTING, MAP_THEMES, type MapTheme } from '../visualConfig.ts';
 import { PartFactory } from './parts.ts';
+import { Snowfall } from './weather.ts';
 
 export interface World {
   engine: Engine;
@@ -60,6 +64,8 @@ export interface World {
   terrainBody: PhysicsBody | null;
   /** Every wall and house as one static body, so the dead bounce off buildings instead of flying through. */
   structureBody: PhysicsBody | null;
+  /** Falling snow on snowy maps. */
+  snow: Snowfall | null;
 }
 
 const EDGE_POST_SPACING = 9;
@@ -114,6 +120,7 @@ export async function createWorld(canvas: HTMLCanvasElement): Promise<World> {
     mapRoot: null,
     terrainBody: null,
     structureBody: null,
+    snow: null,
   };
   loadMap(world, 'meadow');
   return world;
@@ -127,6 +134,8 @@ export function loadMap(world: World, map: MapId): void {
   world.structureBody?.shape?.dispose();
   world.structureBody?.dispose();
   world.structureBody = null;
+  world.snow?.dispose();
+  world.snow = null;
   world.mapRoot?.dispose();
   const theme = MAP_THEMES[map];
   const { scene } = world;
@@ -146,6 +155,8 @@ export function loadMap(world: World, map: MapId): void {
   world.structureBody = createStructureBody(scene, root, map);
   createEdge(scene, world.parts, root, map, world.edgeMaterial);
   if (MAPS[map].layout === 'siege') createMoat(scene, world.parts, root);
+  for (const sheet of MAPS[map].ice ?? []) createIce(scene, root, sheet);
+  world.snow = theme.snow ? new Snowfall(scene) : null;
   // Scenery never moves: compute its transforms once instead of every frame.
   root.computeWorldMatrix(true);
   for (const node of root.getChildTransformNodes(false)) node.freezeWorldMatrix();
@@ -209,6 +220,7 @@ function createTerrain(scene: Scene, map: MapId, theme: MapTheme): Mesh {
       const slope = Math.max(Math.abs(a[1] - b[1]), Math.abs(b[1] - c[1]), Math.abs(a[1] - c[1])) / TERRAIN.cellSize;
       if (slope > ROCK_SLOPE || cy > theme.rockHeight) return pick(rng, theme.rock);
     }
+    if (theme.ice && onIce(map, cx, cz)) return pick(rng, theme.ice);
     return isOnPath(map, cx, cz) ? pick(rng, theme.path) : pick(rng, theme.ground);
   };
   const addTriangle = (a: Vertex, b: Vertex, c: Vertex): void => {
@@ -450,6 +462,28 @@ function createScenery(parts: PartFactory, root: TransformNode, map: MapId, them
 
 /** Faint walls and posts at the map edge. The walls fade in when the player gets close. */
 /** The castle's moat: shallow water all round, a wooden bridge to the gate, and an arch over the gate. */
+/** A glossy, see-through skin over the frozen lake, so the ice shines. */
+function createIce(scene: Scene, root: TransformNode, sheet: IceSheet): void {
+  const material = new StandardMaterial('ice', scene);
+  material.diffuseColor = Color3.FromHexString(COLORS.ice);
+  material.specularColor = new Color3(0.9, 0.95, 1);
+  material.specularPower = 96;
+  material.alpha = 0.45;
+  const disc = MeshBuilder.CreateDisc('ice', { radius: 1, tessellation: 40 }, scene);
+  disc.rotation.x = Math.PI / 2;
+  disc.scaling.set(sheet.radiusX, sheet.radiusZ, 1);
+  disc.position.set(sheet.x, NORTH.iceLevel + 0.03, sheet.z);
+  disc.material = material;
+  disc.parent = root;
+  disc.isPickable = false;
+}
+
+/** Snow drifts down around the camera on snowy maps. */
+export function updateWeather(world: World, dt: number): void {
+  const camera = world.scene.activeCamera;
+  if (world.snow && camera) world.snow.update(dt, camera.position);
+}
+
 function createMoat(scene: Scene, parts: PartFactory, root: TransformNode): void {
   const { centerX: cx, moatInner: inner, moatOuter: outer, bridgeHalf, west } = CASTLE;
   const water = new StandardMaterial('water', scene);

@@ -17,7 +17,7 @@ Updated as work progresses. ✅ done · 🚧 in progress · ⬜ not started.
 | M7 After the battle | ✅ | Results table, duration, kills/deaths, rematch |
 | M8 Online | ✅ | Colyseus room with code/link, lobby, 2–4 players FFA or teams, prediction + interpolation, 30 s disconnect rule |
 | M9 Smarter, better fights | ✅ | Bots defend when hit, flank and gang up; spacing, dodges, counters; spear kept after volley; rally courage; no wall clipping; celebration; first person |
-| M10 Vikings and the north | ⬜ | Viking faction (looks, axes, formations, orders), Romans vs Vikings ~50/50, frozen north map |
+| M10 Vikings and the north | ✅ | Viking faction (looks, axes, formations, orders), Romans vs Vikings ~50/50, frozen north map |
 | M11 Campaign foundations | ✅ | Cutscene engine (actors with faces and tears, shots, letterbox, subtitles, narrator, title cards, letters, fades, weather, firelight), cutscene music and emotional voices, hold Space to skip one beat, one save slot at every chapter start, loading cards, Esc menu, free roam with NPCs, talk (E) and choices; Campaign card on the start page |
 | M12 The capital | ⬜ | Walkable district in a huge city, ~20 NPCs, Varro, shop, workout, three arena fights |
 | M13 Campaign chapters | ⬜ | All chapters from the prologue to the zombie night, with their battles and cutscenes |

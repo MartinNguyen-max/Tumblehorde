@@ -1,6 +1,7 @@
 import { Matrix, type Scene, Vector3 } from '../render/babylon.ts';
 import {
   distanceXZ,
+  type Faction,
   type Formation,
   HALVES,
   type MapId,
@@ -15,7 +16,7 @@ import {
   type UnitKind,
   type UnitView,
 } from '@tumblehorde/shared';
-import { FORMATION_LABEL, type FormationWheel, WHEEL_OPTIONS } from '../input/formationWheel.ts';
+import { type FormationWheel, formationLabel, type WheelOption, wheelOptions } from '../input/formationWheel.ts';
 import { paletteForArmy } from '../palettes.ts';
 import { Minimap } from './minimap.ts';
 import { EFFECTS, FORMATION_WHEEL, HUD } from '../visualConfig.ts';
@@ -46,6 +47,18 @@ const REFUSED_TEXT: Record<RefusedReason, string> = {
   enemyAhead: 'The enemy line is right there: attack (3) or hold your ground',
   rallyResting: 'Your voice needs a rest before the next speech',
 };
+/** The same orders in Viking words. */
+const VIKING_REFUSED_TEXT: Partial<Record<RefusedReason, string>> = {
+  spearsSpent: 'The axes are already thrown',
+  banquetSpent: 'The mead is all gone',
+  rallyResting: 'Your throat needs a rest before the next roar',
+};
+
+/** What the special orders are called by each people. */
+const FACTION_WORDS = {
+  roman: { feast: 'Banquet 🍷', drunk: 'Drunk! 🍷', feastBanner: 'Banquet! Wine for everyone! 🍷', drunkBanner: 'Your legion is VERY drunk!', rally: 'Rally speech', throw: 'Throw spears', thrown: 'Spears thrown', away: 'Spears away!', main: 'Sword', army: 'legion' },
+  viking: { feast: 'Mead feast 🍺', drunk: 'Drunk! 🍺', feastBanner: 'Mead! Horns up, everyone! 🍺', drunkBanner: 'Your warband is VERY drunk!', rally: 'War roar', throw: 'Throw axes', thrown: 'Axes thrown', away: 'Axes away!', main: 'Axe', army: 'warband' },
+} as const satisfies Record<Faction, Record<string, string>>;
 const HP_LABEL_HEIGHT = 2.75;
 const FOE_LABEL_HEIGHT = 3.4;
 const POPUP_RISE = 40;
@@ -114,12 +127,30 @@ export class Hud {
   private lastView: MatchView | null = null;
   private myArmyId = 0;
 
+  private faction: Faction = 'roman';
+
   constructor() {
-    this.buildWheel();
+    this.buildWheel(wheelOptions('roman'));
   }
 
-  private buildWheel(): void {
-    const options = WHEEL_OPTIONS.map((o) => {
+  /** The player's people: their formations, and their words for the special orders. */
+  setFaction(faction: Faction): void {
+    if (faction === this.faction) return;
+    this.faction = faction;
+    this.buildWheel(wheelOptions(faction));
+    const main = this.kit.querySelector<HTMLElement>('.weapon');
+    if (main) {
+      main.dataset.weapon = faction === 'viking' ? 'axe' : 'sword';
+      main.textContent = FACTION_WORDS[faction].main;
+    }
+  }
+
+  private get words(): (typeof FACTION_WORDS)[Faction] {
+    return FACTION_WORDS[this.faction];
+  }
+
+  private buildWheel(wheelOptions: readonly WheelOption[]): void {
+    const options = wheelOptions.map((o) => {
       const x = o.dirX * FORMATION_WHEEL.optionDistance;
       const y = o.dirY * FORMATION_WHEEL.optionDistance;
       return `<div class="wheel-opt" data-formation="${o.formation}" style="transform:translate(-50%,-50%) translate(${x}px,${y}px)">${formationIcon(o.formation)}<span>${o.label}</span></div>`;
@@ -243,12 +274,12 @@ export class Hud {
         case 'order':
           if (event.armyId === myArmyId) {
             const who = event.group === null ? '' : `Group ${GROUP_LABELS[event.group] ?? ''} · `;
-            this.showBanner(`${who}${event.order === 'hold' ? `Hold: ${FORMATION_LABEL[event.formation]}!` : `${ORDER_LABEL[event.order]}!`}`);
+            this.showBanner(`${who}${event.order === 'hold' ? `Hold: ${formationLabel(event.formation, this.faction)}!` : `${ORDER_LABEL[event.order]}!`}`);
           }
           break;
         case 'rally':
           this.showRally(view, event.armyId, event.commanderId);
-          if (event.armyId === myArmyId) this.showBanner(`Courage! Your legion fights harder for ${RALLY.courageTime} s`);
+          if (event.armyId === myArmyId) this.showBanner(`Courage! Your ${this.words.army} fights harder for ${RALLY.courageTime} s`);
           break;
         case 'allyOffer':
           if (event.to === myArmyId) this.showBanner(`${this.plainName(view, event.from)} wants to be allies! Look at them and crouch (Ctrl) 4×`, ALLY_BANNER_SECONDS);
@@ -261,10 +292,13 @@ export class Hud {
           break;
         }
         case 'refused':
-          if (event.armyId === myArmyId) this.showBanner(REFUSED_TEXT[event.reason], REFUSED_BANNER_SECONDS);
+          if (event.armyId === myArmyId) {
+            const text = (this.faction === 'viking' ? VIKING_REFUSED_TEXT[event.reason] : undefined) ?? REFUSED_TEXT[event.reason];
+            this.showBanner(text, REFUSED_BANNER_SECONDS);
+          }
           break;
         case 'volley':
-          if (event.armyId === myArmyId) this.showBanner('Spears away!');
+          if (event.armyId === myArmyId) this.showBanner(this.words.away);
           break;
         case 'advance':
           if (event.armyId === myArmyId) this.showBanner(event.group === null ? 'Advance!' : `Group ${GROUP_LABELS[event.group] ?? ''} · Advance!`);
@@ -273,10 +307,10 @@ export class Hud {
           if (event.armyId === myArmyId) this.showBanner(event.groupCount === HALVES ? 'Split in two! Press 4 to pick a half' : 'Together again!');
           break;
         case 'banquet':
-          if (event.armyId === myArmyId) this.showBanner('Banquet! Wine for everyone! 🍷');
+          if (event.armyId === myArmyId) this.showBanner(this.words.feastBanner);
           break;
         case 'drunk':
-          if (event.armyId === myArmyId) this.showBanner('Your legion is VERY drunk!');
+          if (event.armyId === myArmyId) this.showBanner(this.words.drunkBanner);
           break;
         case 'stumble': {
           const unit = view.units[event.unitId];
@@ -350,19 +384,23 @@ export class Hud {
     }
     this.banquetCmd.classList.toggle('off', !canOrder || army.banquet === 'drunk');
     this.banquetCmd.classList.toggle('active', army.banquet === 'feasting');
-    const banquetText = army.banquet === 'drunk' ? 'Drunk! 🍷' : 'Banquet 🍷';
+    const banquetText = army.banquet === 'drunk' ? this.words.drunk : this.words.feast;
     if (this.banquetLabel.textContent !== banquetText) this.banquetLabel.textContent = banquetText;
     this.rallyCmd.classList.toggle('off', !canOrder || army.rallyTimer > 0);
     this.rallyCmd.classList.toggle('active', army.courageTimer > 0);
     const rallyText =
-      army.courageTimer > 0 ? `Courage! ${Math.ceil(army.courageTimer)}s` : army.rallyTimer > 0 ? `Rally in ${Math.ceil(army.rallyTimer)}s` : 'Rally speech';
+      army.courageTimer > 0
+        ? `Courage! ${Math.ceil(army.courageTimer)}s`
+        : army.rallyTimer > 0
+          ? `${this.words.rally} in ${Math.ceil(army.rallyTimer)}s`
+          : this.words.rally;
     if (this.rallyLabel.textContent !== rallyText) this.rallyLabel.textContent = rallyText;
     const holding = selected === null ? army.orders.includes('hold') : army.orders[selected] === 'hold';
     this.advanceCmd.classList.toggle('off', !canOrder || !holding);
     this.volleyCmd.classList.toggle('off', !canOrder || army.spearsThrown);
-    const volleyText = army.spearsThrown ? 'Spears thrown' : 'Throw spears';
+    const volleyText = army.spearsThrown ? this.words.thrown : this.words.throw;
     if (this.volleyLabel.textContent !== volleyText) this.volleyLabel.textContent = volleyText;
-    const label = `Hold · ${FORMATION_LABEL[army.formation]}`;
+    const label = `Hold · ${formationLabel(army.formation, this.faction)}`;
     if (this.holdLabel.textContent !== label) this.holdLabel.textContent = label;
   }
 
@@ -536,6 +574,12 @@ function formationIcon(formation: Formation): string {
       break;
     case 'circle':
       for (let i = 0; i < 10; i++) dots.push([24 + Math.sin((i / 10) * Math.PI * 2) * 12, 22 - Math.cos((i / 10) * Math.PI * 2) * 12]);
+      break;
+    case 'boar':
+      rows([1, 2, 3, 4], 4);
+      break;
+    case 'swarm':
+      for (const [x, y] of [[12, 6], [22, 4], [33, 8], [16, 13], [28, 14], [38, 15], [9, 19], [21, 21], [33, 22]] as const) dots.push([x, y]);
       break;
   }
   const commander = formation === 'circle' ? [24, 22] : [24, 32];

@@ -55,6 +55,10 @@ See `DECISIONS.md` for how the controls evolved after playtesting.
 
 For now every army is Roman legionaries (archers and cavalry are parked in the code, see `DECISIONS.md`). They march and hold with the spear behind big square shields that touch in a held line, and draw the sword to attack. Hold formations: long line, two lines, wedge, circle around the commander, testudo block and pincer. The army can be split in two halves.
 
+### Vikings
+
+The second people, same blocky bodies and height as the legion but every warrior looks different: wolf, bear or fox pelts, big beards (some braided), long hair, scars, bare arms with gold arm rings, an iron cap or none, a round painted shield and a bearded axe. They march and hold with spears and draw axes to attack. Axes bite through raised shields and sometimes hook them aside; round shields make a looser wall; Vikings are a little quicker on their feet. Their formations: **shield wall** (two tight ranks), **boar's head** (a deep, narrow wedge to break through), **shield ring** around the jarl, **horns** (the wings go round behind the enemy) and the **swarm** (a loose, screaming mob). The volley is **throwing axes** (shorter range than pila), the banquet a **mead feast** and the rally speech a **war roar**. They roar as they swing. Equal bot armies of Romans and Vikings win about half the time each.
+
 After a **banquet** the whole army is drunk for the rest of the battle: they sway, stumble and cannot stand in a straight line, but they are very tough, hit hard and barge through enemy formations.
 
 ## 6. Physics and tone
@@ -92,6 +96,7 @@ Locally there are at most 4 armies in total. Bots follow the same rules as the p
 
 ## 11. Map
 
+- **The Frozen North**: snowy hills and pines, a Viking village of longhouses behind a broken palisade, rune stones, and a big frozen lake (with a small pond): on the ice everyone slides, and running soldiers go down now and then. Snow falls.
 - Three battlefields, 220 × 220 m: **Green Meadow** (open field with a farmstead), **Castle Siege** (one army holds the only gate, everyone else attacks) and **The City** (Roman street grid with avenues, alleys and a forum; houses block sight, so soldiers only fight what they see and search the streets when attacking blind).
 - Bot armies have no commander; they form up, advance in formation, hold a spear wall and then charge. Players always lead their own army.
 

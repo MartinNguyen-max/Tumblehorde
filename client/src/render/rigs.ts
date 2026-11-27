@@ -1,8 +1,9 @@
 import { type InstancedMesh, TransformNode, type Scene } from './babylon.ts';
-import { approach, DUEL, lerp, meleeStatsForKind, type UnitKind, type UnitView, type Weapon } from '@tumblehorde/shared';
+import { approach, DUEL, type Faction, lerp, meleeStatsForKind, type UnitKind, type UnitView, type Weapon } from '@tumblehorde/shared';
 import { ANIMATION, type ArmyPalette, COLORS, ROMAN } from '../visualConfig.ts';
 import { buildBean } from './beans.ts';
 import { buildRoman, type PersonBody } from './legionary.ts';
+import { buildViking, vikingLook } from './viking.ts';
 import { childNode, type PartFactory } from './parts.ts';
 
 /** Soldiers are drawn a bit larger than their collision body: chunky and easy to read. */
@@ -145,13 +146,23 @@ function addStars(parts: PartFactory, head: TransformNode): TransformNode {
   return stars;
 }
 
-export function createPersonRig(scene: Scene, parts: PartFactory, kind: UnitKind, palette: ArmyPalette): PersonRig {
+/** Builds the body for a unit of `faction`; Vikings each get their own look from their id. */
+function buildBody(parts: PartFactory, body: TransformNode, kind: UnitKind, palette: ArmyPalette, faction: Faction, id: number): { built: PersonBody; look: string } {
+  const person = kind === 'swordsman' || kind === 'commander';
+  if (!person) return { built: buildBean(parts, body, kind, palette), look: 'bean' };
+  if (faction === 'viking') {
+    const { look, variant } = vikingLook(id);
+    return { built: buildViking(parts, body, palette, kind === 'commander', look), look: `viking-${variant}` };
+  }
+  return { built: buildRoman(parts, body, palette, kind === 'commander'), look: 'roman' };
+}
+
+export function createPersonRig(scene: Scene, parts: PartFactory, kind: UnitKind, palette: ArmyPalette, faction: Faction = 'roman', id = 0): PersonRig {
   const scale = kind === 'commander' ? COMMANDER_SCALE : SOLDIER_SCALE;
   const root = new TransformNode(kind, scene);
   const body = childNode('body', root);
   body.scaling.setAll(scale);
-  const roman = kind === 'swordsman' || kind === 'commander';
-  const built = roman ? buildRoman(parts, body, palette, kind === 'commander') : buildBean(parts, body, kind, palette);
+  const { built, look } = buildBody(parts, body, kind, palette, faction, id);
   const stars = addStars(parts, built.head);
   const bubbles = addBubbles(parts, built.head);
   const marker = parts.part('cone', COLORS.toast, root, [0.22, 0.4, 0.22], [0, MARKER_HEIGHT * scale, 0], NO_SHADOW_GLOSS);
@@ -159,7 +170,7 @@ export function createPersonRig(scene: Scene, parts: PartFactory, kind: UnitKind
   marker.setEnabled(false);
   const animated = [...built.pupils, ...built.brows, built.mouth, built.mouthOpen, built.drool, ...bubbles, marker];
   const pupilRest = built.pupils.map((p) => ({ x: p.position.x, y: p.position.y }));
-  parts.bake(root, `${kind}:${palette.body}`, new Set(animated.filter((m): m is InstancedMesh => m !== null)));
+  parts.bake(root, `${kind}:${look}:${palette.body}`, new Set(animated.filter((m): m is InstancedMesh => m !== null)));
   return {
     ...built,
     type: 'person',
@@ -318,7 +329,7 @@ function swingPose(rig: PersonRig, mounted: boolean, weapon: Weapon): SwingPose 
 function showWeapon(rig: PersonRig, weapon: Weapon, feasting: boolean): void {
   for (const [key, n] of Object.entries(rig.weapons)) n.setEnabled(key === weapon && !feasting);
   rig.cup?.setEnabled(feasting);
-  rig.sheathed?.setEnabled(weapon !== 'sword' || feasting);
+  rig.sheathed?.setEnabled(weapon !== rig.sideArm || feasting);
   rig.shield?.setEnabled(weapon !== 'bow');
 }
 

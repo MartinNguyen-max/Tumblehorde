@@ -1,6 +1,6 @@
 import { type InstancedMesh, TransformNode, type Scene } from './babylon.ts';
 import type { ArrowView, ProjectileKind, Vec3 } from '@tumblehorde/shared';
-import { COLORS, EFFECTS, ROMAN } from '../visualConfig.ts';
+import { COLORS, EFFECTS, ROMAN, VIKING_LOOK } from '../visualConfig.ts';
 import type { PartFactory } from './parts.ts';
 
 const PARTICLE_GRAVITY = 14;
@@ -74,6 +74,12 @@ export class Effects {
 
   private makeArrow(kind: ProjectileKind): TransformNode {
     const node = new TransformNode(kind, this.scene);
+    if (kind === 'axe') {
+      // A throwing axe: a short haft and a broad iron head, tumbling end over end.
+      this.parts.part('box', ROMAN.wood, node, [0.06, 0.06, 0.55], [0, 0, -0.1]);
+      this.parts.part('box', VIKING_LOOK.iron, node, [0.05, 0.28, 0.16], [0, 0.1, 0.16]);
+      return node;
+    }
     if (kind === 'pilum') {
       // A thrown spear: long wooden shaft, iron shank and point. Its tip sits where an arrow's does.
       this.parts.part('box', ROMAN.wood, node, [0.07, 0.07, 1.5], [0, 0, -0.45]);
@@ -97,7 +103,9 @@ export class Effects {
         this.flying.set(arrow.id, node);
       }
       node.position.set(arrow.x, arrow.y, arrow.z);
-      node.rotation.set(arrowPitch(arrow.vx, arrow.vy, arrow.vz), arrowYaw(arrow.vx, arrow.vz), 0);
+      // Axes tumble end over end as they fly; spears and arrows point along their path.
+      const spin = arrow.kind === 'axe' ? (Math.hypot(arrow.x, arrow.z) * EFFECTS.axeSpinPerMeter) % (Math.PI * 2) : 0;
+      node.rotation.set(arrowPitch(arrow.vx, arrow.vy, arrow.vz) + spin, arrowYaw(arrow.vx, arrow.vz), 0);
     }
     for (const [id, node] of this.flying) {
       if (seen.has(id)) continue;
@@ -110,8 +118,8 @@ export class Effects {
    * A spear stuck in someone (or their shield): it is placed where it hit, then parented to them
    * so it rides along, tumbles with the body if they fall, and is cleaned up after a while.
    */
-  stickInto(holder: TransformNode, pos: Vec3, dir: Vec3, now: number): void {
-    const node = this.makeArrow('pilum');
+  stickInto(holder: TransformNode, pos: Vec3, dir: Vec3, now: number, kind: ProjectileKind = 'pilum'): void {
+    const node = this.makeArrow(kind);
     const back = EFFECTS.pilumEmbedDepth - ARROW_TIP_OFFSET;
     node.position.set(pos.x + dir.x * back, pos.y + dir.y * back, pos.z + dir.z * back);
     node.rotation.set(arrowPitch(dir.x, dir.y, dir.z), arrowYaw(dir.x, dir.z), 0);

@@ -110,6 +110,7 @@ export function buildBean(parts: PartFactory, body: TransformNode, kind: UnitKin
     shieldPose: BEAN_SHIELD_POSE,
     weapons,
     sheathed: null,
+    sideArm: 'sword',
     cup: null,
     cape: null,
   };

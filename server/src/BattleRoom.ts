@@ -21,6 +21,7 @@ import {
   type RoomPhase,
   sanitizeCommandMessage,
   sanitizeInputMessage,
+  type Peoples,
   sanitizeLobbySettings,
   sanitizeName,
   setArmyConnected,
@@ -68,6 +69,7 @@ export class BattleRoom extends Room {
   private hostId = '';
   private mode: GameMode = 'ffa';
   private armySize: ArmySize = ARMY.sizes[1];
+  private peoples: Peoples = 'romans';
   private map: MapChoice = 'random';
   private phase: RoomPhase = 'lobby';
   private match: MatchState | null = null;
@@ -170,6 +172,7 @@ export class BattleRoom extends Room {
       mode: this.mode,
       armySize: this.armySize,
       map: this.map,
+      peoples: this.peoples,
       players: this.players
         .filter((p) => !p.left)
         .map((p) => ({ sessionId: p.sessionId, name: p.name, team: p.team, connected: p.connected })),
@@ -203,6 +206,7 @@ export class BattleRoom extends Room {
     this.mode = settings.mode;
     this.armySize = settings.armySize;
     this.map = settings.map;
+    this.peoples = settings.peoples;
     this.broadcastLobby();
   }
 

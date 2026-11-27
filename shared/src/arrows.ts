@@ -1,4 +1,4 @@
-import { AI, ARROW, BODY, TERRAIN, VOLLEY } from './config.ts';
+import { AI, ARROW, BODY, TERRAIN, VIKING, VOLLEY } from './config.ts';
 import { applyHit } from './combat.ts';
 import { dirToYaw, normalizeXZ, segmentSegmentDistanceSq, yawToDir, type Vec3 } from './math.ts';
 import { randomRange } from './random.ts';
@@ -86,16 +86,18 @@ export function fireArrow(state: MatchState, shooter: Unit, target: Unit | null,
 }
 
 /** A soldier hurls their spear: at an enemy (leading them), or at the spot the commander looked at. */
+/** A pilum for Romans, a spinning throwing axe for Vikings. */
 export function throwPilum(state: MatchState, thrower: Unit, target: Unit | null, at: Vec3 | null): Arrow {
   const vel = target ? aimArrow(state, thrower, target, VOLLEY.speed) : aimAtPoint(thrower, at ?? aimPoint(thrower), VOLLEY.speed);
   const forward = yawToDir(dirToYaw(vel.x, vel.z));
+  const viking = thrower.faction === 'viking';
   const pilum: Arrow = {
     id: state.nextArrowId++,
-    kind: 'pilum',
+    kind: viking ? 'axe' : 'pilum',
     armyId: thrower.armyId,
     shooterId: thrower.id,
-    damage: VOLLEY.damage,
-    knockback: VOLLEY.knockback,
+    damage: viking ? VIKING.throwDamage : VOLLEY.damage,
+    knockback: viking ? VIKING.throwKnockback : VOLLEY.knockback,
     pos: { x: thrower.pos.x + forward.x * 0.5, y: thrower.pos.y + SHOULDER_HEIGHT + 0.3, z: thrower.pos.z + forward.z * 0.5 },
     vel,
     age: 0,
@@ -175,13 +177,14 @@ function hitWithArrow(state: MatchState, arrow: Arrow, victim: Unit): void {
   const pushDir = normalizeXZ(arrow.vel.x, arrow.vel.z);
   // A point back along the flight path, so shields facing the shooter block it.
   const from = { x: arrow.pos.x - pushDir.x * ARROW_SOURCE_BACKTRACK, z: arrow.pos.z - pushDir.z * ARROW_SOURCE_BACKTRACK };
-  const pierce = arrow.kind === 'pilum' ? VOLLEY.shieldPierce : 0;
+  const pierce = arrow.kind === 'pilum' ? VOLLEY.shieldPierce : arrow.kind === 'axe' ? VIKING.throwPierce : 0;
   applyHit(state, victim, { attacker: shooter, armyId: arrow.armyId, from, pushDir, pierce }, arrow.damage, arrow.knockback);
-  // A pilum stays stuck in whoever (or whatever shield) it hit.
-  if (arrow.kind === 'pilum') {
+  // A pilum (or a throwing axe) stays stuck in whoever (or whatever shield) it hit.
+  if (arrow.kind !== 'arrow') {
     const speed = Math.hypot(arrow.vel.x, arrow.vel.y, arrow.vel.z) || 1;
     state.events.push({
       type: 'pilumStuck',
+      kind: arrow.kind,
       targetId: victim.id,
       pos: { ...arrow.pos },
       dir: { x: arrow.vel.x / speed, y: arrow.vel.y / speed, z: arrow.vel.z / speed },

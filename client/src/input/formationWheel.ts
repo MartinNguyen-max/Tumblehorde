@@ -1,4 +1,4 @@
-import type { Formation } from '@tumblehorde/shared';
+import type { Faction, Formation } from '@tumblehorde/shared';
 import { FORMATION_WHEEL } from '../visualConfig.ts';
 
 export interface WheelOption {
@@ -11,7 +11,7 @@ export interface WheelOption {
 
 const SIN_60 = Math.sqrt(3) / 2;
 
-/** Six formations around the wheel, clockwise from the top left. */
+/** The legion's six formations around the wheel, clockwise from the top left. */
 export const WHEEL_OPTIONS: readonly WheelOption[] = [
   { formation: 'line', label: 'Long line', dirX: -SIN_60, dirY: -0.5 },
   { formation: 'double', label: 'Two lines', dirX: 0, dirY: -1 },
@@ -21,6 +21,25 @@ export const WHEEL_OPTIONS: readonly WheelOption[] = [
   { formation: 'pincer', label: 'Pincer: flank them', dirX: -SIN_60, dirY: 0.5 },
 ];
 
+/** Five points of a pentagon, clockwise from the top. */
+function pentagon(index: number): { dirX: number; dirY: number } {
+  const angle = (index / 5) * Math.PI * 2;
+  return { dirX: Math.sin(angle), dirY: -Math.cos(angle) };
+}
+
+/** The Vikings' five formations, clockwise from the top. */
+export const VIKING_WHEEL_OPTIONS: readonly WheelOption[] = [
+  { formation: 'double', label: 'Shield wall', ...pentagon(0) },
+  { formation: 'boar', label: "Boar's head: break through", ...pentagon(1) },
+  { formation: 'pincer', label: 'Horns: flank them', ...pentagon(2) },
+  { formation: 'circle', label: 'Shield ring around me', ...pentagon(3) },
+  { formation: 'swarm', label: 'Swarm', ...pentagon(4) },
+];
+
+export function wheelOptions(faction: Faction): readonly WheelOption[] {
+  return faction === 'viking' ? VIKING_WHEEL_OPTIONS : WHEEL_OPTIONS;
+}
+
 export const FORMATION_LABEL: Record<Formation, string> = {
   line: 'Long line',
   double: 'Two lines',
@@ -28,15 +47,28 @@ export const FORMATION_LABEL: Record<Formation, string> = {
   wedge: 'Wedge',
   pincer: 'Pincer',
   square: 'Testudo',
+  boar: "Boar's head",
+  swarm: 'Swarm',
 };
 
+const VIKING_FORMATION_LABEL: Partial<Record<Formation, string>> = {
+  double: 'Shield wall',
+  circle: 'Shield ring',
+  pincer: 'Horns',
+};
+
+/** What each people calls a formation: the Vikings' two lines are their shield wall. */
+export function formationLabel(formation: Formation, faction: Faction): string {
+  return (faction === 'viking' ? VIKING_FORMATION_LABEL[formation] : undefined) ?? FORMATION_LABEL[formation];
+}
+
 /** The option the cursor points at, or null inside the dead zone or when pointing away from all of them. */
-export function wheelChoice(x: number, y: number): Formation | null {
+export function wheelChoice(x: number, y: number, options: readonly WheelOption[] = WHEEL_OPTIONS): Formation | null {
   const length = Math.hypot(x, y);
   if (length < FORMATION_WHEEL.deadzone) return null;
   let best: WheelOption | null = null;
   let bestDot: number = FORMATION_WHEEL.minAlignment;
-  for (const option of WHEEL_OPTIONS) {
+  for (const option of options) {
     const dot = (x * option.dirX + y * option.dirY) / length;
     if (dot > bestDot) {
       best = option;
@@ -53,6 +85,8 @@ export function wheelChoice(x: number, y: number): Formation | null {
 export class FormationWheel {
   private heldFor = 0;
   private active = false;
+  /** The formations of the player's people. */
+  options: readonly WheelOption[] = WHEEL_OPTIONS;
   x = 0;
   y = 0;
 
@@ -65,7 +99,7 @@ export class FormationWheel {
   }
 
   get choice(): Formation | null {
-    return this.isOpen ? wheelChoice(this.x, this.y) : null;
+    return this.isOpen ? wheelChoice(this.x, this.y, this.options) : null;
   }
 
   press(): void {

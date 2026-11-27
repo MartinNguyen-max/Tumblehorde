@@ -78,24 +78,50 @@ export function rankSizes(formation: Exclude<Formation, 'circle' | 'pincer'>, co
       return fill(() => Math.ceil(count / 2));
     case 'wedge':
       return fill((rank) => 1 + rank * FORMATION.wedgeGrowth);
+    case 'boar':
+      return fill((rank) => 1 + rank * FORMATION.boarGrowth);
     case 'square':
       return fill(() => Math.ceil(Math.sqrt(count)));
+    case 'swarm':
+      return fill(() => FORMATION.swarmRankSize);
   }
 }
 
 /** Ranks of soldiers shoulder to shoulder, front rank first; each rank runs left to right, centered. */
-export function rankSlots(sizes: readonly number[], frontCenter: Vec2, yaw: number): FormationSlot[] {
+export function rankSlots(
+  sizes: readonly number[],
+  frontCenter: Vec2,
+  yaw: number,
+  spacing: number = FORMATION.tightSpacing,
+  gap: number = FORMATION.rankGap,
+): FormationSlot[] {
   const forward = yawToDir(yaw);
   const right = { x: forward.z, z: -forward.x };
   const slots: FormationSlot[] = [];
   sizes.forEach((inRank, rank) => {
-    const back = rank * FORMATION.rankGap;
+    const back = rank * gap;
     for (let col = 0; col < inRank; col++) {
-      const side = (col - (inRank - 1) / 2) * FORMATION.tightSpacing;
+      const side = (col - (inRank - 1) / 2) * spacing;
       slots.push({ x: frontCenter.x + right.x * side - forward.x * back, z: frontCenter.z + right.z * side - forward.z * back, yaw });
     }
   });
   return slots;
+}
+
+/** Deterministic -1..1 noise per slot, so a swarm looks the same mob every time it forms. */
+function slotNoise(i: number, salt: number): number {
+  const n = Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453;
+  return (n - Math.floor(n)) * 2 - 1;
+}
+
+/** A loose screaming mob: ranks far apart, everyone a little off their place. */
+function swarmSlots(sizes: readonly number[], frontCenter: Vec2, yaw: number): FormationSlot[] {
+  const jitter = FORMATION.swarmJitter;
+  return rankSlots(sizes, frontCenter, yaw, FORMATION.swarmSpacing, FORMATION.swarmRankGap).map((slot, i) => ({
+    x: slot.x + slotNoise(i, 1) * jitter,
+    z: slot.z + slotNoise(i, 2) * jitter,
+    yaw: slot.yaw + slotNoise(i, 3) * 0.3,
+  }));
 }
 
 export function ringRadius(count: number): number {
@@ -155,11 +181,13 @@ export function holdSlots(formation: Formation, count: number, anchor: Vec2, yaw
   if (formation === 'circle') return ringSlots(count, anchor, yaw);
   if (formation === 'pincer') return pincerSlots(count, anchor, yaw, aroundCommander);
   const sizes = rankSizes(formation, count);
-  const depth = (sizes.length - 1) * FORMATION.rankGap;
+  const gap = formation === 'swarm' ? FORMATION.swarmRankGap : FORMATION.rankGap;
+  const depth = (sizes.length - 1) * gap;
   const forward = yawToDir(yaw);
   // Around the commander the last rank stands just ahead of them; deep formations reach further out.
-  const ahead = aroundCommander ? Math.max(FORMATION.holdLineAhead, FORMATION.holdLineAhead - FORMATION.rankGap + depth) : depth / 2;
-  return rankSlots(sizes, { x: anchor.x + forward.x * ahead, z: anchor.z + forward.z * ahead }, yaw);
+  const ahead = aroundCommander ? Math.max(FORMATION.holdLineAhead, FORMATION.holdLineAhead - gap + depth) : depth / 2;
+  const front = { x: anchor.x + forward.x * ahead, z: anchor.z + forward.z * ahead };
+  return formation === 'swarm' ? swarmSlots(sizes, front, yaw) : rankSlots(sizes, front, yaw);
 }
 
 /**

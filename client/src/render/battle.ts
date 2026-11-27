@@ -72,7 +72,7 @@ export class BattleRenderer {
     const rig =
       unit.kind === 'horse'
         ? createHorseRig(this.world.scene, this.world.parts, palette, unit.id)
-        : createPersonRig(this.world.scene, this.world.parts, unit.kind, palette);
+        : createPersonRig(this.world.scene, this.world.parts, unit.kind, palette, view.armies[unit.armyId]?.faction ?? 'roman', unit.id);
     this.rigs.set(unit.id, rig);
     return rig;
   }
@@ -123,7 +123,7 @@ export class BattleRenderer {
         }
         case 'pilumStuck': {
           const rig = this.rigs.get(event.targetId);
-          if (rig) this.effects.stickInto(rig.root, event.pos, event.dir, now);
+          if (rig) this.effects.stickInto(rig.root, event.pos, event.dir, now, event.kind);
           break;
         }
         case 'splash': {

@@ -7,7 +7,7 @@ import { OnlineLobby, roomCodeFromUrl } from './online/lobby.ts';
 import { OnlineSession } from './online/onlineSession.ts';
 import { BattleRenderer } from './render/battle.ts';
 import { FollowCamera } from './render/camera.ts';
-import { createWorld, loadMap, setShadowArea } from './render/world.ts';
+import { createWorld, loadMap, setShadowArea, updateWeather } from './render/world.ts';
 import { byId } from './ui/dom.ts';
 import { Hud } from './ui/hud.ts';
 import { Landing, readStoredName } from './ui/landing.ts';
@@ -212,6 +212,7 @@ async function boot(): Promise<void> {
       camera.update(dt, { x: 0, y: 0, z: 0 }, DEMO_CAMERA.height);
       setShadowArea(world.sun, Vector3.Zero());
     }
+    updateWeather(world, dt);
     world.scene.render();
   });
   window.addEventListener('resize', () => world.engine.resize());
