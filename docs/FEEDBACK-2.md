@@ -24,4 +24,4 @@ The player played again after round 1. Work list; items are ticked as they land.
 - [x] Mongols look like our characters (not penguins)
 - [x] Marcus as a baby, so you can see he is Mongolian
 - [x] Cassian in heaven with Varro, Anselm and the others after he dies
-- [ ] More scenes, better quality and details overall
+- [x] More scenes, better quality and details overall
