@@ -447,6 +447,18 @@ function buildBattle(chapter: ChapterId, save: CampaignSave): CampaignBattle | n
   }
 }
 
+/** The last battle's hints, for the son the player leads. */
+const BROTHERS_HINTS: Record<'marcus' | 'lucius', readonly TutorialStep[]> = {
+  marcus: [
+    { text: 'The dead fight on their own. Your riders are yours: press 3 to send them in.', points: 'attack', done: { order: 'attack' } },
+    { text: 'Find Lucius. When the emperor falls, the city is yours.', points: null, done: { seconds: 8 } },
+  ],
+  lucius: [
+    { text: 'Hold the forum. Keep 2 held down and pick Two lines: let them come to your shields.', points: 'hold', done: { formation: 'double' } },
+    { text: 'When the dead reach you, press 6 for a rally speech.', points: 'rally', done: { seconds: 10 } },
+  ],
+};
+
 /**
  * The last battle: Lucius holds the capital with Felix and Rufus; Marcus comes with his riders and
  * the dead. The player is whichever son they chose; the other side is played by the bots.
@@ -486,6 +498,7 @@ function brothersBattle(save: CampaignSave, base: Omit<CampaignBattle, 'settings
   return {
     ...base,
     objective: playMarcus ? 'Take the capital from your brother' : 'Hold the capital against your brother',
+    tutorial: playMarcus ? BROTHERS_HINTS.marcus : BROTHERS_HINTS.lucius,
     time: 'dusk',
     onLoss: 'retryOrLeave',
     settings: settings('city', armies),
