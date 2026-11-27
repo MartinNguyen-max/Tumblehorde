@@ -17,6 +17,7 @@ import { AudioEngine } from './audio/engine.ts';
 import { BattleAudio } from './audio/battleAudio.ts';
 import { setupSoundToggle } from './ui/soundToggle.ts';
 import { Campaign } from './campaign/campaign.ts';
+import { CampaignMenu } from './campaign/menu.ts';
 import { CinematicAudio } from './audio/cinematicAudio.ts';
 
 const DEMO_CAMERA = { distance: 62, pitch: 0.55, height: 1 } as const;
@@ -35,6 +36,16 @@ async function boot(): Promise<void> {
   const battleAudio = new BattleAudio(audio);
   setupSoundToggle(audio);
   const campaign = new Campaign({ world, input, sound: new CinematicAudio(audio), onExit: () => showLanding() });
+  const campaignMenu = new CampaignMenu({
+    onNew: () => {
+      enterCampaign();
+      campaign.startNew();
+    },
+    onContinue: () => {
+      enterCampaign();
+      campaign.continueSaved();
+    },
+  });
   const clickToPlay = byId('click-to-play');
   const ctpTitle = byId('ctp-title');
   const ctpText = byId('ctp-text');
@@ -90,6 +101,7 @@ async function boot(): Promise<void> {
     landing.setVisible(true);
     if (message) landing.onlineHint.textContent = message;
     startDemo();
+    campaignMenu.refresh();
   };
 
   const showPausePrompt = (paused: boolean, online: boolean, first: boolean): void => {

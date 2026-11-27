@@ -147,7 +147,7 @@ export class CinematicOverlay {
       return;
     }
     this.loading.replaceChildren();
-    el('div', 'num', this.loading).textContent = chapter.number === 0 ? 'Prologue' : `Chapter ${chapter.number}`;
+    el('div', 'num', this.loading).textContent = chapter.number === 0 ? 'The story of Cassian' : `Chapter ${chapter.number}`;
     el('h2', '', this.loading).textContent = chapter.title;
     el('p', '', this.loading).textContent = chapter.loadingLine;
     this.loading.classList.add('on');
