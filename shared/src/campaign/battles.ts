@@ -165,7 +165,7 @@ export function campaignBattle(chapter: ChapterId, save: CampaignSave): Campaign
       const me = cassian(save, chapter, RIVER_POINTS.bridgehead, heroes, true);
       const first = army({ name: 'Vikings', team: 1, faction: 'viking', soldiers: STORY_BATTLE.bridgeWave, spawn: RIVER_POINTS.firstWave, style: 'charge' });
       const second = army({ name: 'More Vikings', team: 1, faction: 'viking', soldiers: STORY_BATTLE.bridgeSecondWave, spawn: RIVER_POINTS.secondWave, arriveAt: STORY_BATTLE.bridgeSecondWaveAt, style: 'steady' });
-      const goal: BattleGoal = { kind: 'hold', seconds: STORY_BATTLE.bridgeHold, label: 'Carts across the bridge' };
+      const goal: BattleGoal = { kind: 'hold', seconds: STORY_BATTLE.bridgeHold, label: 'last cart over in' };
       return { ...base, goal, settings: settings('river', [me.setup, first, second]), legionNames: me.legionNames };
     }
     case 'dark-forest': {
@@ -183,7 +183,7 @@ export function campaignBattle(chapter: ChapterId, save: CampaignSave): Campaign
       const me = cassian(save, chapter, { x: -30, z: -30, yaw: Math.PI / 4 }, heroes, true);
       const first = army({ name: 'Raiders', team: 1, faction: 'viking', soldiers: STORY_BATTLE.nightRaidFirst, spawn: { x: -10, z: 60, yaw: Math.PI }, style: 'charge' });
       const second = army({ name: 'Raiders', team: 1, faction: 'viking', soldiers: STORY_BATTLE.nightRaidSecond, spawn: { x: 62, z: -20, yaw: -Math.PI / 2 }, arriveAt: STORY_BATTLE.nightRaidSecondAt, style: 'charge' });
-      const goal: BattleGoal = { kind: 'hold', seconds: STORY_BATTLE.nightRaidHold, label: 'Until dawn' };
+      const goal: BattleGoal = { kind: 'hold', seconds: STORY_BATTLE.nightRaidHold, label: 'dawn in' };
       return { ...base, goal, time: 'night', settings: settings('north', [me.setup, first, second]), legionNames: me.legionNames };
     }
     case 'last-battle': {

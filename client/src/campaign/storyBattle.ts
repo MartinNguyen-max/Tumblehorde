@@ -63,7 +63,7 @@ export class StoryBattle {
 
   private objective(view: MatchView): string {
     const left = holdTimeLeft(this.battle, view.time);
-    if (left !== null && this.battle.goal.kind === 'hold') return `${this.battle.objective} · ${this.battle.goal.label}: ${clock(left)}`;
+    if (left !== null && this.battle.goal.kind === 'hold') return `${this.battle.objective} · ${this.battle.goal.label} ${clock(left)}`;
     return this.battle.objective;
   }
 
