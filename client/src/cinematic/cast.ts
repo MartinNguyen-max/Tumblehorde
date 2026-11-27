@@ -60,7 +60,7 @@ export const CAST = {
   cassianGrey: { look: { outfit: 'commander', color: LEGION_RED, cape: LEGION_RED, hair: HAIR.grey, hairStyle: 'short', beard: 'short', beardColor: HAIR.grey }, voice: { pitch: 155, rate: 0.13 } },
   marcusBaby: { look: { outfit: 'villager', color: '#E8E0CC', hair: HAIR.black, hairStyle: 'short', skin: SKIN.tan, age: 'child' }, voice: { pitch: 400, rate: 0.08 } },
   marcusBoy: { look: { outfit: 'villager', color: '#6A8A9A', hair: HAIR.black, hairStyle: 'long', skin: SKIN.tan, age: 'child' }, voice: { pitch: 350, rate: 0.09 } },
-  marcusMongol: { look: { outfit: 'mongol', color: '#2A2A3A', hair: HAIR.black, hairStyle: 'long', beard: 'stubble', beardColor: HAIR.black, skin: SKIN.tan, helmet: true }, voice: { pitch: 175, rate: 0.12 } },
+  marcusMongol: { look: { outfit: 'mongol', color: '#5A3A5A', hair: HAIR.black, hairStyle: 'long', beard: 'stubble', beardColor: HAIR.black, skin: SKIN.tan, helmet: true }, voice: { pitch: 175, rate: 0.12 } },
   marcusRoman: { look: { outfit: 'legion', color: LEGION_RED, hair: HAIR.black, hairStyle: 'long', beard: 'stubble', beardColor: HAIR.black, skin: SKIN.tan }, voice: { pitch: 175, rate: 0.12 } },
   luciusBoy: { look: { outfit: 'villager', color: '#B8322A', hair: HAIR.brown, hairStyle: 'short', age: 'child' }, voice: { pitch: 370, rate: 0.09 } },
   lucius: { look: { outfit: 'commander', color: LEGION_RED, cape: LEGION_RED, helmet: true, hair: HAIR.brown, hairStyle: 'short', beard: 'none' }, voice: { pitch: 190, rate: 0.11 } },

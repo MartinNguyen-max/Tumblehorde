@@ -646,11 +646,12 @@ function addTorso(parts: PartFactory, torso: TransformNode, look: ActorLook): vo
       parts.part('box', CLOTH.ragsDark, torso, [0.3, 0.8, 0.03], [0.1, 0.38, 0.26], SMALL).rotation.z = -0.6;
       return;
     case 'mongol':
-      // The long coat, crossed over the chest, a wide sash, fur at the collar.
+      // A long coat to the knees, leather plates laced in rows over the chest, a sash, fur at the neck.
       parts.part('box', cloth.main, torso, [0.84, 0.42, 0.56], [0, -0.14, 0], GLOSS);
-      parts.part('box', cloth.dark, torso, [0.34, 0.72, 0.03], [-0.12, 0.36, 0.26], SMALL).rotation.z = 0.35;
-      parts.part('box', CLOTH.mongolSash, torso, [0.84, 0.12, 0.56], [0, 0.12, 0], GLOSS);
-      parts.part('box', cloth.dark, torso, [0.9, 0.14, 0.6], [0, 0.76, 0], GLOSS);
+      parts.part('box', CLOTH.lamellar, torso, [0.82, 0.5, 0.56], [0, 0.44, 0], GLOSS);
+      for (let row = 0; row < 3; row++) parts.part('box', CLOTH.lamellarEdge, torso, [0.84, 0.04, 0.58], [0, 0.28 + row * 0.15, 0], SMALL);
+      parts.part('box', CLOTH.mongolSash, torso, [0.86, 0.12, 0.58], [0, 0.12, 0], GLOSS);
+      parts.part('box', CLOTH.fur, torso, [0.62, 0.1, 0.54], [0, 0.76, 0], GLOSS);
       return;
     case 'hoplite':
       parts.part('box', CLOTH.bronze, torso, [0.84, 0.52, 0.56], [0, 0.46, 0], METAL);
@@ -770,11 +771,13 @@ function addHeadgear(parts: PartFactory, head: TransformNode, look: ActorLook): 
   }
   if (!look.helmet) return;
   if (look.outfit === 'mongol') {
-    // A pointed steel cap on a fur rim, with a little spike and flaps over the ears.
-    parts.part('box', CLOTH.fur, head, [HEAD + 0.1, 0.14, HEAD + 0.1], [0, half - 0.06, -0.01], GLOSS);
-    parts.part('cone', CLOTH.steel, head, [0.3, 0.32, 0.3], [0, half + 0.15, -0.01], METAL);
-    parts.part('box', CLOTH.steel, head, [0.04, 0.16, 0.04], [0, half + 0.36, -0.01], METAL);
-    for (const side of [-1, 1]) parts.part('box', CLOTH.fur, head, [0.06, 0.24, 0.22], [side * (half + 0.04), -0.06, -0.02], GLOSS);
+    // A round steel cap with a short spike, a thin fur band, leather flaps over the ears and neck.
+    parts.part('box', CLOTH.steel, head, [HEAD + 0.08, 0.2, HEAD + 0.08], [0, half - 0.02, -0.01], METAL);
+    parts.part('dome', CLOTH.steel, head, [HEAD + 0.06, 0.2, HEAD + 0.06], [0, half + 0.08, -0.01], METAL);
+    parts.part('box', CLOTH.steel, head, [0.05, 0.12, 0.05], [0, half + 0.24, -0.01], METAL);
+    parts.part('box', CLOTH.fur, head, [HEAD + 0.1, 0.06, HEAD + 0.1], [0, half - 0.12, -0.01], GLOSS);
+    for (const side of [-1, 1]) parts.part('box', CLOTH.leather, head, [0.05, 0.3, 0.26], [side * (half + 0.03), -0.06, -0.06], GLOSS);
+    parts.part('box', CLOTH.leather, head, [HEAD + 0.06, 0.3, 0.05], [0, -0.06, -half - 0.03], GLOSS);
     return;
   }
   if (look.outfit === 'hoplite') {

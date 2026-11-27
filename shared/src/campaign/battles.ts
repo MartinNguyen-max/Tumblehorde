@@ -165,7 +165,7 @@ export const STORY_COLORS: Record<Faction, string> = {
 };
 
 /** Peoples that fight as another faction in the simulation but wear their own colors. */
-export const PEOPLE_COLORS = { mongol: '#3A6A8A', greek: '#2E5AA8' } as const;
+export const PEOPLE_COLORS = { mongol: '#A8743A', greek: '#2E5AA8' } as const;
 
 /**
  * How the story's people look in each part of the story, named after the client's cast, so a

@@ -45,8 +45,11 @@ export const CLOTH = {
   leather: '#6E4528',
   boots: '#45291A',
   /** The Mongols: a long coat closed with a sash, fur at the collar and hat. */
-  mongolCoat: '#3A6A8A',
-  mongolSash: '#C8A040',
+  mongolCoat: '#A8743A',
+  mongolSash: '#2E8A8A',
+  /** Rows of small leather plates over the coat. */
+  lamellar: '#5E4030',
+  lamellarEdge: '#3E2A20',
   fur: '#7A5A3A',
   /** The Greeks: bronze armor over a blue tunic. */
   bronze: '#B8863A',

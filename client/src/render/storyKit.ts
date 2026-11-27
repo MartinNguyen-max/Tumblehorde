@@ -96,9 +96,10 @@ function addBody(parts: PartFactory, torso: TransformNode, look: ActorLook): voi
   }
   if (look.outfit === 'mongol') {
     parts.part('box', cloth.main, torso, [0.86, 0.4, 0.56], [0, 0.56, 0], GLOSS);
-    parts.part('box', CLOTH.mongolSash, torso, [0.86, 0.12, 0.58], [0, 0.82, 0], GLOSS);
-    parts.part('box', CLOTH.fur, torso, [0.92, 0.14, 0.6], [0, 1.4, 0], GLOSS);
-    parts.part('box', CLOTH.fur, torso, [0.3, 0.6, 0.03], [-0.12, 1.08, 0.27], SMALL).rotation.z = 0.35;
+    parts.part('box', CLOTH.lamellar, torso, [0.84, 0.52, 0.56], [0, 1.1, 0], GLOSS);
+    for (let row = 0; row < 3; row++) parts.part('box', CLOTH.lamellarEdge, torso, [0.86, 0.04, 0.58], [0, 0.94 + row * 0.15, 0], SMALL);
+    parts.part('box', CLOTH.mongolSash, torso, [0.88, 0.12, 0.58], [0, 0.82, 0], GLOSS);
+    parts.part('box', CLOTH.fur, torso, [0.62, 0.1, 0.54], [0, 1.4, 0], GLOSS);
     return;
   }
   parts.part('box', CLOTH.leather, torso, [0.86, 0.1, 0.58], [0, 0.82, 0], GLOSS);
@@ -139,9 +140,12 @@ function addHelmet(parts: PartFactory, head: TransformNode, look: ActorLook): Tr
   if (!look.helmet) return helmet;
   const half = HEAD / 2;
   if (look.outfit === 'mongol') {
-    parts.part('box', CLOTH.fur, helmet, [HEAD + 0.1, 0.14, HEAD + 0.1], [0, half - 0.06, -0.01], GLOSS);
-    parts.part('cone', CLOTH.steel, helmet, [0.3, 0.32, 0.3], [0, half + 0.15, -0.01], METAL);
-    parts.part('box', CLOTH.steel, helmet, [0.04, 0.16, 0.04], [0, half + 0.36, -0.01], METAL);
+    parts.part('box', CLOTH.steel, helmet, [HEAD + 0.08, 0.2, HEAD + 0.08], [0, half - 0.02, -0.01], METAL);
+    parts.part('dome', CLOTH.steel, helmet, [HEAD + 0.06, 0.2, HEAD + 0.06], [0, half + 0.08, -0.01], METAL);
+    parts.part('box', CLOTH.steel, helmet, [0.05, 0.12, 0.05], [0, half + 0.24, -0.01], METAL);
+    parts.part('box', CLOTH.fur, helmet, [HEAD + 0.1, 0.06, HEAD + 0.1], [0, half - 0.12, -0.01], GLOSS);
+    for (const side of [-1, 1]) parts.part('box', CLOTH.leather, helmet, [0.05, 0.3, 0.26], [side * (half + 0.03), -0.06, -0.06], GLOSS);
+    parts.part('box', CLOTH.leather, helmet, [HEAD + 0.06, 0.3, 0.05], [0, -0.06, -half - 0.03], GLOSS);
     return helmet;
   }
   const metal = armored(look) ?? CLOTH.steel;

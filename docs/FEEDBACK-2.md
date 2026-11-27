@@ -21,7 +21,7 @@ The player played again after round 1. Work list; items are ticked as they land.
 
 ## Scenes
 - [ ] The Mongol raid: terror, screams, fighting, the dead
-- [ ] Mongols look like our characters (not penguins)
+- [x] Mongols look like our characters (not penguins)
 - [ ] Marcus as a baby, so you can see he is Mongolian
 - [ ] Cassian in heaven with Varro, Anselm and the others after he dies
 - [ ] More scenes, better quality and details overall
