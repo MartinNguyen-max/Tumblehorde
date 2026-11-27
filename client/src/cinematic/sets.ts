@@ -29,19 +29,45 @@ export const SET_COLORS = {
   charred: '#2E2622',
 } as const;
 
-/** A box house with a pitched roof (two slanted slabs), a door and windows. */
-export function house(stage: Stage, x: number, z: number, w: number, d: number, h: number, yaw = 0, wall: string = SET_COLORS.stone): void {
+/**
+ * A whole house: a stone footing, walls, a pitched roof closed at both ends, a ridge, a chimney,
+ * a framed door and shuttered windows on every side.
+ */
+export function house(stage: Stage, x: number, z: number, w: number, d: number, h: number, yaw = 0, wall: string = SET_COLORS.stone): TransformNode {
   const g = stage.group('house', x, 0, z);
   g.rotation.y = yaw;
-  stage.world.parts.part('box', wall, g, [w, h, d], [0, h / 2, 0]);
+  const p = stage.world.parts;
+  const detail = { castShadow: false };
+  p.part('box', wall, g, [w, h, d], [0, h / 2, 0]);
+  p.part('box', SET_COLORS.stoneDark, g, [w + 0.1, 0.5, d + 0.1], [0, 0.25, 0], detail);
   const slope = 0.6;
   const run = w / 2 / Math.cos(slope);
+  const rise = Math.tan(slope) * w / 2;
   for (const side of [-1, 1]) {
-    const roof = stage.world.parts.part('box', SET_COLORS.roof, g, [run + 0.3, 0.18, d + 0.5], [side * w / 4, h + Math.tan(slope) * w / 4, 0]);
+    const roof = p.part('box', SET_COLORS.roof, g, [run + 0.4, 0.2, d + 0.6], [side * w / 4, h + rise / 2 + 0.05, 0]);
     roof.rotation.z = -side * slope;
   }
-  stage.world.parts.part('box', SET_COLORS.darkWood, g, [1.0, 1.9, 0.08], [0, 0.95, d / 2 + 0.02]);
-  for (const side of [-1, 1]) stage.world.parts.part('box', SET_COLORS.window, g, [0.6, 0.6, 0.06], [side * w / 3.2, h * 0.62, d / 2 + 0.02], { castShadow: false });
+  p.part('box', SET_COLORS.roofDark, g, [0.3, 0.22, d + 0.7], [0, h + rise + 0.08, 0], detail);
+  // The gable ends: the wall carried up into the roof's triangle, in steps.
+  const steps = 4;
+  for (let i = 0; i < steps; i++) {
+    const f = (i + 0.5) / steps;
+    for (const end of [-1, 1]) p.part('box', wall, g, [w * (1 - f) + 0.02, rise / steps + 0.02, 0.2], [0, h + rise * f - rise / (2 * steps), end * (d / 2 - 0.1)], detail);
+  }
+  p.part('box', SET_COLORS.stoneDark, g, [0.6, 1.4, 0.6], [w / 4, h + rise * 0.6, -d / 5]);
+  // A framed door, shuttered windows front and back, small windows on the sides.
+  p.part('box', SET_COLORS.stoneDark, g, [1.3, 2.2, 0.06], [0, 1.1, d / 2 + 0.02], detail);
+  p.part('box', SET_COLORS.darkWood, g, [1.0, 1.9, 0.08], [0, 0.95, d / 2 + 0.04]);
+  for (const face of [-1, 1]) {
+    for (const side of [-1, 1]) {
+      const wx = side * w / 3.2;
+      p.part('box', SET_COLORS.window, g, [0.6, 0.6, 0.06], [wx, h * 0.62, face * (d / 2 + 0.02)], detail);
+      p.part('box', SET_COLORS.wood, g, [0.22, 0.62, 0.05], [wx - 0.42, h * 0.62, face * (d / 2 + 0.04)], detail);
+      p.part('box', SET_COLORS.wood, g, [0.22, 0.62, 0.05], [wx + 0.42, h * 0.62, face * (d / 2 + 0.04)], detail);
+    }
+    p.part('box', SET_COLORS.window, g, [0.06, 0.5, 0.5], [face * (w / 2 + 0.02), h * 0.62, 0], detail);
+  }
+  return g;
 }
 
 /** A square bell tower with an open top and a bell. */

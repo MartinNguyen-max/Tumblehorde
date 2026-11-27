@@ -15,6 +15,26 @@ const BENCH_Z = 0;
 const ANSELM_X = -0.5;
 const CASSIAN_X = 0.5;
 
+const MONASTERY = {
+  soil: '#6A4E34',
+  sprout: '#5E9A3A',
+  flower: ['#E8C84A', '#D86A8A', '#F4F0E6', '#8A6AC8'],
+  hive: '#D8A040',
+  wool: '#F0ECE0',
+  face: '#2A2420',
+  chapel: '#C8BCA6',
+} as const;
+
+/** A sheep: a woolly box on four legs. */
+function sheep(stage: Stage, x: number, z: number, yaw: number): void {
+  const g = stage.group('sheep', x, 0, z);
+  g.rotation.y = yaw;
+  const p = stage.world.parts;
+  p.part('box', MONASTERY.wool, g, [0.6, 0.45, 0.9], [0, 0.55, 0]);
+  p.part('box', MONASTERY.face, g, [0.28, 0.3, 0.3], [0, 0.7, 0.55]);
+  for (const sx of [-0.2, 0.2]) for (const sz of [-0.3, 0.3]) p.part('box', MONASTERY.face, g, [0.1, 0.35, 0.1], [sx, 0.17, sz]);
+}
+
 /** The monastery; returns its bell tower, which the raiders bring down. */
 export function buildMonastery(stage: Stage): TransformNode {
   stage.ground(SET_COLORS.grass);
@@ -22,12 +42,36 @@ export function buildMonastery(stage: Stage): TransformNode {
   house(stage, -5, -9, 9, 5, 4.2, 0);
   house(stage, 7, -5, 5, 8, 3.6, Math.PI / 2);
   const tower = bellTower(stage, 2.5, -9.5);
+  // The chapel: long and tall, a round window, a cross on the gable.
+  const chapel = house(stage, -14, -13, 6, 11, 5.6, Math.PI / 2, MONASTERY.chapel);
+  stage.world.parts.part('cylinder', SET_COLORS.window, chapel, [0.5, 0.08, 0.5], [0, 4.4, 5.55]).rotation.x = Math.PI / 2;
+  stage.world.parts.part('box', SET_COLORS.darkWood, chapel, [0.16, 1.4, 0.16], [0, 8.4, 5.4]);
+  stage.world.parts.part('box', SET_COLORS.darkWood, chapel, [0.8, 0.16, 0.16], [0, 8.6, 5.4]);
   wall(stage, -11, 2, 10, Math.PI / 2);
   wall(stage, 11, 4, 8, Math.PI / 2);
+  wall(stage, -6, 9.5, 9, 0, 1.2);
   tree(stage, -6.5, -2.5, 1.1);
   tree(stage, 8, 6, 1.3);
   tree(stage, -14, -1, 1.5);
+  tree(stage, -18, 6, 1.2);
   bench(stage, 0, BENCH_Z);
+  // The garden: rows of vegetables, beehives, a well with a little roof.
+  stage.box(MONASTERY.soil, [6, 0.06, 4], [-7, 0.02, 6], 0, { castShadow: false });
+  for (let row = 0; row < 4; row++) for (let i = 0; i < 8; i++) stage.shape('bush', MONASTERY.sprout, [0.3, 0.22, 0.3], [-9.6 + i * 0.75, 0.12, 4.5 + row * 1]);
+  for (let i = 0; i < 3; i++) {
+    stage.box(MONASTERY.hive, [0.6, 0.7, 0.6], [-1.5 + i * 1.1, 0.35, 7.5]);
+    stage.box(SET_COLORS.roof, [0.7, 0.1, 0.7], [-1.5 + i * 1.1, 0.75, 7.5]);
+  }
+  stage.shape('cylinder', SET_COLORS.stone, [0.8, 0.8, 0.8], [-3, 0.4, 3.6]);
+  for (const x of [-3.6, -2.4]) stage.box(SET_COLORS.darkWood, [0.12, 1.8, 0.12], [x, 0.9, 3.6]);
+  const well = stage.box(SET_COLORS.roof, [1.6, 0.1, 1.2], [-3, 1.85, 3.6]);
+  well.rotation.z = 0.2;
+  // A path down to the river, flowers along it, sheep grazing.
+  stage.box(SET_COLORS.dirt, [10, 0.03, 1.6], [9, 0.01, 11], 0, { castShadow: false });
+  for (let i = 0; i < 24; i++) stage.shape('bush', MONASTERY.flower[i % MONASTERY.flower.length] ?? SET_COLORS.leaves, [0.18, 0.14, 0.18], [4 + (i % 12) * 0.9, 0.08, 10 + Math.floor(i / 12) * 2]);
+  sheep(stage, 5, 15, 0.6);
+  sheep(stage, 7.4, 16.5, -0.4);
+  sheep(stage, 3.6, 17.2, 2.2);
   scatter(stage, 0, 4, 12, 40);
   return tower;
 }
@@ -50,6 +94,10 @@ export const prologueMorning: Cutscene = {
     const block = woodBlock(stage.world.parts, cassian.grips[0]);
     const cross = upright(woodenCross(stage.world.parts, cassian.grips[0], 1.3));
     cross.setEnabled(false);
+    // The brothers at their morning work.
+    stage.actor('Brother Paul', { outfit: 'monk', hair: HAIR.brown, hairStyle: 'tonsure', beard: 'short' }).place(-7, 5, 0.3).setPose('carve', true);
+    stage.actor('Brother Tomas', { outfit: 'monk', hair: HAIR.black, hairStyle: 'tonsure', beard: 'short' }).place(-3, 2.6, Math.PI).setPose('offer', true);
+    stage.actor('Brother Ivo', { outfit: 'monk', hair: HAIR.grey, hairStyle: 'tonsure', beard: 'long', age: 'old' }).place(2.5, -7.6, Math.PI).setPose('pray', true);
     anselm.setStance('sit', true);
     cassian.setStance('sit', true);
     anselm.settle();

@@ -206,37 +206,79 @@ export function ruinedMonastery(stage: Stage): void {
 export interface Cell {
   /** Scratches `n` tally marks on the wall. */
   tally: (n: number) => void;
-  window: TransformNode;
-  /** The pane behind the bars; its color shows the season outside. */
-  pane: ReturnType<Stage['box']>;
+  /** The view through the window: 0 summer, 1 autumn, 2 winter, 3 spring (wraps round). */
+  season: (i: number) => void;
+  /** The middle of the window, for shots through it. */
+  window: { x: number; y: number; z: number };
 }
 
-/** A prison cell: stone walls, a barred window high up, a plank bed. */
+/** The world outside the cell window, one look per season. */
+const OUTSIDE = [
+  { sky: '#8EC9EE', hill: '#6E9A48', leaves: '#4E8E3A', ground: '#6E9A48', flakes: null },
+  { sky: '#E8B888', hill: '#9A8A48', leaves: '#D8782A', ground: '#8A7A48', flakes: '#C8622A' },
+  { sky: '#C8D4E0', hill: '#EEF2F6', leaves: null, ground: '#EEF2F6', flakes: '#FFFFFF' },
+  { sky: '#A8D8F0', hill: '#88B868', leaves: '#F0A8C8', ground: '#7AAA58', flakes: '#F8C8D8' },
+] as const;
+const WINDOW = { x: 1.0, y: 2.7, width: 1.4, height: 1.0 } as const;
+
+/** A prison cell: stone walls, a barred window high up onto a hill and a tree, a plank bed. */
 export function prisonCell(stage: Stage): Cell {
+  const wallZ = -2.4;
+  const half = { w: WINDOW.width / 2, h: WINDOW.height / 2 };
   stage.box(STORY_COLORS.cellWall, [6, 0.1, 6], [0, -0.05, 0], 0, { castShadow: false });
-  stage.box(STORY_COLORS.cellWall, [6, 4, 0.4], [0, 2, -2.4]);
+  // The back wall, built round the window opening.
+  const left = WINDOW.x - half.w + 3;
+  const right = 3 - (WINDOW.x + half.w);
+  stage.box(STORY_COLORS.cellWall, [left, 4, 0.4], [-3 + left / 2, 2, wallZ]);
+  stage.box(STORY_COLORS.cellWall, [right, 4, 0.4], [3 - right / 2, 2, wallZ]);
+  stage.box(STORY_COLORS.cellWall, [WINDOW.width, WINDOW.y - half.h, 0.4], [WINDOW.x, (WINDOW.y - half.h) / 2, wallZ]);
+  stage.box(STORY_COLORS.cellWall, [WINDOW.width, 4 - WINDOW.y - half.h, 0.4], [WINDOW.x, (4 + WINDOW.y + half.h) / 2, wallZ]);
+  for (let i = 0; i < 5; i++) stage.box(STORY_COLORS.bars, [0.06, WINDOW.height, 0.08], [WINDOW.x - half.w + 0.23 + i * 0.235, WINDOW.y, wallZ + 0.05], 0, { metal: true });
+  stage.box(STORY_COLORS.bars, [WINDOW.width, 0.06, 0.08], [WINDOW.x, WINDOW.y, wallZ + 0.05], 0, { metal: true });
   for (const side of [-1, 1]) stage.box(STORY_COLORS.cellWall, [0.4, 4, 6], [side * 2.6, 2, 0]);
   stage.box(STORY_COLORS.log, [0.9, 0.4, 2], [-1.8, 0.2, -0.6]);
-  const window = stage.group('window', 1.0, 2.8, -2.18);
-  const pane = stage.world.parts.part('box', STORY_COLORS.sky, window, [1.0, 0.7, 0.05], [0, 0, 0], { castShadow: false });
-  for (let i = 0; i < 4; i++) stage.world.parts.part('box', STORY_COLORS.bars, window, [0.06, 0.75, 0.08], [-0.36 + i * 0.24, 0, 0.03], { metal: true });
+  // Outside: sky, a hill, a lone tree, and whatever the season blows past the bars.
+  const looks = OUTSIDE.map((o, k) => {
+    const g = stage.group(`season-${k}`, 0, 0, 0);
+    const p = stage.world.parts;
+    // Lit by the day outside, not by the cell's gloom.
+    const off = { castShadow: false, glow: true };
+    p.part('box', o.sky, g, [14, 10, 0.2], [WINDOW.x, 3, -9], off);
+    p.part('rock', o.hill, g, [7, 2.6, 3], [WINDOW.x - 1.5, 0.6, -7], off);
+    p.part('rock', o.hill, g, [6, 2.2, 3], [WINDOW.x + 3, 0.8, -7.5], off);
+    p.part('box', o.ground, g, [14, 0.1, 6], [WINDOW.x, 1.6, -5.6], off);
+    p.part('box', '#5E3E22', g, [0.3, 2.2, 0.3], [WINDOW.x + 1.3, 2.6, -7.5], off);
+    p.part('box', '#5E3E22', g, [0.9, 0.14, 0.14], [WINDOW.x + 1.6, 3.2, -7.5], off).rotation.z = 0.5;
+    if (o.leaves) {
+      p.part('bush', o.leaves, g, [1.3, 1.1, 1.0], [WINDOW.x + 1.3, 4.1, -7.5], off);
+      p.part('bush', o.leaves, g, [0.8, 0.7, 0.7], [WINDOW.x + 1.9, 3.7, -7.4], off);
+    } else {
+      p.part('box', '#FFFFFF', g, [0.6, 0.1, 0.3], [WINDOW.x + 1.6, 3.55, -7.5], off);
+    }
+    if (o.flakes) {
+      for (let i = 0; i < 14; i++) p.part('box', o.flakes, g, [0.05, 0.05, 0.05], [WINDOW.x - 0.8 + ((i * 37) % 16) / 10, 2.3 + ((i * 53) % 12) / 10, -3.2 - (i % 3) * 0.4], off);
+    }
+    return g;
+  });
+  const season = (i: number): void => looks.forEach((g, k) => g.setEnabled(k === ((i % looks.length) + looks.length) % looks.length));
+  season(0);
   let made = 0;
   const tally = (n: number): void => {
     for (let i = made; i < n; i++) {
       const group = Math.floor(i / 5);
       const within = i % 5;
-      const x = -2.1 + (group % 10) * 0.34 + within * 0.05;
-      const y = 0.9 + Math.floor(group / 10) * 0.34;
+      const x = -2.1 + (group % 9) * 0.32 + within * 0.05;
+      const y = 0.9 + Math.floor(group / 9) * 0.3;
+      if (x > WINDOW.x - half.w - 0.2 && y > WINDOW.y - half.h - 0.2) continue;
       const cross = within === 4;
-      const mark = stage.box(STORY_COLORS.tally, cross ? [0.3, 0.025, 0.02] : [0.02, 0.26, 0.02], [cross ? x - 0.1 : x, y, -2.19], 0, { castShadow: false });
+      const mark = stage.box(STORY_COLORS.tally, cross ? [0.3, 0.025, 0.02] : [0.02, 0.26, 0.02], [cross ? x - 0.1 : x, y, wallZ + 0.21], 0, { castShadow: false });
       if (cross) mark.rotation.z = 0.5;
     }
     made = Math.max(made, n);
   };
-  return { tally, window, pane };
+  return { tally, season, window: { x: WINDOW.x, y: WINDOW.y, z: wallZ } };
 }
 
-/** A row of army tents along local x. */
 export function tents(stage: Stage, x: number, z: number, count: number, yaw = 0): void {
   for (let i = 0; i < count; i++) {
     const g = stage.group('tent', x + Math.cos(yaw) * i * 3.2, 0, z - Math.sin(yaw) * i * 3.2);

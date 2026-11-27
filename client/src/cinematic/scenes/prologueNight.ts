@@ -27,22 +27,27 @@ function river(stage: Stage): void {
 
 /** The fleet: a first wave beaching at once, a second rounding the bend behind it. */
 const FLEET = {
+  /** Every ship rows at the same speed (m/s); they only start at different times. */
+  speed: 7,
   first: [
-    { x: RIVER_X, from: -45, to: -11 },
-    { x: RIVER_X + 4, from: -55, to: -17 },
-    { x: RIVER_X - 1.5, from: -66, to: -24 },
+    { x: RIVER_X, from: -45, to: 9, delay: 0 },
+    { x: RIVER_X + 4, from: -55, to: 14, delay: 0.6 },
+    { x: RIVER_X - 1.5, from: -66, to: 4, delay: 1.2 },
   ],
   second: [
-    { x: RIVER_X + 2, from: -95, to: -31 },
-    { x: RIVER_X + 5.5, from: -104, to: -38 },
-    { x: RIVER_X - 1, from: -112, to: -45 },
-    { x: RIVER_X + 3, from: -122, to: -52 },
-    { x: RIVER_X + 6, from: -130, to: -60 },
+    { x: RIVER_X + 2, from: -95, to: -4, delay: 0 },
+    { x: RIVER_X + 5.5, from: -104, to: -12, delay: 0.5 },
+    { x: RIVER_X - 1, from: -112, to: -20, delay: 1 },
+    { x: RIVER_X + 3, from: -122, to: -28, delay: 1.5 },
+    { x: RIVER_X + 6, from: -130, to: -36, delay: 2 },
   ],
 } as const;
+/** Where the raiders come ashore (south of the houses), and the gap they run through into the yard. */
+const LANDING = { x: RIVER_X - 4, z: 10 } as const;
+const YARD_GATE = { x: 8.5, z: 10.5 } as const;
 /** Where the brothers stand in the yard, and where the raider who reaches each one ends up. */
 const BROTHERS = [
-  { x: -5, z: -3 }, { x: 3, z: -4 }, { x: -2.5, z: -6 }, { x: 5.5, z: 0.5 }, { x: -7, z: 1.5 }, { x: 1, z: -1.5 },
+  { x: -5, z: -3 }, { x: 1.2, z: -4.2 }, { x: -2.5, z: -6 }, { x: 5.5, z: 0.5 }, { x: -7, z: 1.5 }, { x: 1, z: -1.5 },
 ] as const;
 const BROTHER_NAMES = ['Brother Paul', 'Brother Tomas', 'Brother Ivo', 'Brother Benet', 'Brother Odo', 'Brother Simon'] as const;
 const RAIDERS = 14;
@@ -59,9 +64,9 @@ export const prologueRaid: Cutscene = {
     const cross = upright(woodenCross(stage.world.parts, cassian.grips[0], 1.3));
     const anselm = cast(stage, 'anselm', 'Anselm').place(-3, -5, 0.4);
     const monks = BROTHERS.map((at, i) => cast(stage, 'monk', BROTHER_NAMES[i] ?? 'Brother', i % 2 === 1 ? { hair: HAIR_BLACK } : {}).place(at.x, at.z, 0.2 + i * 0.7));
-    const hrolf = cast(stage, 'hrolf', 'Hrolf').place(RIVER_X - 4, -8, -Math.PI / 2);
+    const hrolf = cast(stage, 'hrolf', 'Hrolf').place(LANDING.x - 1.5, LANDING.z - 1.5, -Math.PI / 2);
     const raiders = Array.from({ length: RAIDERS }, (_, i) =>
-      cast(stage, 'viking', `Raider ${i}`, i % 3 === 0 ? { hair: '#C8823A', beardColor: '#C8823A' } : {}).place(RIVER_X - 3 - (i % 4) * 1.2, -6 - Math.floor(i / 4) * 2.5 - (i % 2), -Math.PI / 2),
+      cast(stage, 'viking', `Raider ${i}`, i % 3 === 0 ? { hair: '#C8823A', beardColor: '#C8823A' } : {}).place(LANDING.x + (i % 4) * 1.2, LANDING.z + Math.floor(i / 4) * 1.6, -Math.PI / 2),
     );
     for (const [i, raider] of [hrolf, ...raiders].entries()) {
       if (i % 2 === 0) {
@@ -109,11 +114,18 @@ export const prologueRaid: Cutscene = {
       cross.position.set(DROP.x, 0.05, DROP.z);
       cross.rotation.set(Math.PI / 2, 0.6, 0);
     };
-    const sail = (boats: readonly TransformNode[], plan: readonly { from: number; to: number }[], p: number): void => {
+    /** Ships `seconds` into their row: all at one speed, each from its own start time. */
+    const sail = (boats: readonly TransformNode[], plan: readonly { from: number; to: number; delay: number }[], seconds: number): void => {
       boats.forEach((boat, i) => {
         const b = plan[i];
-        if (b) boat.position.z = b.from + (b.to - b.from) * Math.min(1, p);
+        if (b) boat.position.z = Math.min(b.to, b.from + Math.max(0, seconds - b.delay) * FLEET.speed);
       });
+    };
+    const ARRIVED = 30;
+    /** Where raider `i` stops: next to the brother he goes for, or by the houses. */
+    const goalOf = (i: number): { x: number; z: number } => {
+      const brother = BROTHERS[i];
+      return brother ? { x: brother.x + 1.1, z: brother.z - 0.4 } : { x: -4 + (i % 5) * 2.4, z: 2 + (i % 3) * 1.5 };
     };
     const horse = stage.horse();
     horse.place(-2, 6, Math.PI / 2);
@@ -125,13 +137,13 @@ export const prologueRaid: Cutscene = {
         music: 'silence',
         sound: 'wind',
         shot: { from: [RIVER_X - 10, 3, -12], at: [RIVER_X, 1.5, -35], to: [RIVER_X - 9, 2.5, -10], fov: FOV.normal },
-        during: (_s, p) => sail(first, FLEET.first, p * 0.8),
+        during: (_s, p) => sail(first, FLEET.first, p * 6),
         narrate: 'Then, one autumn night, the river brought dragons.',
       },
       {
         shot: () => portrait(cassian, { angle: 0.3 }),
         run: () => {
-          sail(first, FLEET.first, 0.85);
+          sail(first, FLEET.first, 6);
           cassian.setMood('surprised').lookAt({ x: RIVER_X, y: 2, z: -10 });
         },
         sound: 'horn',
@@ -140,10 +152,10 @@ export const prologueRaid: Cutscene = {
       {
         duration: 6,
         sound: 'horn',
-        shot: { from: [RIVER_X - 6, 9, -4], at: [RIVER_X + 2, 0, -60], to: [RIVER_X - 4, 12, -8], fov: FOV.wide },
+        shot: { from: [RIVER_X - 12, 13, 14], at: [RIVER_X + 2, 0, -34], to: [RIVER_X - 10, 15, 18], fov: FOV.wide },
         during: (_s, p) => {
-          sail(first, FLEET.first, 0.85 + p * 0.15);
-          sail(second, FLEET.second, p);
+          sail(first, FLEET.first, 6 + p * 6);
+          sail(second, FLEET.second, p * 8);
         },
         narrate: 'Not one ship. Not three. They kept coming round the bend, one dragon after another.',
       },
@@ -157,7 +169,8 @@ export const prologueRaid: Cutscene = {
         music: 'dread',
         shot: () => portrait(hrolf, { angle: 0.2, distance: 3.2, rise: -0.45 }),
         run: () => {
-          sail(second, FLEET.second, 1);
+          sail(first, FLEET.first, ARRIVED);
+          sail(second, FLEET.second, ARRIVED);
           for (const raider of [hrolf, ...raiders]) raider.root.setEnabled(true);
           hrolf.setMood('angry');
         },
@@ -169,14 +182,19 @@ export const prologueRaid: Cutscene = {
       {
         duration: 5,
         sound: 'crowd',
-        shot: { from: [RIVER_X + 1, 3, 2], at: [RIVER_X - 8, 1.5, -10], to: [RIVER_X - 1, 3.5, 4], fov: FOV.wide },
+        shot: { from: [RIVER_X - 3, 3.4, 0], at: [RIVER_X - 8, 1.2, 11], to: [RIVER_X - 6, 3.8, -1], fov: FOV.wide },
         run: () => {
+          // Up from the boats, through the gap by the garden wall, then at the brothers.
+          raiders.forEach((raider, i) => raider.setMood('shout').walkTo(YARD_GATE.x - (i % 3), YARD_GATE.z + (i % 2), 4.5 + (i % 3) * 0.6));
+          hrolf.walkTo(YARD_GATE.x + 1, YARD_GATE.z + 2, 2.2);
+        },
+        during: (_s, p) => {
+          if (p < 0.55) return;
           raiders.forEach((raider, i) => {
-            const brother = BROTHERS[i];
-            const goal = brother ? { x: brother.x + 1.1, z: brother.z - 0.4 } : { x: -4 + (i % 5) * 3, z: -9 + (i % 3) * 2 };
-            raider.setMood('shout').walkTo(goal.x, goal.z, 4.5 + (i % 3) * 0.6);
+            const goal = goalOf(i);
+            raider.walkTo(goal.x, goal.z, 4.5 + (i % 3) * 0.6);
           });
-          hrolf.walkTo(6, -2, 2.2);
+          hrolf.walkTo(5, 1.5, 2.2);
         },
         narrate: 'They came up from the river screaming, all of them at once.',
       },
@@ -187,6 +205,10 @@ export const prologueRaid: Cutscene = {
         run: () => {
           if (!burning) burn();
           burning = true;
+          raiders.forEach((raider, i) => {
+            const goal = goalOf(i);
+            raider.walkTo(goal.x, goal.z, 5);
+          });
           for (const monk of monks) monk.setPose('cower').setMood('afraid');
         },
         during: (_s, p) => {
@@ -443,17 +465,13 @@ export const prologueRoad: Cutscene = {
   },
 };
 
-/** The window shows the season: summer, autumn, winter, spring. */
-const SEASONS = ['#9FD0F0', '#E8A85A', '#F4F6F8', '#B8E0A8'] as const;
 
 export const prologuePrison: Cutscene = {
   id: 'prologue-prison',
   create(stage: Stage): Beat[] {
     stage.light('prison');
     const cell = prisonCell(stage);
-    const panes = SEASONS.map((color) => stage.world.parts.part('box', color, cell.window, [0.98, 0.68, 0.04], [0, 0, 0.005], { castShadow: false }));
-    const season = (i: number): void => panes.forEach((p, k) => p.setEnabled(k === i % SEASONS.length));
-    season(0);
+    const season = cell.season;
     // Sunbeam from the window.
     stage.box('#FFF0C8', [0.9, 0.04, 2.6], [0.6, 0.02, -0.6], 0.2, { castShadow: false });
     const young = cast(stage, 'cassianYoung', 'Cassian', { outfit: 'rags', hairStyle: 'short', beard: 'stubble' });
@@ -523,8 +541,8 @@ export const prologuePrison: Cutscene = {
         during: (_s, p) => cell.tally(Math.ceil(p * 5)),
       },
       {
-        duration: 8,
-        shot: { from: [0.2, 2.0, 0.9], at: [0.6, 2.2, -2.2], to: [0.3, 1.7, 0.2], fov: FOV.normal },
+        duration: 12,
+        shot: { from: [0.5, 2.2, 0.4], at: [1.0, 2.6, -4], to: [0.8, 2.4, -1.2], fov: FOV.normal },
         during: (_s, p) => {
           season(Math.floor(p * 12));
           cell.tally(5 + Math.floor(p * 90));

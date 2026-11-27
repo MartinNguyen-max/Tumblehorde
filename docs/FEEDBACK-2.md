@@ -3,9 +3,9 @@
 The player played again after round 1. Work list; items are ticked as they land.
 
 ## Prologue
-- [ ] The monastery: whole houses (roofs closed, gable ends), more detail
-- [ ] The raid: ships at one steady speed; raiders run round houses, never through them
-- [ ] The prison window: a real view outside that changes with the seasons
+- [x] The monastery: whole houses (roofs closed, gable ends), more detail
+- [x] The raid: ships at one steady speed; raiders run round houses, never through them
+- [x] The prison window: a real view outside that changes with the seasons
 
 ## The city
 - [x] Jumping works; walking around looks and feels like the battle game
