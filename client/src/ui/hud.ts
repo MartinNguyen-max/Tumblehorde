@@ -600,7 +600,10 @@ export class Hud {
       return;
     }
     const palette = paletteForArmy(view.armies, best.armyId, view.mode);
-    this.foeLabel.textContent = `× ${best.count}`;
+    // In the story, the label says who they are: "Bandits × 10".
+    const name = this.story ? view.armies[best.armyId]?.name : undefined;
+    const text = name ? `${name} × ${best.count}` : `× ${best.count}`;
+    if (this.foeLabel.textContent !== text) this.foeLabel.textContent = text;
     this.foeLabel.style.background = `${palette.body}D9`;
     this.place(this.foeLabel, ctx, best.x, best.y + FOE_LABEL_HEIGHT, best.z);
   }

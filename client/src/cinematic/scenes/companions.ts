@@ -113,7 +113,7 @@ export const forestRoadAfter: Cutscene = {
       {
         shot: () => overShoulder(felix, cassian),
         run: () => felix.setMood('happy').lookAt(cassian.headPosition()),
-        say: { who: 'Felix', text: 'You came out of nowhere! Five of them! I am Felix. That big lump is my brother Rufus.', mood: 'happy' },
+        say: { who: 'Felix', text: 'You came out of nowhere! Ten of them! I am Felix. That big lump is my brother Rufus.', mood: 'happy' },
       },
       {
         duration: 2.4,

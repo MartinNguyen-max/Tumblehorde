@@ -260,13 +260,13 @@ export const prologueRaid: Cutscene = {
 };
 
 /** The road south: pines pressed close on both sides, dead trees, mud. */
-const ROAD = { length: 150, step: 2.3, rows: [3.4, 6.2, 9.5, 13.5] } as const;
+const ROAD = { length: 150, step: 2.3, width: 4, rows: [4.8, 7.6, 10.8, 14.6] } as const;
 const PINES = ['#24402C', '#2C4A32', '#1E3626'] as const;
 /** A mushroom, eaten on the fourth day. */
 const MUSHROOM = { cap: '#C8423A', stem: '#E8E0CC' } as const;
 
-function roadForest(stage: Stage): void {
-  stage.box(SET_COLORS.dirt, [3, 0.06, ROAD.length], [0, 0, 0], 0, { castShadow: false });
+export function roadForest(stage: Stage): void {
+  stage.box(SET_COLORS.dirt, [ROAD.width, 0.06, ROAD.length], [0, 0, 0], 0, { castShadow: false });
   let i = 0;
   for (let z = -ROAD.length / 2; z < ROAD.length / 2; z += ROAD.step) {
     for (const [row, x] of ROAD.rows.entries()) {
@@ -504,9 +504,9 @@ export const prologuePrison: Cutscene = {
       },
       {
         duration: 3.5,
-        shot: { from: [-0.6, 1.3, 2.6], at: young, fov: FOV.normal },
+        shot: { from: [-1.0, 1.5, 2.4], at: [1.2, 0.6, 0.6], fov: FOV.normal },
         run: () => {
-          young.setStance('pose').place(1.2, 0.5, Math.PI * 0.35).setPose('reach').setMood('angry');
+          young.setStance('pose').place(0.6, -0.2, 0.75).setPose('reach').setMood('angry');
           rat.position.set(1.75, 0, 1.0);
         },
         say: { who: 'Cassian', text: 'Augustus. That is MY half.', mood: 'angry' },
