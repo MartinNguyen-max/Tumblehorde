@@ -556,7 +556,7 @@ export class Hud {
     if (unit.hero) return unit.hero;
     const army = view.armies[unit.armyId];
     if (!army || army.id === this.myArmyId) return null;
-    if (unit.kind === 'commander') return army.name;
+    if (unit.kind === 'commander') return army.commanderName ?? army.name;
     // A one-man army (an arena fighter) goes by its name.
     return army.isBot && army.startingSoldiers === 1 && unit.kind !== 'horse' ? army.name : null;
   }

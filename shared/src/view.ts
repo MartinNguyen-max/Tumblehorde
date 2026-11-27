@@ -55,6 +55,7 @@ export interface ArmyView {
   /** Story battles: cloth color and named people's looks. */
   color: string | null;
   looks: Readonly<Record<string, string>>;
+  commanderName: string | null;
   eliminated: boolean;
   forfeited: boolean;
   groupCount: number;
@@ -140,6 +141,7 @@ export function matchView(state: MatchState): MatchView {
       faction: army.faction,
       color: army.color,
       looks: army.looks,
+      commanderName: army.commanderName,
       eliminated: army.eliminated,
       forfeited: army.forfeited,
       groupCount: army.groupCount,

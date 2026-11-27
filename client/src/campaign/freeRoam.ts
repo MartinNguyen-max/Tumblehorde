@@ -312,6 +312,8 @@ export class FreeRoam {
   private openTalk(npc: Npc): void {
     const dialogue = (npc.dialogue ? this.deps.dialogueFor(npc.dialogue) : null) ?? smallTalk(npc, this.rng);
     startTalk(npc, this.walker.pos);
+    // A talk started mid-jump lands at once; the walker only falls while walking.
+    delete this.walker.air;
     this.walker.yaw = Math.atan2(npc.pos.x - this.walker.pos.x, npc.pos.z - this.walker.pos.z);
     this.walker.speed = 0;
     this.talk = { npc, dialogue, cursor: openDialogue(dialogue), effect: null, choosing: false };

@@ -315,8 +315,18 @@ function heroesFor(save: CampaignSave, chapter: ChapterId): HeroId[] {
   return heroesIn(chapter, save.choices.eirikSpared);
 }
 
-/** The battle of a battle chapter, or null for chapters without one. */
+/** The battle of a battle chapter, or null for chapters without one. Generals go by their own names. */
 export function campaignBattle(chapter: ChapterId, save: CampaignSave): CampaignBattle | null {
+  const battle = buildBattle(chapter, save);
+  if (!battle) return null;
+  const armies = battle.settings.armies.map((setup, i) => {
+    const name = battle.commanders[i];
+    return name ? { ...setup, commanderName: name } : setup;
+  });
+  return { ...battle, settings: { ...battle.settings, armies } };
+}
+
+function buildBattle(chapter: ChapterId, save: CampaignSave): CampaignBattle | null {
   const heroes = heroesFor(save, chapter);
   const rout: BattleGoal = { kind: 'rout' };
   const objective = BATTLE_OBJECTIVES[chapter] ?? 'Win the battle';

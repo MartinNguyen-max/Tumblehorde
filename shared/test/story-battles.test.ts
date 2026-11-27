@@ -132,6 +132,7 @@ describe('the story battles', () => {
     const hrolf = battle.settings.armies.find((a) => a.name === 'Hrolf');
     expect(hrolf?.team).toBe(0);
     expect(battle.commanders[battle.warlordArmy!]).toBe('Jorgai the Hawk');
+    expect(createMatch(battle.settings).armies[battle.warlordArmy!]!.commanderName).toBe('Jorgai the Hawk');
   });
 
   it('the gate: Cassian alone, on foot, against five', () => {

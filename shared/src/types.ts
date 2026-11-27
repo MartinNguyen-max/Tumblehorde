@@ -174,6 +174,8 @@ export interface Army {
   /** Story battles: cloth color and named people's looks (see `ArmySetup`). */
   color: string | null;
   looks: Readonly<Record<string, string>>;
+  /** Story battles: the name over the commander's head (a general, a khan), if not the army's. */
+  commanderName: string | null;
   /** Bot armies have no commander: they run themselves. */
   commanderId: EntityId | null;
   soldierIds: EntityId[];
@@ -272,6 +274,8 @@ export interface ArmySetup {
    * names, and `commander` for the army's commander; values name a look in the client's cast.
    */
   looks?: Readonly<Record<string, string>>;
+  /** Story battles: the name over the commander's head, if not the army's ("Jorgai the Hawk" leads "Mongols"). */
+  commanderName?: string;
   /** Campaign: hit points of every fighter in the army, and multipliers on their damage and shield. */
   kit?: FighterKit;
 }

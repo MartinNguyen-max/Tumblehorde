@@ -131,6 +131,7 @@ function createArmy(
     faction,
     color: setup?.color ?? null,
     looks: setup?.looks ?? {},
+    commanderName: setup?.commanderName ?? null,
     commanderId: commander?.id ?? null,
     soldierIds,
     groupCount: ARMY_GROUPS,
