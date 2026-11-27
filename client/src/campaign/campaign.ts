@@ -5,7 +5,13 @@ import { CinematicOverlay } from '../cinematic/overlay.ts';
 import { CutscenePlayer } from '../cinematic/player.ts';
 import type { CinematicSound, Cutscene } from '../cinematic/script.ts';
 import { CUTSCENES } from '../cinematic/scenes/index.ts';
+import { Stage } from '../cinematic/stage.ts';
+import type { ActorLook } from '../cinematic/actor.ts';
+import { HAIR } from '../cinematic/config.ts';
 import { CampaignPause } from './pause.ts';
+import { EFFECT } from './dialogues.ts';
+import { type DistrictSet, MARKET_SQUARE } from './districts.ts';
+import { FreeRoam } from './freeRoam.ts';
 import { loadSave, writeSave } from './storage.ts';
 
 /** Seconds the loading card with the chapter's line stays up. */
@@ -16,10 +22,19 @@ const CHAPTER_SCENES: Partial<Record<ChapterId, readonly string[]>> = {
   prologue: ['prologue-morning'],
 };
 
+/** Where each free-roam chapter is walked. */
+const CHAPTER_DISTRICTS: Partial<Record<ChapterId, DistrictSet>> = {
+  capital: MARKET_SQUARE,
+};
+
+/** Cassian after the years in prison: rags, long hair and a beard. */
+const CASSIAN_FREED: ActorLook = { outfit: 'rags', hair: HAIR.brown, hairStyle: 'long', beard: 'long', beardColor: HAIR.brown };
+
 export interface CampaignDeps {
   world: World;
   input: InputState;
   sound: CinematicSound | null;
+  canvas: HTMLCanvasElement;
   /** Back to the main menu. */
   onExit: () => void;
 }
@@ -28,6 +43,7 @@ type Phase =
   | { kind: 'idle' }
   | { kind: 'loading'; chapter: Chapter; timer: number }
   | { kind: 'cutscene'; chapter: Chapter; scenes: readonly Cutscene[]; index: number }
+  | { kind: 'roam'; chapter: Chapter; roam: FreeRoam }
   | { kind: 'unbuilt'; chapter: Chapter };
 
 /**
@@ -94,8 +110,38 @@ export class Campaign {
       this.playScene(scenes[0]);
       return;
     }
+    const district = CHAPTER_DISTRICTS[chapter.id];
+    if (chapter.kind === 'freeRoam' && district) {
+      this.startRoam(chapter, district);
+      return;
+    }
     this.phase = { kind: 'unbuilt', chapter };
     this.pause.showUnbuilt(chapter.title);
+  }
+
+  private startRoam(chapter: Chapter, district: DistrictSet): void {
+    const { input, sound, canvas, world } = this.deps;
+    const deps = { input, sound, canvas, overlay: this.overlay, onEffect: (effect: string) => this.roamEffect(chapter, effect) };
+    const roam = new FreeRoam(new Stage(world), deps, district, CASSIAN_FREED);
+    this.phase = { kind: 'roam', chapter, roam };
+  }
+
+  private roamEffect(chapter: Chapter, effect: string): void {
+    if (effect !== EFFECT.acceptJob) return;
+    this.endRoam();
+    this.finishChapter(chapter.id);
+  }
+
+  private endRoam(): void {
+    if (this.phase.kind !== 'roam') return;
+    this.phase.roam.dispose();
+    this.phase.roam.stage.dispose();
+    this.overlay.hide();
+  }
+
+  /** Jumps straight to a chapter with a fresh save (for testing chapters). */
+  startAt(id: ChapterId): void {
+    this.begin({ ...newSave(Date.now()), chapter: id });
   }
 
   private playScene(scene: Cutscene | undefined): void {
@@ -147,6 +193,7 @@ export class Campaign {
       return;
     }
     if (phase.kind === 'cutscene') this.player.update(dt, this.deps.input.isHeld('Space'));
+    if (phase.kind === 'roam') phase.roam.update(dt);
   }
 
   /** Leaves the story; progress stays saved at the last checkpoint. */
@@ -156,6 +203,7 @@ export class Campaign {
   }
 
   stop(): void {
+    this.endRoam();
     this.phase = { kind: 'idle' };
     this.single = false;
     this.player.stop();

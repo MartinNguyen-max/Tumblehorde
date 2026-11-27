@@ -27,6 +27,8 @@ export class CinematicOverlay {
   private readonly skipFill: HTMLElement;
   private readonly loading: HTMLDivElement;
   private choiceKeys: ((e: KeyboardEvent) => void) | null = null;
+  private readonly talkBox: HTMLDivElement;
+  private readonly promptBox: HTMLDivElement;
 
   constructor() {
     this.root = el('div', 'cine', document.body);
@@ -43,6 +45,10 @@ export class CinematicOverlay {
     this.skipFill = el('i', '', meter);
     this.fadeLayer = el('div', 'cine-fade', this.root);
     this.loading = el('div', 'cine-loading', document.body);
+    this.talkBox = el('div', 'cine-talk', document.body);
+    this.talkBox.hidden = true;
+    this.promptBox = el('div', 'cine-prompt', document.body);
+    this.promptBox.hidden = true;
   }
 
   show(letterbox = true): void {
@@ -59,6 +65,8 @@ export class CinematicOverlay {
     this.setLetter(null);
     this.clearChoices();
     this.fade(0);
+    this.talk(null, null);
+    this.prompt(null);
   }
 
   /** A spoken line (with the speaker's name) or the narrator (speaker null). Null text clears it. */
@@ -139,6 +147,25 @@ export class CinematicOverlay {
     this.choices.replaceChildren();
     if (this.choiceKeys) window.removeEventListener('keydown', this.choiceKeys);
     this.choiceKeys = null;
+  }
+
+  /** The talk box at the bottom in free roam; null hides it. */
+  talk(speaker: string | null, text: string | null, hint = 'E to go on'): void {
+    if (text === null) {
+      this.talkBox.hidden = true;
+      return;
+    }
+    this.talkBox.replaceChildren();
+    if (speaker) el('span', 'who', this.talkBox).textContent = speaker;
+    this.talkBox.append(text);
+    if (hint) el('span', 'hint', this.talkBox).textContent = hint;
+    this.talkBox.hidden = false;
+  }
+
+  /** A short hint in the middle of the screen, like "E Talk to Varro"; null hides it. */
+  prompt(text: string | null): void {
+    this.promptBox.hidden = text === null;
+    if (text !== null) this.promptBox.textContent = text;
   }
 
   showLoading(chapter: Chapter | null): void {

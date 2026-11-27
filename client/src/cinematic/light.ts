@@ -17,7 +17,7 @@ export interface LightPreset {
   sunDirection: readonly [number, number, number];
 }
 
-export type LightName = 'goldenMorning' | 'day' | 'dusk' | 'night' | 'fireNight' | 'rain' | 'prison' | 'snow' | 'white' | 'interior';
+export type LightName = 'goldenMorning' | 'day' | 'city' | 'dusk' | 'night' | 'fireNight' | 'rain' | 'prison' | 'snow' | 'white' | 'interior';
 
 export const LIGHTS: Record<LightName, LightPreset> = {
   goldenMorning: {
@@ -29,6 +29,11 @@ export const LIGHTS: Record<LightName, LightPreset> = {
     sky: '#8EC9EE', fog: '#9ED3F0', fogStart: 60, fogEnd: 200,
     hemiSky: '#BFE4FF', hemiGround: '#5E8C3C', hemiIntensity: 0.85,
     sun: '#FFF4E0', sunIntensity: 0.95, sunDirection: [-0.5, -0.8, -0.35],
+  },
+  city: {
+    sky: '#8EC9EE', fog: '#B8D4E8', fogStart: 40, fogEnd: 140,
+    hemiSky: '#CFE4F4', hemiGround: '#8A7A66', hemiIntensity: 0.62,
+    sun: '#FFF0D8', sunIntensity: 0.82, sunDirection: [-0.55, -0.75, -0.35],
   },
   dusk: {
     sky: '#C86A4A', fog: '#A85A4A', fogStart: 20, fogEnd: 100,

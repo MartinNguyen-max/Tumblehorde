@@ -44,3 +44,11 @@ export const NPC = {
   /** The player talks to or punches someone within this angle (radians, either side) of where they face. */
   facingHalfAngle: 1.2,
 } as const;
+
+export const ROAM = {
+  walkSpeed: 3.2,
+  runSpeed: 5.6,
+  acceleration: 10,
+  stopSpeed: 0.05,
+  bodyRadius: 0.4,
+} as const;

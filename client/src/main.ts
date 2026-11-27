@@ -35,7 +35,7 @@ async function boot(): Promise<void> {
   const audio = new AudioEngine();
   const battleAudio = new BattleAudio(audio);
   setupSoundToggle(audio);
-  const campaign = new Campaign({ world, input, sound: new CinematicAudio(audio), onExit: () => showLanding() });
+  const campaign = new Campaign({ world, input, canvas, sound: new CinematicAudio(audio), onExit: () => showLanding() });
   const campaignMenu = new CampaignMenu({
     onNew: () => {
       enterCampaign();
@@ -249,6 +249,10 @@ async function boot(): Promise<void> {
           return campaign.playById(id);
         },
         campaign,
+        chapter: (id: Parameters<Campaign['startAt']>[0]) => {
+          enterCampaign();
+          campaign.startAt(id);
+        },
         fps: () => world.engine.getFps(),
         scene: world.scene,
         camera,

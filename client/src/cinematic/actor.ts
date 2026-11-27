@@ -92,6 +92,7 @@ export const POSES = {
   embrace: { armL: [-1.3, 0.5, -0.6], armR: [-1.3, 0.5, -0.6], legL: STRAIGHT, legR: STRAIGHT, lean: 0.05, drop: 0, lie: 0, headNod: 0.1, headTilt: 0.15 },
   /** A fist held up, trembling: anger held in. */
   fist: { armL: DOWN, armR: [-1.0, 0.1, -1.8], legL: STRAIGHT, legR: STRAIGHT, lean: 0.1, drop: 0, lie: 0, headNod: 0.25, headTilt: 0 },
+  punch: { armL: [-1.2, 0.2, -1.6], armR: [-1.6, 0, 0], legL: [-0.3, 0.1], legR: STRAIGHT, lean: 0.15, drop: 0, lie: 0, headNod: 0, headTilt: 0 },
 } as const satisfies Record<string, Pose>;
 
 export type PoseName = keyof typeof POSES;
@@ -145,6 +146,8 @@ const TEAR_TOP = -0.05;
 /** The head turns at most this far towards what someone looks at; the eyes and body do the rest. */
 const HEAD_TURN_MAX = 0.8;
 const HEAD_PITCH_SHARE = 0.5;
+/** Below this speed a driven walker stands still. */
+const DRIVE_MIN = 0.1;
 
 interface Limb {
   upper: TransformNode;
@@ -194,6 +197,8 @@ export class Actor {
   /** Shake with sobs while crying, or tremble (a fist held in anger). */
   trembling = false;
   private walkTarget: { x: number; z: number; speed: number } | null = null;
+  /** Speed of a walker moved from outside (free roam), for the walk cycle. */
+  private driveSpeed = 0;
   private walkPhase = 0;
   private yawTarget: number | null = null;
   private lookAtPoint: { x: number; y: number; z: number } | null = null;
@@ -273,6 +278,16 @@ export class Actor {
     this.walkTarget = null;
   }
 
+  /** Moved by a simulation (free roam): set where it is, which way it faces and how fast it goes. */
+  drive(x: number, z: number, yaw: number, speed: number): void {
+    this.root.position.x = x;
+    this.root.position.z = z;
+    this.root.rotation.y = yaw;
+    this.driveSpeed = speed;
+    this.walkTarget = null;
+    this.yawTarget = null;
+  }
+
   turnTo(yaw: number): this {
     this.yawTarget = yaw;
     return this;
@@ -328,6 +343,7 @@ export class Actor {
   }
 
   private updateWalk(dt: number): void {
+    if (this.driveSpeed > DRIVE_MIN) this.walkPhase += dt * ACTOR.walkCycle * (this.driveSpeed / ACTOR.walkSpeed);
     const target = this.walkTarget;
     const p = this.root.position;
     if (target) {
@@ -376,7 +392,7 @@ export class Actor {
       headTilt: damp(c.headTilt, t.headTilt, k, dt),
     };
     const pose = this.current;
-    const walking = this.walkTarget !== null ? 1 : 0;
+    const walking = this.walkTarget !== null || this.driveSpeed > DRIVE_MIN ? 1 : 0;
     const swing = Math.sin(this.walkPhase) * 0.55 * walking;
     const shake = this.trembling ? Math.sin(this.time * ACTOR.sobRate * 6.3) * ACTOR.sobAmount : 0;
     const breath = Math.sin(this.time * ACTOR.breathRate * 6.3) * ACTOR.breathAmount;

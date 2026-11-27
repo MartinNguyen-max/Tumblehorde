@@ -5,3 +5,4 @@ export * from './save.ts';
 export * from './timeline.ts';
 export * from './npc.ts';
 export * from './dialogue.ts';
+export * from './roam.ts';
