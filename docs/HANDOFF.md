@@ -1,24 +1,25 @@
 # Handoff: two Claude sessions on Tumblehorde
 
-Two Claude Code sessions (two accounts) build milestones M9–M14 at the same time, each in its own
-git worktree and branch. This file says who owns what and how the work is merged. Read it, then
+Two Claude Code sessions (two accounts, on two different PCs) build milestones M9–M14 at the same
+time, each on its own branch of `https://github.com/MartinNguyen-max/Tumblehorde`. This file says who owns what and how the work is merged. Read it, then
 `CLAUDE.md`, `docs/MVP.md`, `docs/GDD.md`, `docs/STORY.md`, `docs/DECISIONS.md` and `docs/TECH.md`.
 
 | | Session 1 | Session 2 |
 |---|---|---|
-| Folder | `~/Tumblehorde` | `~/Tumblehorde-campaign` |
+| PC | the original PC | the second PC |
 | Branch | `main` | `campaign` |
 | Builds now | **M9** smarter, better fights, then **M10** Vikings and the north | **M11** campaign foundations, then **M12** the capital |
 | Later | battle chapters of M13 | cutscene-heavy chapters of M13 |
 
 ## Things every session must know
 
-- **Node is not on PATH.** Prefix every npm/node command with `export PATH=~/.local/node/bin:$PATH`.
-  `npm run check` = typecheck + tests. Run it before every commit.
+- **Setup on a new PC:** Node 24 LTS is needed (install it user-locally if missing; on session 1's PC
+  it lives at `~/.local/node/bin`, not on PATH). Then `npm ci`. `npm run check` = typecheck + tests;
+  run it before every commit. `npm run dev` starts the game.
 - **Visual style: chunky boxes only.** Big cube heads, box eyes and brows, boxy bodies, big square
   shields. The player rejected detailed models ("way too detailed and small"). Add flavour with
   colour and a few big shapes; put the expression in animation and posing.
-- **Screenshots:** `google-chrome` runs headless with `--use-angle=swiftshader --enable-unsafe-swiftshader`
+- **Screenshots:** if Chrome is installed, it runs headless with `--use-angle=swiftshader --enable-unsafe-swiftshader`
   for WebGL screenshots via CDP (Node's built-in WebSocket; no puppeteer). In `?debug` mode call
   `tumblehorde.unpause()` or animations freeze at dt = 0. Check close-ups and the real camera view.
 - **Work autonomously.** The player wants the work to go on without questions about design details.
@@ -62,13 +63,16 @@ reuse the existing part builders in `client/src/render/parts.ts` from new files 
 
 ## Merging
 
-- Session 2: `git merge main` at the start of every step and fix conflicts on your side.
+- **Push after every commit** (`git push`), so the other PC sees your work.
+- Session 2: `git pull`, then `git fetch && git merge origin/main` at the start of every step and fix
+  conflicts on your side.
 - Session 1 merges `campaign` into `main` when M11 and M12 are done (and whenever session 2 asks on
   the board).
 - Never rewrite history (`rebase`, `reset --hard`, force push) on either branch.
 
 ## The board
 
-`~/Tumblehorde-board.md` lives outside git so both sessions see it at once. Read it at the start of
-every step; append a dated line when you finish a milestone, need something from the other session,
-or edited one of its files. Keep entries short.
+`docs/BOARD.md` on your own branch is where you write; the other session reads it from your branch
+with `git fetch && git show origin/<your branch>:docs/BOARD.md`. Read the other branch's board at the
+start of every step; append a dated line to yours when you finish a milestone, need something from
+the other session, or edited one of its files. Keep entries short.
