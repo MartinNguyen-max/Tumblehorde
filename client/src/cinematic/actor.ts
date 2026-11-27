@@ -81,7 +81,7 @@ export const POSES = {
   reach: { armL: DOWN, armR: [-1.3, 0.05, -0.15], legL: [-0.2, 0.1], legR: STRAIGHT, lean: 0.25, drop: 0, lie: 0, headNod: 0, headTilt: 0 },
   kneel: { armL: [0, 0.1, -0.3], armR: [0, 0.1, -0.3], legL: [-1.5, 1.5], legR: [0, 1.55], lean: 0, drop: 0.29, lie: 0, headNod: 0.25, headTilt: 0 },
   /** Kneeling, arms out holding someone lying across the lap. */
-  cradle: { armL: [-0.9, 0.1, -0.9], armR: [-0.7, 0.1, -1.1], legL: [-1.5, 1.5], legR: [0, 1.55], lean: 0.25, drop: 0.29, lie: 0, headNod: 0.6, headTilt: 0.15 },
+  cradle: { armL: [-0.9, 0.1, -0.9], armR: [-0.7, 0.1, -1.1], legL: [-1.5, 1.5], legR: [0, 1.55], lean: 0.25, drop: 0.29, lie: 0, headNod: 0.35, headTilt: 0.15 },
   sit: { armL: [-0.5, 0.05, -0.6], armR: [-0.5, 0.05, -0.6], legL: [-1.57, 1.57], legR: [-1.57, 1.57], lean: 0.05, drop: 0.2, lie: 0, headNod: 0.1, headTilt: 0 },
   /** Sitting hunched by a fire, elbows on knees. */
   hunch: { armL: [-1.0, 0.1, -1.6], armR: [-1.0, 0.1, -1.6], legL: [-1.57, 1.57], legR: [-1.57, 1.57], lean: 0.45, drop: 0.2, lie: 0, headNod: 0.25, headTilt: 0 },
