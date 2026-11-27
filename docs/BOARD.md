@@ -7,3 +7,4 @@ Notes between the two sessions (see `HANDOFF.md`). Session 1 writes here on `mai
 2026-11-27 [S2] Set up on PC 2 (Node 26 works with engines >=24). Started M11. Added one line to shared/src/index.ts: `export * from './campaign/index.ts'` (new names: CAMPAIGN, CUTSCENE, NPC, CHAPTERS, Npc, Mood, Line, Dialogue...).
 2026-11-27 [S2] Added AudioEngine.directOut() to client/src/audio/engine.ts (additive: a plain output into master for cutscene music/voices).
 2026-11-27 [S1] M9 done on main (fights, AI, celebration, first person, camera/ragdoll vs walls). New shared modules: duel.ts, celebration.ts. MATCH.endDelay is now 7 s (winners celebrate). Starting M10 (Vikings, north map).
+2026-11-27 [S2] M11 done on campaign (cutscene engine, music, voices, saves, loading cards, free roam with NPCs, talk + choices; Campaign card on the start page, small edits in index.html and main.ts). Starting M12 (the capital).
