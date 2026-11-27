@@ -66,6 +66,8 @@ export class Stage {
   /** Extra per-frame animation of the set (a swinging lantern, a rising gate). */
   private readonly animations: ((dt: number, time: number) => void)[] = [];
   private readonly fires: Fire[] = [];
+  /** Set boxes and shapes not yet frozen (see `freezeSet`). */
+  private readonly statics = new Set<InstancedMesh>();
   private flakes: Flake[] = [];
   private weatherKind: Weather = 'none';
   private readonly saved: SavedLook;
@@ -144,12 +146,33 @@ export class Stage {
   box(color: string, size: readonly [number, number, number], position: readonly [number, number, number], rotationY = 0, options: PartOptions = {}): InstancedMesh {
     const mesh = this.world.parts.part('box', color, this.root, size, position, options);
     mesh.rotation.y = rotationY;
+    this.statics.add(mesh);
     return mesh;
   }
 
   /** Any part shape, for trees, rocks and the like. */
   shape(shape: Parameters<World['parts']['part']>[0], color: string, size: readonly [number, number, number], position: readonly [number, number, number], options: PartOptions = {}): InstancedMesh {
-    return this.world.parts.part(shape, color, this.root, size, position, options);
+    const mesh = this.world.parts.part(shape, color, this.root, size, position, options);
+    this.statics.add(mesh);
+    return mesh;
+  }
+
+  /** A set piece made with `box` or `shape` that the scene will move: it is never frozen. */
+  keepMoving(mesh: InstancedMesh): InstancedMesh {
+    this.statics.delete(mesh);
+    return mesh;
+  }
+
+  /**
+   * Once a scene is built, the boxes and shapes of its set never move again: their matrices are
+   * computed once and kept, which saves a lot of work every frame on big sets.
+   */
+  freezeSet(): void {
+    for (const mesh of this.statics) {
+      mesh.computeWorldMatrix(true);
+      mesh.freezeWorldMatrix();
+    }
+    this.statics.clear();
   }
 
   /** A pivot on the set to hang props on, or to move a group of boxes together. */

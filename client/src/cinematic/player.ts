@@ -72,6 +72,7 @@ export class CutscenePlayer {
     const stage = new Stage(this.world);
     this.stage = stage;
     this.beats = scene.create(stage, story);
+    stage.freezeSet();
     this.timings = this.beats.map((beat) => ({ duration: beatDuration(beat), waits: beat.choice !== undefined }));
     this.timeline = createTimeline();
     this.unseen.clear();

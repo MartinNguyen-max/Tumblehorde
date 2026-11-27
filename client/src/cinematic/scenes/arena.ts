@@ -207,7 +207,7 @@ export const arenaVictory: Cutscene = {
     const purse = stage.group('purse', 0, 9, -16);
     stage.world.parts.part('box', PURSE.leather, purse, [0.34, 0.34, 0.3], [0, 0, 0], { gloss: true });
     stage.world.parts.part('box', PURSE.coin, purse, [0.2, 0.06, 0.2], [0, 0.2, 0], { metal: true });
-    const cabbage = stage.shape('sphere', PURSE.cabbage, [0.4, 0.4, 0.4], [6, 7, 6]);
+    const cabbage = stage.keepMoving(stage.shape('sphere', PURSE.cabbage, [0.4, 0.4, 0.4], [6, 7, 6]));
     const from = { x: 0, y: 9, z: -16 };
     return [
       {
