@@ -169,11 +169,15 @@ export class BattleRenderer {
     }
   }
 
-  /** A story hero's name, or a named general's (an army called after its leader leads with a commander). */
+  /**
+   * A story hero's name, or in a story battle (one with heroes) a general's: armies there are named
+   * after their leader. In other battles a player called "Eirik" still looks like everyone else.
+   */
   private storyName(view: MatchView, unit: UnitView): string | null {
     if (unit.hero) return unit.hero;
     const army = view.armies[unit.armyId];
-    return unit.kind === 'commander' && army?.isBot ? army.name : null;
+    if (unit.kind !== 'commander' || !army || !view.units.some((u) => u.hero !== null)) return null;
+    return army.name;
   }
 
   /** The battle is won and this soldier is on the winning side. */

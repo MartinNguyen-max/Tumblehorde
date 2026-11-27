@@ -108,6 +108,9 @@ export const STORY_LOOKS = {
   hrolfBeard: '#B8401E',
   /** Varro, the old smith: a big grey beard on a legionary's body. */
   varroBeard: '#B9B4AA',
+  /** Cassian: a brown beard while he wanders, white when he is old. */
+  cassianBeard: '#6B4423',
+  oldBeard: '#ECEAE4',
 } as const;
 
 export interface ArmyPalette {

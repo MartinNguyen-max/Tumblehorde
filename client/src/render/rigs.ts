@@ -1,5 +1,5 @@
 import { type InstancedMesh, TransformNode, type Scene } from './babylon.ts';
-import { approach, DUEL, type Faction, lerp, meleeStatsForKind, type UnitKind, type UnitView, type Weapon } from '@tumblehorde/shared';
+import { approach, CASSIAN_NAMES, DUEL, type Faction, lerp, meleeStatsForKind, type UnitKind, type UnitView, type Weapon } from '@tumblehorde/shared';
 import { ANIMATION, type ArmyPalette, COLORS, ROMAN, STORY_LOOKS, VIKING_LOOK } from '../visualConfig.ts';
 import { buildBean } from './beans.ts';
 import { buildRoman, type PersonBody } from './legionary.ts';
@@ -168,6 +168,11 @@ function buildStoryBody(parts: PartFactory, body: TransformNode, kind: UnitKind,
     }
     case 'Varro':
       return { built: buildRoman(parts, body, palette, officer, STORY_LOOKS.varroBeard), look: 'varro' };
+    // Before the legion he fights in a plain soldier's kit; old, he is still its general.
+    case CASSIAN_NAMES.wanderer:
+      return { built: buildRoman(parts, body, palette, false, STORY_LOOKS.cassianBeard), look: 'cassian' };
+    case CASSIAN_NAMES.old:
+      return { built: buildRoman(parts, body, palette, true, STORY_LOOKS.oldBeard), look: 'old-cassian' };
     default:
       return null;
   }
