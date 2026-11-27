@@ -133,6 +133,12 @@ function settings(map: MatchSettings['map'], armies: ArmySetup[]): MatchSettings
  */
 export const CASSIAN_NAMES = { wanderer: 'Cassian', legate: 'Legate Cassian', old: 'Old Cassian' } as const;
 
+/**
+ * Where Cassian fights on foot: before the Emperor gives him a horse, in the dark forest where
+ * everyone dismounted for the ambush, and at the night camp.
+ */
+const ON_FOOT: readonly ChapterId[] = ['forest-road', 'burning-village', 'dark-forest', 'night-raid'];
+
 function cassianName(chapter: ChapterId): string {
   if (chapter === 'last-night') return CASSIAN_NAMES.old;
   return isAtOrAfter(chapter, 'emperor') ? CASSIAN_NAMES.legate : CASSIAN_NAMES.wanderer;
@@ -142,6 +148,7 @@ function cassian(save: CampaignSave, chapter: ChapterId, spawn: MapPoint, heroes
   const heroNames = heroes.map((h) => HERO_NAMES[h]);
   const legionNames = withLegion ? livingLegion(save.legion).map((l) => l.name) : [];
   const setup = army({ name: cassianName(chapter), team: 0, faction: 'roman', soldiers: heroNames.length + legionNames.length, spawn, bot: false, heroes: heroNames });
+  if (ON_FOOT.includes(chapter)) setup.onFoot = true;
   return { setup, legionNames };
 }
 

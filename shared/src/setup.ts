@@ -92,7 +92,7 @@ function createArmy(
   const setup = settings.armies[armyId];
   const faction = setup?.faction ?? 'roman';
   const led = !isBot || ARMY.botCommanders || setup?.commander === true;
-  const commander = led ? addCommander(state, armyId, commanderPos, spawn.yaw, faction, !settings.arena) : null;
+  const commander = led ? addCommander(state, armyId, commanderPos, spawn.yaw, faction, !settings.arena && setup?.onFoot !== true) : null;
   if (commander && setup?.commanderToughness) {
     commander.maxHp *= setup.commanderToughness;
     commander.hp = commander.maxHp;

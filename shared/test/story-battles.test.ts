@@ -165,3 +165,16 @@ describe('review fixes for story battles', () => {
     expect(state.endTimer).toBe(STORY_BATTLE.lastStandAftermath);
   });
 });
+
+describe('horses in the story', () => {
+  it('Cassian has no horse before the Emperor, nor in the dark forest; he rides at the bridge', () => {
+    const mounted = (chapter: ChapterId): boolean => {
+      const state = createMatch(campaignBattle(chapter, saveAt(chapter))!.settings);
+      return state.units[state.armies[0]!.commanderId!]!.mountId !== null;
+    };
+    expect(mounted('forest-road')).toBe(false);
+    expect(mounted('dark-forest')).toBe(false);
+    expect(mounted('bridge')).toBe(true);
+    expect(mounted('last-night')).toBe(true);
+  });
+});
