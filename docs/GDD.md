@@ -23,14 +23,14 @@ Inspiration: Shieldwall (combat and shields), Bannerlord (army and commander), F
 | Right click (held) | Shield up |
 | 1 / 3 | Follow / Attack |
 | 2 (tap) | Hold in the current formation |
-| 2 (keep down) | Formation wheel: Long line, Two lines, Wedge, Circle around me, Testudo block, Pincer (the wings go round behind the enemy) |
+| 2 (keep down) | Formation wheel. Romans: Long line, Two lines, Wedge, Circle around me, Testudo block, Pincer (the wings go round behind the enemy). Vikings: Shield wall, Boar's head, Horns, Shield ring, Swarm |
 | F | Advance: holding soldiers step forward a few meters towards where you look |
 | 4 | Split the army in two; press again to pick which half hears you (A, B, whole army) |
-| 5 | Banquet (once per battle) |
+| 5 | Banquet, or for Vikings the mead feast (once per battle) |
 | 6 | Rally speech: courage for 15 s (harder blows, steadier feet), then a 40 s rest |
-| R | Throw spears at the enemies where you look (once per battle) |
+| R | Throw spears (Vikings: throwing axes) at the enemies where you look (once per battle) |
 | Ctrl (held) | Crouch; crouch 4× at another player's commander up close to offer an alliance |
-| Q / E | Sword or spear / mount or dismount |
+| Q / E | Sword (Vikings: axe) or spear / mount or dismount |
 | V | Overview camera |
 | T | First person ⇄ third person (also a setting on the start page) |
 | M | Sound on/off (also the speaker button in the top right corner) |
@@ -42,7 +42,8 @@ See `DECISIONS.md` for how the controls evolved after playtesting.
 - The player is the commander (300 HP), as tall as their soldiers, and starts on a stocky war horse. A charge on horseback breaks a shield wall.
 - Has a health bar above their own character.
 - Carries sword and spear (`Q`) and a shield. Can give a rousing speech and call a banquet.
-- If the commander dies, they respawn after about 10 seconds. They patch themselves up.
+- If the commander is knocked out, they get back up after 15 seconds where they fell, as long as some of their soldiers still stand. They patch themselves up.
+- Leads Romans or Vikings: the same body and rules, different looks, weapons, shields, formations and words for the special orders (see §5).
 
 ## 5. Army
 
@@ -124,13 +125,8 @@ One long single-player story (see `STORY.md`), saved at every chapter: cutscenes
 - **Visual reference:** `docs/style-reference/preview.html`. Open it in a browser. It shows colors, proportions, camera angle, terrain style and HUD placement. It is built in Three.js as a reference, but the game is built in Babylon.js.
 - **Colors (from the reference):** Sky `#8EC9EE`, blue team `#3C7BD0`, red team `#D1483F`, accent `#F08A24`, terrain green `hsl(0.26, 45%, 40-49%)`, path sand `hsl(0.11, 42%, 70-76%)`.
 - **Animations:** Walk, run, strike, shield, shoot, jump and death. Ready-made animations in v1, e.g. from Mixamo.
-- **Sound:** Made in the browser, no sound files and no music: cartoon blows, bonks, slide whistles, kazoos, clangs, splashes, thrown spears, glugs and hiccups, and voices that speak only gibberish (cartoon babble): battle cries, the rally speech and cheers, grunts and death yells. Off by default; a speaker button in the top right corner (and `M`) turns it on, and a small hint points at it the first time.
+- **Sound:** Made in the browser, no sound files; music only in the campaign's cutscenes (soft and warm, synthesized), never in battle: cartoon blows, bonks, slide whistles, kazoos, clangs, splashes, thrown spears, glugs and hiccups, and voices that speak only gibberish (cartoon babble): battle cries, the rally speech and cheers, grunts and death yells. Off by default; a speaker button in the top right corner (and `M`) turns it on, and a small hint points at it the first time.
 
-## 15. Out of scope for v1
+## 15. Out of scope
 
-- Sound
-- Login and persistence
-- Mobile
-- More maps
-- Online bots
-- More difficulty levels
+Login and accounts, mobile, online bots, more bot difficulty levels, and a campaign difficulty setting (the story has one mode on purpose). Sound, more maps and saving (for the campaign, in the browser) were added after v1.
