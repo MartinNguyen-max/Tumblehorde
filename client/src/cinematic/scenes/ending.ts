@@ -362,7 +362,7 @@ export const twoBoys: Cutscene = {
 };
 
 /** The wagons of grain on the forest road, and the old legate's few men. */
-function wagon(stage: Stage, x: number, z: number): void {
+export function wagon(stage: Stage, x: number, z: number): void {
   const g = stage.group('wagon', x, 0, z);
   const p = stage.world.parts;
   p.part('box', SET.wagon, g, [1.6, 0.5, 3], [0, 0.8, 0]);

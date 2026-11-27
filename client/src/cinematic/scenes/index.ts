@@ -7,6 +7,7 @@ import { emperor, emperorHall, ruins, villageAfter, villageApproach } from './le
 import { prologueMorning } from './prologue.ts';
 import { prologuePrison, prologueRaid, prologueRoad } from './prologueNight.ts';
 import { liviaEvening } from './livia.ts';
+import { bridgeAfter, bridgeOrders, campNight, dawnRelief, outpostScout } from './north.ts';
 import { ambush, forestRoadWalk } from './roads.ts';
 import { hrolfMirror, letterOne, letterTwo, rallySpeech, varroDeath } from './war.ts';
 
@@ -16,6 +17,7 @@ export const CUTSCENES: Readonly<Record<string, Cutscene>> = Object.fromEntries(
     prologueMorning, prologueRaid, prologueRoad, prologuePrison,
     arenaTunnel, arenaWon, arenaVictory,
     forgeNight, forestRoadWalk, forestRoadAfter, ambush, campfireNight, rollCall,
+    bridgeOrders, bridgeAfter, outpostScout, campNight, dawnRelief,
     villageApproach, villageAfter, emperor, emperorHall, liviaEvening, ruins,
     varroDeath, letterOne, letterTwo, rallySpeech, hrolfMirror,
     victoryFeast, capitalFalls, campSouth, ridersCome, hrolfFarewell, gateArrive, liviaFound,
