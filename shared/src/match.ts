@@ -155,7 +155,7 @@ function shoveAway(state: MatchState, commander: Unit): void {
 function updateRespawns(state: MatchState, dt: number): void {
   for (const army of state.armies) {
     const commander = getUnit(state, army.commanderId);
-    if (!commander || commander.alive || army.forfeited || army.eliminated) continue;
+    if (!commander || commander.alive || army.forfeited || army.eliminated || state.settings.arena) continue;
     commander.respawnTimer -= dt;
     if (commander.respawnTimer <= 0) respawnCommander(state, army, commander);
   }

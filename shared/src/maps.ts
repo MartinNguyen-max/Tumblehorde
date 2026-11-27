@@ -1,5 +1,11 @@
+import { ARENA_MAP } from './campaign/arena.ts';
 /** The battlefields. Each has its own terrain shape, its own obstacles and its own way of starting. */
-export const MAP_IDS = ['meadow', 'castle', 'city', 'north'] as const;
+/** Maps for ordinary battles (the start page, the lobby, "random"). */
+export const BATTLE_MAP_IDS = ['meadow', 'castle', 'city', 'north'] as const;
+/** Maps only the campaign uses. */
+export const STORY_MAP_IDS = ['arena'] as const;
+export const MAP_IDS = [...BATTLE_MAP_IDS, ...STORY_MAP_IDS] as const;
+export type BattleMapId = (typeof BATTLE_MAP_IDS)[number];
 export type MapId = (typeof MAP_IDS)[number];
 
 export type ObstacleKind = 'tree' | 'rock' | 'cactus';
@@ -23,7 +29,7 @@ export interface Structure {
  * the castle to hold the gate and everyone else outside; `city` starts them in the squares at
  * the ends of the avenues.
  */
-export type MapLayout = 'open' | 'siege' | 'city';
+export type MapLayout = 'open' | 'siege' | 'city' | 'arena';
 
 function house(x: number, z: number, width: number, depth: number, yaw = 0, height = 4.2): Structure {
   return { kind: 'house', x, z, width, depth, height, yaw };
@@ -300,6 +306,7 @@ export const MAPS: Record<MapId, MapDefinition> = {
     sceneryCount: 90,
     structures: city(),
   },
+  arena: { id: 'arena', ...ARENA_MAP },
 };
 
 export function isMapId(value: unknown): value is MapId {
@@ -307,7 +314,7 @@ export function isMapId(value: unknown): value is MapId {
 }
 
 /** Picks a map from a 0..1 random number, among `choices` (all maps by default). */
-export function mapFromRandom(random: number, choices: readonly MapId[] = MAP_IDS): MapId {
+export function mapFromRandom(random: number, choices: readonly MapId[] = BATTLE_MAP_IDS): MapId {
   return choices[Math.min(choices.length - 1, Math.floor(random * choices.length))] ?? 'meadow';
 }
 
@@ -315,5 +322,5 @@ export function mapFromRandom(random: number, choices: readonly MapId[] = MAP_ID
 export type MapChoice = MapId | 'random';
 
 export function isMapChoice(value: unknown): value is MapChoice {
-  return value === 'random' || isMapId(value);
+  return value === 'random' || (BATTLE_MAP_IDS as readonly unknown[]).includes(value);
 }

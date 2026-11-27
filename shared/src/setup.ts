@@ -1,3 +1,4 @@
+import type { FighterKit } from './campaign/arena.ts';
 import { staggerThinking } from './ai.ts';
 import { ARMY, FORMATION, MAP, BODY } from './config.ts';
 import { formationSlots, holdSlots } from './formation.ts';
@@ -57,9 +58,10 @@ function groundPos(settings: MatchSettings, x: number, z: number): { x: number; 
   return { x, y: terrainHeightAt(settings.map, x, z), z };
 }
 
-/** Commanders start on horseback. */
-function addCommander(state: MatchState, armyId: number, pos: Vec3, yaw: number, faction: Faction): Unit {
+/** Commanders start on horseback (in the arena on foot). */
+function addCommander(state: MatchState, armyId: number, pos: Vec3, yaw: number, faction: Faction, mounted = true): Unit {
   const commander = addUnit(state, (id) => createUnit(id, 'commander', armyId, pos, yaw, faction));
+  if (!mounted) return commander;
   const horse = addUnit(state, (id) => createUnit(id, 'horse', armyId, pos, yaw, faction));
   horse.riderId = commander.id;
   commander.mountId = horse.id;
@@ -88,9 +90,10 @@ function createArmy(
     spawn.position.z + forward.z * FORMATION.commanderSpawnAhead,
   );
   const faction = settings.armies[armyId]?.faction ?? 'roman';
-  const commander = isBot && !ARMY.botCommanders ? null : addCommander(state, armyId, commanderPos, spawn.yaw, faction);
+  const setup = settings.armies[armyId];
+  const commander = isBot && !ARMY.botCommanders ? null : addCommander(state, armyId, commanderPos, spawn.yaw, faction, !settings.arena);
 
-  const kinds = soldierKindsFor(settings.armySize, settings.mix);
+  const kinds = setup?.soldiers === undefined ? soldierKindsFor(settings.armySize, settings.mix) : Array<SoldierKind>(setup.soldiers).fill('swordsman');
   const slots = startingSlots(kinds, spawn.position, spawn.yaw).map((slot) => nearestWalkable(settings.map, slot));
   const soldierIds: number[] = [];
   const soldiers: Unit[] = [];
@@ -110,6 +113,7 @@ function createArmy(
     }
   });
 
+  if (setup?.kit) applyKit(setup.kit, commander ? [commander, ...soldiers] : soldiers);
   return {
     id: armyId,
     team,
@@ -141,7 +145,7 @@ function createArmy(
     forfeited: false,
     disconnectTimer: null,
     stats: { kills: 0, deaths: 0, commanderDeaths: 0 },
-    bot: { style: isBot ? randomBotStyle(state) : 'steady', contactTimer: 0, flankTimer: 0, regroupTimer: 0, regrouping: false, orderTimer: 0, thinkTimer: 0, standoffTimer: 0, threat: [] },
+    bot: { style: !isBot ? 'steady' : settings.arena ? 'charge' : randomBotStyle(state), contactTimer: 0, flankTimer: 0, regroupTimer: 0, regrouping: false, orderTimer: 0, thinkTimer: 0, standoffTimer: 0, threat: [] },
     startingSoldiers: soldierIds.length,
   };
 }
@@ -158,4 +162,12 @@ export function defaultSettings(overrides: Partial<MatchSettings> = {}): MatchSe
     map: 'meadow',
     ...overrides,
   };
+}
+
+/** Campaign fighters have their own hit points. */
+function applyKit(kit: FighterKit, units: readonly Unit[]): void {
+  for (const unit of units) {
+    unit.hp = kit.hp;
+    unit.maxHp = kit.hp;
+  }
 }

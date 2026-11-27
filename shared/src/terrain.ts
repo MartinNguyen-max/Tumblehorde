@@ -104,6 +104,8 @@ export function isOnPath(map: MapId, x: number, z: number): boolean {
       return Math.abs(z + Math.sin(x * 0.09) * 5) < 6.5;
     case 'siege':
       return x < CASTLE.west + CASTLE.wallThickness && Math.abs(z + Math.sin(x * 0.06) * 3 * Math.min(1, (CASTLE.west - x) / 40)) < 4.5;
+    case 'arena':
+      return false;
     case 'city':
       return CITY.lines.some((line) => Math.abs(x - line) < streetHalf(line) || Math.abs(z - line) < streetHalf(line)) || Math.max(Math.abs(x), Math.abs(z)) < CITY.forumHalf;
   }

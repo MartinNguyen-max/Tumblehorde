@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { MAP, OBSTACLES, TERRAIN } from '../src/config.ts';
-import { CASTLE, MAP_IDS, MAPS, mapFromRandom } from '../src/maps.ts';
+import { CASTLE, BATTLE_MAP_IDS, MAPS, mapFromRandom } from '../src/maps.ts';
 import { distanceXZ } from '../src/math.ts';
 import { battleSettings } from '../src/net.ts';
 import { allPossibleSpawnPoints, armySpawn, isDefender } from '../src/spawn.ts';
 import type { ArmySetup } from '../src/types.ts';
 import { mapObstacles, terrainHeightAt, terrainHeightGrid, TERRAIN_VERTS } from '../src/terrain.ts';
 
-describe.each(MAP_IDS)('terrain of %s', (map) => {
+describe.each(BATTLE_MAP_IDS)('terrain of %s', (map) => {
   it('is flat in the middle of the map', () => {
     expect(terrainHeightAt(map, 0, 0)).toBeCloseTo(0);
     expect(terrainHeightAt(map, 8, -10)).toBeCloseTo(0);
@@ -46,8 +46,8 @@ describe.each(MAP_IDS)('terrain of %s', (map) => {
 
 describe('maps', () => {
   it('are a meadow, a castle, a city and the frozen north', () => {
-    expect(MAP_IDS).toEqual(['meadow', 'castle', 'city', 'north']);
-    expect(new Set(MAP_IDS.map((m) => MAPS[m].layout)).size).toBe(3);
+    expect(BATTLE_MAP_IDS).toEqual(['meadow', 'castle', 'city', 'north']);
+    expect(new Set(BATTLE_MAP_IDS.map((m) => MAPS[m].layout)).size).toBe(3);
   });
 
   it('are picked at random for online battles when the lobby asks for it', () => {
@@ -55,7 +55,7 @@ describe('maps', () => {
     expect(mapFromRandom(0.999)).toBe('north');
     const lobby = { code: 'ABCDE', hostId: 'a', phase: 'lobby' as const, peoples: 'romans' as const, mode: 'ffa' as const, armySize: 15 as const, map: 'random' as const, players: [] };
     const picked = new Set(Array.from({ length: 40 }, (_, seed) => battleSettings(lobby, seed).map));
-    expect(picked.size).toBe(MAP_IDS.length);
+    expect(picked.size).toBe(BATTLE_MAP_IDS.length);
   });
 });
 
@@ -65,7 +65,7 @@ function armies(count: number, teams: number[] = []): ArmySetup[] {
 
 describe('spawn points', () => {
   it.each([2, 3, 4])('places %i armies far apart but inside the map', (count) => {
-    for (const map of MAP_IDS) {
+    for (const map of BATTLE_MAP_IDS) {
       const settings = { map, mode: 'ffa' as const, armies: armies(count) };
       for (let i = 0; i < count; i++) {
         const a = armySpawn(settings, i).position;

@@ -254,6 +254,32 @@ export const MAP_THEMES: Record<MapId, MapTheme> = {
     ice: { hue: 0.54, saturation: 0.5, lightMin: 0.74, lightMax: 0.82 },
     snow: true,
   },
+  // Campaign only: the Colosseum's sand floor inside a stone podium wall.
+  arena: {
+    sky: '#8EC9EE',
+    fog: '#C8DCEA',
+    hemiSky: '#CFE4F4',
+    hemiGround: '#A08860',
+    sun: '#FFF0D8',
+    ground: { hue: 0.1, saturation: 0.45, lightMin: 0.62, lightMax: 0.68 },
+    path: { hue: 0.1, saturation: 0.45, lightMin: 0.62, lightMax: 0.68 },
+    rock: null,
+    rockHeight: 99,
+    treeTrunk: '#7A4A28',
+    leaves: '#44933C',
+    leavesTop: '#59B04A',
+    rockColor: '#A8ADA6',
+    cactus: '#5E9E4A',
+    bush: '#4E9E42',
+    bushCount: 0,
+    tuft: '#B89A6A',
+    tuftCount: 160,
+    stone: '#C8BCA6',
+    plaster: '#E6D8BC',
+    roof: '#B5533C',
+    plasters: ['#E6D8BC'],
+    roofs: ['#B5533C'],
+  },
 };
 
 export const MAP_NAMES: Record<MapId, string> = {
@@ -261,6 +287,7 @@ export const MAP_NAMES: Record<MapId, string> = {
   castle: 'Castle Siege',
   city: 'The City',
   north: 'The Frozen North',
+  arena: 'The Arena',
 };
 
 /** Falling snow: flakes in a box around the camera, drifting down and sideways. */

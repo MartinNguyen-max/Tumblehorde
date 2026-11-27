@@ -1,3 +1,4 @@
+import type { FighterKit } from './campaign/arena.ts';
 import type { MapId } from './maps.ts';
 import type { Vec2, Vec3 } from './math.ts';
 import type { RandomSource } from './random.ts';
@@ -226,6 +227,10 @@ export interface ArmySetup {
   defends?: boolean;
   /** Romans unless said otherwise. */
   faction?: Faction;
+  /** Campaign: this many swordsmen instead of the army size (0 for a lone commander). */
+  soldiers?: number;
+  /** Campaign: hit points of every fighter in the army, and multipliers on their damage and shield. */
+  kit?: FighterKit;
 }
 
 export interface MatchSettings {
@@ -234,6 +239,8 @@ export interface MatchSettings {
   armies: ArmySetup[];
   seed: number;
   map: MapId;
+  /** Campaign arena: commanders fight on foot and do not get back up; bot fighters charge at once. */
+  arena?: boolean;
   /** Which unit types the armies have. Defaults to `legion`. */
   mix?: ArmyMix;
 }
