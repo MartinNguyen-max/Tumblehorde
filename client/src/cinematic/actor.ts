@@ -1,4 +1,4 @@
-import { type InstancedMesh, type Scene, TransformNode } from '../render/babylon.ts';
+import { type InstancedMesh, type Scene, TransformNode, Vector3 } from '../render/babylon.ts';
 import { childNode, type PartFactory, type PartOptions } from '../render/parts.ts';
 import type { Mood } from '@tumblehorde/shared';
 import { ACTOR, CLOTH, FACE, HAIR, SKIN } from './config.ts';
@@ -327,7 +327,9 @@ export class Actor {
   }
 
   get yaw(): number {
-    return this.root.rotation.y;
+    // In the world, not relative to a parent: a rider faces where the horse faces.
+    const forward = this.root.getDirection(Vector3.Forward());
+    return Math.atan2(forward.x, forward.z);
   }
 
   get walking(): boolean {

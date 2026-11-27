@@ -3,6 +3,7 @@ import {
   afterBattle,
   arenaFight,
   arenaSettings,
+  CASSIAN_NAMES,
   buy,
   type CampaignSave,
   canWorkOut,
@@ -326,7 +327,8 @@ export class Campaign {
     if (!save) return;
     this.phase = { kind: 'battle', chapter };
     this.overlay.hide();
-    const settings = arenaSettings(playerKit(save), fight.opponents, (Date.now() & 0xffff) | 1);
+    // Named after Cassian, so the battle draws him as the wanderer rather than a gold commander.
+    const settings = arenaSettings(playerKit(save), fight.opponents, (Date.now() & 0xffff) | 1, CASSIAN_NAMES.wanderer);
     this.deps.startBattle(settings, (view) => this.arenaOver(chapter, fight, view.winnerTeam === 0));
     decorateArena(this.deps.world);
   }
