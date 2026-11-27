@@ -2,6 +2,10 @@
 
 A goofy, fast 3D strategy game in the browser. You run around as the commander and control your own army with orders. The battle is over when all enemies are dead.
 
+Play **battles** (Romans or Vikings against bots, or online against friends) or the **campaign**:
+a long story from a monk's burned monastery, through prison, the arena and the legion, to the
+last battle against Hrolf the Red and one last night. See `docs/STORY.md`.
+
 ## Documents
 
 Read in this order:
@@ -11,7 +15,8 @@ Read in this order:
 3. `docs/BALANCE.md`: HP, damage, speeds and army composition
 4. `docs/TECH.md`: technical stack, architecture and netcode
 5. `docs/DECISIONS.md`: decisions and rationale
-6. `CLAUDE.md`: coding rules (read automatically by Claude Code)
+6. `docs/STORY.md`: the campaign's story, characters, chapters and choices
+7. `CLAUDE.md`: coding rules (read automatically by Claude Code)
 
 ## Visual reference
 
