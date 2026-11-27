@@ -12,7 +12,7 @@ import {
 } from '@tumblehorde/shared';
 import type { World } from '../render/world.ts';
 import type { CinematicOverlay } from './overlay.ts';
-import type { Beat, CinematicSound, Cutscene } from './script.ts';
+import type { Beat, CinematicSound, Cutscene, StoryContext } from './script.ts';
 import { frameShot, type Shot } from './shot.ts';
 import { Stage } from './stage.ts';
 
@@ -61,11 +61,11 @@ export class CutscenePlayer {
     return this.stage;
   }
 
-  play(scene: Cutscene, onDone: () => void): void {
+  play(scene: Cutscene, story: StoryContext, onDone: () => void): void {
     this.stop();
     const stage = new Stage(this.world);
     this.stage = stage;
-    this.beats = scene.create(stage);
+    this.beats = scene.create(stage, story);
     this.timings = this.beats.map((beat) => ({ duration: beatDuration(beat), waits: beat.choice !== undefined }));
     this.timeline = createTimeline();
     this.shot = null;

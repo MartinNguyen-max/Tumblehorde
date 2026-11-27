@@ -1,4 +1,4 @@
-import type { Mood } from '@tumblehorde/shared';
+import type { CampaignChoices, CampaignSave, Mood } from '@tumblehorde/shared';
 import type { FadeColor } from './overlay.ts';
 import type { Shot } from './shot.ts';
 import type { Stage } from './stage.ts';
@@ -48,7 +48,7 @@ export interface Beat {
 export interface Cutscene {
   id: string;
   /** Builds the set and the cast, and returns the beats. */
-  create(stage: Stage): Beat[];
+  create(stage: Stage, story: StoryContext): Beat[];
 }
 
 /** The sound side of a cutscene, so the player does not depend on Web Audio directly. */
@@ -59,4 +59,18 @@ export interface CinematicSound {
   /** Called every frame: starts the music if the sound was just turned on. */
   refresh(): void;
   stop(): void;
+}
+
+/** What a scene knows about the story so far, and how its choices change it. */
+export interface StoryContext {
+  save: CampaignSave;
+  /** Legionaries who fell in the battle just fought, for the roll call. */
+  fallen: readonly string[];
+  /** Records a choice (Eirik, Hrolf, the last stand); saved with the story. */
+  choose(choices: Partial<CampaignChoices>): void;
+}
+
+/** A story for testing scenes on their own: a fresh save, choices are not kept. */
+export function testStory(save: CampaignSave): StoryContext {
+  return { save, fallen: [], choose: (c) => Object.assign(save.choices, c) };
 }

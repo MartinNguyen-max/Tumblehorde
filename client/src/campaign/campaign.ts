@@ -1,5 +1,6 @@
 import {
   type ArenaFight,
+  afterBattle,
   arenaFight,
   arenaSettings,
   buy,
@@ -14,6 +15,7 @@ import {
   newSave,
   nextChapter,
   playerKit,
+  reinforceAtFortress,
   workedOut,
   wonArena,
 } from '@tumblehorde/shared';
@@ -23,11 +25,12 @@ import type { ActorLook } from '../cinematic/actor.ts';
 import { CLOTH, HAIR } from '../cinematic/config.ts';
 import { CinematicOverlay } from '../cinematic/overlay.ts';
 import { CutscenePlayer } from '../cinematic/player.ts';
-import type { CinematicSound, Cutscene } from '../cinematic/script.ts';
+import type { CinematicSound, Cutscene, StoryContext } from '../cinematic/script.ts';
 import { CUTSCENES } from '../cinematic/scenes/index.ts';
 import { Stage } from '../cinematic/stage.ts';
 import { decorateArena } from './arenaDecor.ts';
 import { StoryCard } from './card.ts';
+import { SCENES_AFTER, SCENES_BEFORE } from './storyScenes.ts';
 import { boughtItem, EFFECT, storyDialogue } from './dialogues.ts';
 import { CAPITAL, type DistrictSet } from './districts.ts';
 import { FreeRoam } from './freeRoam.ts';
@@ -36,17 +39,8 @@ import { loadSave, writeSave } from './storage.ts';
 
 /** Seconds the loading card with the chapter's line stays up. */
 const LOADING_TIME = 2.6;
-
-/** The cutscenes of each chapter, played in order (for arena chapters: before the fight). */
-const CHAPTER_SCENES: Partial<Record<ChapterId, readonly string[]>> = {
-  prologue: ['prologue-morning'],
-  'arena-1': ['arena-tunnel'],
-};
-
-/** Cutscenes after an arena fight is won. */
-const VICTORY_SCENES: Partial<Record<ChapterId, readonly string[]>> = {
-  'arena-1': ['arena-won'],
-};
+/** The chapter that reaches the northern fortress, which fills the legion's ranks. */
+const FORTRESS_CHAPTER: ChapterId = 'night-raid';
 
 /** Where each free-roam chapter is walked. */
 const CHAPTER_DISTRICTS: Partial<Record<ChapterId, DistrictSet>> = {
@@ -69,6 +63,12 @@ export interface CampaignDeps {
   /** Runs a battle in the battle engine; `onEnd` gets the final view once it is over. */
   startBattle: (settings: MatchSettings, onEnd: (view: MatchView) => void) => void;
   stopBattle: () => void;
+}
+
+/** How a story battle went: won or not, and which legionaries fell. */
+export interface StoryBattleOutcome {
+  won: boolean;
+  fallen: readonly string[];
 }
 
 type Phase =
@@ -96,6 +96,8 @@ export class Campaign {
   private readonly card = new StoryCard();
   private save: CampaignSave | null = null;
   private phase: Phase = { kind: 'idle' };
+  /** Who fell in the last battle, for the roll call at the campfire. */
+  private fallen: readonly string[] = [];
 
   constructor(deps: CampaignDeps) {
     this.deps = deps;
@@ -139,7 +141,8 @@ export class Campaign {
 
   private enterChapter(id: ChapterId): void {
     if (!this.save) return;
-    this.store(checkpoint(this.save, id, Date.now()));
+    const arrived = id === FORTRESS_CHAPTER ? { ...this.save, legion: reinforceAtFortress(this.save.legion) } : this.save;
+    this.store(checkpoint(arrived, id, Date.now()));
     const chapter = chapterById(id);
     this.overlay.showLoading(chapter);
     this.phase = { kind: 'loading', chapter, timer: LOADING_TIME };
@@ -147,7 +150,7 @@ export class Campaign {
 
   private startChapter(chapter: Chapter): void {
     this.overlay.showLoading(null);
-    const scenes = scenesOf(CHAPTER_SCENES[chapter.id]);
+    const scenes = scenesOf(SCENES_BEFORE[chapter.id]);
     const district = CHAPTER_DISTRICTS[chapter.id];
     const fight = arenaFight(chapter.id);
     if (chapter.kind === 'cutscene' && scenes.length > 0) {
@@ -156,9 +159,33 @@ export class Campaign {
       this.startRoam(chapter, district);
     } else if (chapter.kind === 'arena' && fight) {
       this.playScenes(scenes, () => this.startArena(chapter, fight));
+    } else if (chapter.kind === 'battle') {
+      this.playScenes(scenes, () => this.runStoryBattle(chapter, (outcome) => this.battleDone(chapter, outcome)));
     } else {
       this.showUnbuilt(chapter);
     }
+  }
+
+  /**
+   * The battle of a battle chapter. Until the battle host is wired in, a card lets the story be
+   * played through (the battle counts as won, nobody falls).
+   */
+  private runStoryBattle(chapter: Chapter, done: (outcome: StoryBattleOutcome) => void): void {
+    this.phase = { kind: 'card' };
+    this.card.show(chapter.title, 'The battle of this chapter is still being built. Skip it to go on with the story.', [
+      { label: 'Skip the battle', primary: true, action: () => done({ won: true, fallen: [] }) },
+      { label: 'Leave to menu', action: () => this.leave() },
+    ]);
+  }
+
+  /** After a won battle: the fallen stay dead (from the Dark Forest on), then the scenes after it. */
+  private battleDone(chapter: Chapter, outcome: StoryBattleOutcome): void {
+    const save = this.save;
+    if (!save) return;
+    const { legion, fallen } = afterBattle(save.legion, outcome.fallen, chapter.id);
+    this.store({ ...save, legion });
+    this.fallen = fallen;
+    this.playScenes(scenesOf(SCENES_AFTER[chapter.id]), () => this.finishChapter(chapter.id));
   }
 
   private showUnbuilt(chapter: Chapter): void {
@@ -166,6 +193,18 @@ export class Campaign {
     this.card.show(chapter.title, 'This chapter is still being built. Your story is saved here; come back soon.', [
       { label: 'Leave to menu', primary: true, action: () => this.leave() },
     ]);
+  }
+
+  /** What scenes see of the story; their choices are saved at once. */
+  private story(): StoryContext {
+    const save = this.save ?? newSave(Date.now());
+    return {
+      save,
+      fallen: this.fallen,
+      choose: (choices) => {
+        if (this.save) this.store({ ...this.save, choices: { ...this.save.choices, ...choices } });
+      },
+    };
   }
 
   /** Plays cutscenes one after another, then `then`. */
@@ -176,7 +215,7 @@ export class Campaign {
       return;
     }
     this.phase = { kind: 'cutscene', scenes, index: 0, then };
-    this.player.play(first, () => this.sceneDone());
+    this.player.play(first, this.story(), () => this.sceneDone());
   }
 
   private sceneDone(): void {
@@ -188,7 +227,7 @@ export class Campaign {
       return;
     }
     this.phase = { ...phase, index: phase.index + 1 };
-    this.player.play(next, () => this.sceneDone());
+    this.player.play(next, this.story(), () => this.sceneDone());
   }
 
   /** On to the next chapter; after the last one, back to the menu. */
@@ -275,7 +314,7 @@ export class Campaign {
       this.store(wonArena(save, fight));
       const prize = fight.givesDracoSword ? `${fight.reward} gold and Draco's sword` : `${fight.reward} gold`;
       this.card.show('Victory!', `The crowd roars your name. You win ${prize}.`, [
-        { label: 'Go on', primary: true, action: () => this.playScenes(scenesOf(VICTORY_SCENES[chapter.id]), () => this.afterArenaWin(chapter)) },
+        { label: 'Go on', primary: true, action: () => this.playScenes(scenesOf(SCENES_AFTER[chapter.id]), () => this.afterArenaWin(chapter)) },
       ]);
       return;
     }
