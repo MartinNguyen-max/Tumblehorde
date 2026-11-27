@@ -17,7 +17,8 @@ const INFIRMARY = {
   night: '#1E2A4A',
 } as const;
 
-function infirmary(stage: Stage): void {
+/** Livia's infirmary; `wrecked` after the Mongols: jars smashed, the table on its side, herbs on the floor. */
+export function infirmary(stage: Stage, wrecked = false): void {
   stage.box(INFIRMARY.floor, [10, 0.1, 8], [0, -0.05, 0], 0, { castShadow: false });
   stage.box(INFIRMARY.wall, [10, 4, 0.3], [0, 2, -3.5]);
   for (const side of [-1, 1]) stage.box(INFIRMARY.wall, [0.3, 4, 8], [side * 5, 2, 0.5]);
@@ -28,7 +29,19 @@ function infirmary(stage: Stage): void {
   // Shelves of jars and bundles of herbs hanging from the beam.
   for (let row = 0; row < 3; row++) {
     stage.box(INFIRMARY.shelf, [3.4, 0.1, 0.4], [-2.4, 1.2 + row * 0.7, -3.2]);
-    for (let i = 0; i < 6; i++) stage.shape('cylinder', INFIRMARY.jars[(i + row) % INFIRMARY.jars.length] ?? STORY_COLORS.tent, [0.12, 0.3, 0.12], [-3.8 + i * 0.55, 1.42 + row * 0.7, -3.2]);
+    for (let i = 0; i < 6; i++) {
+      const jar = INFIRMARY.jars[(i + row) % INFIRMARY.jars.length] ?? STORY_COLORS.tent;
+      if (!wrecked) stage.shape('cylinder', jar, [0.12, 0.3, 0.12], [-3.8 + i * 0.55, 1.42 + row * 0.7, -3.2]);
+      else if ((i + row) % 2 === 0) stage.box(jar, [0.16, 0.05, 0.12], [-3.6 + i * 0.6, 0.03, -2.4 + row * 0.5], i);
+    }
+  }
+  if (wrecked) {
+    // The table thrown over, herbs and bandages trampled on the floor.
+    const table = stage.box(STORY_COLORS.log, [2.2, 0.1, 1.2], [-0.6, 0.6, 0.4], 0.3);
+    table.rotation.z = 1.3;
+    for (let i = 0; i < 8; i++) stage.box(i % 2 === 0 ? INFIRMARY.herbs : '#F4F0E6', [0.3, 0.04, 0.2], [-2 + i * 0.6, 0.02, 1 + (i % 3) * 0.4], i * 0.7);
+    stage.box(STORY_COLORS.log, [1, 0.4, 2.2], [3.6, 0.2, -1.6]);
+    return;
   }
   stage.box(STORY_COLORS.log, [8, 0.2, 0.2], [0, 3.6, -1], 0, { castShadow: false });
   for (let i = 0; i < 7; i++) stage.box(INFIRMARY.herbs, [0.2, 0.5, 0.2], [-3 + i, 3.25, -1], 0, { castShadow: false });

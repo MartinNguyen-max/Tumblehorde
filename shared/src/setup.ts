@@ -98,7 +98,7 @@ function createArmy(
     commander.hp = commander.maxHp;
   }
 
-  const kinds = setup?.soldiers === undefined ? soldierKindsFor(settings.armySize, settings.mix) : Array<SoldierKind>(setup.soldiers).fill('swordsman');
+  const kinds = setup?.soldiers === undefined ? soldierKindsFor(settings.armySize, settings.mix) : Array<SoldierKind>(setup.soldiers).fill(setup.mounted ? 'rider' : 'swordsman');
   const slots = (setup?.startFormation ? holdSlots(setup.startFormation, kinds.length, spawn.position, spawn.yaw, false) : startingSlots(kinds, spawn.position, spawn.yaw)).map((slot) => nearestWalkable(settings.map, slot));
   const soldierIds: number[] = [];
   const soldiers: Unit[] = [];

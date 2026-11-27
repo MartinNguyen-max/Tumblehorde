@@ -5,7 +5,7 @@ export const SKIN = {
   warm: '#E2AD86',
   tan: '#C98E66',
   pale: '#EFCDB4',
-  /** The dead on the last night. */
+  /** The dead. */
   grey: '#9AA69A',
 } as const;
 
@@ -44,6 +44,17 @@ export const CLOTH = {
   gold: '#E0B040',
   leather: '#6E4528',
   boots: '#45291A',
+  /** The Mongols: a long coat closed with a sash, fur at the collar and hat. */
+  mongolCoat: '#3A6A8A',
+  mongolSash: '#C8A040',
+  fur: '#7A5A3A',
+  /** The Greeks: bronze armor over a blue tunic. */
+  bronze: '#B8863A',
+  hopliteTunic: '#2E5AA8',
+  /** The dark wizard's robe. */
+  wizardRobe: '#2A1E3A',
+  wizardTrim: '#7A3A9A',
+  wizardGlow: '#7AF0C8',
 } as const;
 
 export const FACE = {

@@ -1,273 +1,923 @@
+import { CAPITAL } from '../../campaign/districts.ts';
+import { Crowd, type Seat } from '../../render/crowd.ts';
+import type { Actor } from '../actor.ts';
 import { cast } from '../cast.ts';
 import { sword, upright, woodenCross } from '../props.ts';
 import type { Beat, Cutscene, StoryContext } from '../script.ts';
 import { FOV, overShoulder, portrait } from '../shot.ts';
 import type { Stage } from '../stage.ts';
-import { campfire, castleYard, grave } from '../storySets.ts';
+import { grave, STORY_COLORS, throneRoom } from '../storySets.ts';
+import { roadForest } from './prologueNight.ts';
 
-/** Peace, the last night, and the end. */
+/**
+ * The years after: the city rebuilt, Cassian's two sons, his last patrol and his death, the
+ * crowning that split his family, each son's road, and the end.
+ *
+ * After Cassian dies, Livia tells the story.
+ */
 
-const STATUE = '#B8B4AC';
-const BABY = '#F0E6D8';
+const SET = {
+  statue: '#B8B4AC',
+  baby: '#F0E6D8',
+  scaffold: '#8A6A42',
+  wedding: '#F4F0E6',
+  candle: '#FFD27A',
+  pyre: '#6A4A2A',
+  grain: '#D8B860',
+  wagon: '#7A5A32',
+  mist: '#8EA8A0',
+} as const;
 
-export const peace: Cutscene = {
-  id: 'peace',
+const isMarcus = (story: StoryContext) => (): boolean => story.save.choices.son === 'marcus';
+const isLucius = (story: StoryContext) => (): boolean => story.save.choices.son !== 'marcus';
+
+/** People standing round a spot in the capital square, facing it. */
+function ringOfPeople(stage: Stage, cx: number, cz: number, inner: number, rows: number, excitement: number): Crowd {
+  const scale = 1.5;
+  const seats: Seat[] = [];
+  for (let r = 0; r < rows; r++) {
+    const radius = inner + r * 1.2;
+    const count = Math.floor((2 * Math.PI * radius) / 1.1);
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2 + r * 0.3;
+      seats.push({ x: (cx + Math.sin(a) * radius) / scale, y: 0, z: (cz + Math.cos(a) * radius) / scale, yaw: a + Math.PI });
+    }
+  }
+  const root = stage.group('people');
+  root.scaling.setAll(scale);
+  const crowd = new Crowd(stage.world.parts, root, seats);
+  crowd.excitement = excitement;
+  stage.animate((_dt, t) => crowd.update(t));
+  return crowd;
+}
+
+/** Scaffolding against a house front: poles, planks, a ladder. */
+function scaffold(stage: Stage, x: number, z: number, yaw: number): void {
+  const g = stage.group('scaffold', x, 0, z);
+  g.rotation.y = yaw;
+  const p = stage.world.parts;
+  for (const px of [-2, 0, 2]) p.part('box', SET.scaffold, g, [0.14, 7, 0.14], [px, 3.5, 0]);
+  for (const y of [2.5, 5]) p.part('box', SET.scaffold, g, [4.6, 0.12, 0.8], [0, y, 0.2]);
+  p.part('box', SET.scaffold, g, [0.5, 5, 0.08], [2.6, 2.4, 0.5]).rotation.z = 0.15;
+}
+
+export const rebuilding: Cutscene = {
+  id: 'rebuilding',
   create(stage: Stage, story: StoryContext): Beat[] {
     stage.light('goldenMorning');
-    castleYard(stage, '#C8BCA6');
-    stage.weather('motes');
-    const cassian = cast(stage, 'cassianCommander', 'Cassian').place(-0.8, 0, Math.PI / 2);
-    const livia = cast(stage, 'livia', 'Livia', { color: '#E8E0CC' }).place(0.8, 0, -Math.PI / 2);
-    const guests = [cast(stage, 'felix', 'Felix'), cast(stage, 'rufus', 'Rufus'), cast(stage, 'galba', 'Galba')];
-    guests.forEach((g, i) => g.place(-3 + i * 3, 4, Math.PI));
-    const eirik = cast(stage, 'eirik', 'Eirik').place(4.5, 4.5, Math.PI);
+    CAPITAL.build(stage);
+    for (const [x, z, yaw] of [[-12, -17.2, 0], [12, -17.2, 0], [-23, 8, Math.PI / 2], [23, -10, -Math.PI / 2]] as const) scaffold(stage, x, z, yaw);
+    const cassian = cast(stage, 'cassianCommander', 'Cassian').place(-0.8, 6, Math.PI);
+    const livia = cast(stage, 'livia', 'Livia', { color: SET.wedding }).place(0.8, 6, Math.PI);
+    const felix = cast(stage, 'felixLegion', 'Felix', { helmet: false }).place(-3, 9, Math.PI);
+    const rufus = cast(stage, 'rufusLegion', 'Rufus', { helmet: false }).place(3, 9, Math.PI);
+    const eirik = cast(stage, 'eirik', 'Eirik').place(4.4, 9.6, Math.PI);
     if (story.save.choices.eirikSpared !== true) eirik.root.setEnabled(false);
-    // Varro in stone, in the square where it began.
-    const statue = cast(stage, 'varro', 'Statue', { skin: STATUE, hair: STATUE, beardColor: STATUE, color: STATUE, scar: false });
-    statue.place(60, 0, Math.PI).setPose('fist', true).setMood('angry', true);
+    const beam = stage.group('beam', 3.6, 1.3, 9.6);
+    stage.world.parts.part('box', SET.scaffold, beam, [0.3, 0.3, 4], [0, 0, 0]);
+    beam.parent = rufus.grips[0];
+    beam.position.set(0, 0, 0);
+    const crowd = ringOfPeople(stage, 0, 4, 7, 3, 0.8);
+    const statue = cast(stage, 'varro', 'Statue', { skin: SET.statue, hair: SET.statue, beardColor: SET.statue, color: SET.statue, scar: false });
+    statue.place(-14, -6, Math.PI / 2).setPose('fist', true).setMood('angry', true);
     statue.root.scaling.setAll(2.2);
-    stage.box(STATUE, [3, 1.2, 3], [60, 0.6, 0]);
     statue.root.position.y = 1.2;
-    const baby = stage.box(BABY, [0.35, 0.25, 0.5], [0, -10, 0], 0, { castShadow: false });
-    const old = cast(stage, 'cassianOld', 'Old Cassian').place(120, 0, Math.PI);
-    const oldLivia = cast(stage, 'liviaOld', 'Old Livia').place(121.2, 0.4, Math.PI);
-    const marcus = cast(stage, 'marcusYoung', 'Marcus').place(118.6, 0.8, Math.PI);
-    castleYardAt(stage, 120);
+    stage.box(SET.statue, [3, 1.2, 3], [-14, 0.6, -6]);
+    const baby = stage.group('baby', 0, -10, 0);
+    stage.world.parts.part('box', SET.baby, baby, [0.35, 0.25, 0.5], [0, 0, 0]);
+    stage.world.parts.part('box', STORY_COLORS.tent, baby, [0.22, 0.22, 0.22], [0, 0.08, 0.2]);
+    const whisperers = Array.from({ length: 4 }, (_, i) => cast(stage, 'villager', `Townswoman ${i}`, { outfit: i % 2 === 0 ? 'healer' : 'villager', color: ['#8A6A9A', '#6A8A5A'][i % 2], hairStyle: 'long' }).place(6 + i * 1.1, 1 + (i % 2), -Math.PI / 2));
 
     return [
       {
         duration: 6,
         fade: { from: 1, to: 0, time: 2.5 },
-        music: 'warm',
-        shot: { from: [0, 4, 12], at: [0, 2, -8], to: [0, 3, 9], fov: FOV.wide },
-        narrate: 'The Emperor made me a lord, and gave me a castle in the hills.',
+        music: 'hope',
+        shot: { from: [0, 14, 26], at: [0, 2, -4], to: [0, 10, 20], fov: FOV.wide },
+        run: () => {
+          crowd.excitement = 0.3;
+          for (const a of [cassian, livia]) a.root.setEnabled(false);
+        },
+        narrate: 'We rebuilt the city stone by stone. Roofs, walls, the fountain. Livia\'s garden. Her fence.',
+      },
+      {
+        duration: 3.5,
+        shot: () => portrait(rufus, { angle: 0.6, distance: 3 }),
+        run: () => rufus.setPose('offer').setMood('happy'),
+        during: (_s, p) => {
+          if (p > 0.5) {
+            rufus.setPose('lie').setMood('surprised');
+            beam.parent = stage.root;
+            beam.position.set(3.4, 0.2, 9.2);
+          }
+        },
+        say: { who: 'Rufus', text: 'Leave it to me! I carried a whole legion once! Well. Their luggage.', mood: 'happy' },
+      },
+      {
+        duration: 2.4,
+        shot: () => portrait(rufus, { angle: 1.2, distance: 2.2, rise: 0.4 }),
+        say: { who: 'Rufus', text: 'I am FINE!', mood: 'surprised' },
+      },
+      {
+        duration: 5,
+        sound: 'crowd',
+        shot: { from: [0, 3, -6], at: [0, 1.8, 6], to: [0, 3.4, -8], fov: FOV.wide },
+        run: () => {
+          for (const a of [cassian, livia]) a.root.setEnabled(true);
+          rufus.setPose('stand').setMood('happy');
+          crowd.excitement = 1;
+          stage.weather('petals');
+        },
+        narrate: 'The Emperor was dead, and the Senate needed someone. The people shouted one name until the Senate gave in.',
       },
       {
         shot: () => overShoulder(livia, cassian),
         run: () => {
           livia.setMood('happy').lookAt(cassian.headPosition());
-          for (const g of guests) g.setPose('cheer').setMood('happy');
+          cassian.lookAt(livia.headPosition());
         },
-        say: { who: 'Livia', text: 'You came home. And you built the fence.', mood: 'happy' },
+        say: { who: 'Cassian', text: 'I asked for a fence. Not a crown.', mood: 'warm' },
       },
       {
         shot: () => overShoulder(cassian, livia, { side: -1 }),
-        run: () => cassian.setMood('happy').lookAt(livia.headPosition()),
-        say: { who: 'Cassian', text: 'I built the fence.', mood: 'happy' },
+        say: { who: 'Livia', text: 'Then you will have both. And a wife who reminds you which one matters.', mood: 'happy' },
+      },
+      {
+        duration: 3,
+        shot: () => portrait(felix, { angle: 0.4 }),
+        run: () => felix.setMood('crying'),
+        say: { who: 'Rufus', text: 'Felix is crying.', mood: 'happy' },
+      },
+      {
+        duration: 3,
+        shot: () => portrait(rufus, { angle: -0.4 }),
+        run: () => rufus.setMood('crying'),
+        say: { who: 'Felix', text: 'So are you!', mood: 'happy' },
       },
       {
         duration: 5,
-        shot: { from: [64, 2, 8], at: [60, 4.5, 0], to: [62, 1.5, 6], fov: FOV.normal },
-        narrate: 'In the square where I met him, they raised a statue of Varro. Hammer in hand, scowling at the pigeons.',
+        shot: { from: [-9, 2, -2], at: [-14, 4.5, -6], to: [-10, 1.6, -1], fov: FOV.normal },
+        narrate: 'In the square, they raised a statue of Varro. Hammer in hand, scowling at the pigeons.',
       },
       {
         duration: 5,
+        music: 'warm',
         shot: () => portrait(livia, { angle: -0.4, distance: 2.4 }),
         run: () => {
-          livia.setPose('cradle').setStance('pose').setMood('warm');
+          stage.weather('none');
+          crowd.excitement = 0.2;
+          livia.setPose('cradle').setMood('warm');
           baby.parent = livia.grips[1];
           baby.position.set(0.2, -0.05, 0.1);
-          cassian.setPose('embrace').setMood('crying');
         },
-        narrate: 'And then, a son. We named him Marcus.',
+        narrate: 'In the spring, a son was born. He had black hair, and the eyes of the far east.',
       },
       {
-        duration: 5,
-        shot: { from: [-2, 2, 8], at: [-1.5, 1.4, 4], fov: FOV.normal },
+        shot: () => portrait(whisperers[1]!, { angle: 0.3 }),
         run: () => {
-          for (const g of guests) g.setPose('stand');
-          guests[1]!.setPose('wave').setMood('happy');
+          for (const w of whisperers) w.setMood('angry').lookAt(livia.headPosition());
         },
-        narrate: 'Felix and Rufus got armies of their own. Rufus told the same terrible joke to every recruit.',
+        say: { who: 'Townswoman 1', as: 'A woman in the crowd', text: 'Look at him. The Mongol\'s child. In the palace.', mood: 'angry' },
       },
       {
-        duration: 6,
-        music: 'monastery',
-        shot: { from: [123, 1.8, 4], at: old, to: [122, 1.7, 3], fov: FOV.normal },
+        duration: 3,
+        shot: () => portrait(livia, { angle: -0.3, distance: 2 }),
+        run: () => livia.setMood('crying'),
+        sound: 'heartbeat',
+      },
+      {
+        shot: () => portrait(cassian, { angle: 0.5, distance: 3.6, rise: 0.4, fov: FOV.normal }),
         run: () => {
-          stage.light('dusk');
-          old.setMood('warm');
-          oldLivia.setMood('warm');
-          marcus.setMood('happy');
+          baby.parent = cassian.grips[0];
+          baby.position.set(0, 0.2, 0.1);
+          cassian.setPose('cheer').setMood('angry');
         },
-        narrate: 'Years passed like seasons in a window. My hair turned white. My back bent.',
+        say: { who: 'Cassian', text: 'This is my son. His name is Marcus. Whoever calls him anything else will answer to me.', mood: 'shout' },
       },
       {
         duration: 4,
-        shot: () => portrait(old, { angle: 0.3 }),
-        narrate: 'It was a good life. Better than I deserved.',
+        shot: { from: [5, 2, 0], at: [0, 2.6, 6], fov: FOV.normal },
+        run: () => {
+          for (const w of whisperers) w.setMood('afraid').lookAt(null);
+          crowd.excitement = 0.6;
+        },
+        narrate: 'Nobody said it to his face again. Not while Cassian lived.',
+      },
+      {
+        duration: 5,
+        shot: () => portrait(livia, { angle: 0.5, distance: 2.6 }),
+        run: () => {
+          baby.parent = livia.grips[1];
+          baby.position.set(0.2, -0.05, 0.1);
+          livia.setMood('happy');
+          cassian.setPose('embrace').setMood('warm');
+        },
+        narrate: 'Two years later, another boy. Lucius, with his father\'s brown hair and his father\'s stubborn chin.',
+        fade: { to: 1, time: 4 },
+      },
+    ];
+  },
+};
+
+export const twoBoys: Cutscene = {
+  id: 'two-boys',
+  create(stage: Stage): Beat[] {
+    stage.light('day');
+    CAPITAL.build(stage);
+    const marcusBoy = cast(stage, 'marcusBoy', 'Marcus').place(16, 10, Math.PI);
+    const luciusBoy = cast(stage, 'luciusBoy', 'Lucius').place(13.5, 12, Math.PI * 0.8);
+    const bullies = Array.from({ length: 3 }, (_, i) => cast(stage, 'villager', `Boy ${i}`, { age: 'child', color: ['#8A7A5A', '#5A7A9A', '#9A5A4A'][i] }).place(14 + i * 1.2, 7.2, 0).setMood('angry'));
+    const cassian = cast(stage, 'cassianGrey', 'Cassian').place(6, 6, Math.PI / 2);
+    const marcus = cast(stage, 'marcusRoman', 'Marcus ').place(16, 10, -Math.PI / 2);
+    const lucius = cast(stage, 'luciusBare', 'Lucius ').place(13, 13, -Math.PI / 2);
+    for (const a of [marcus, lucius]) a.root.setEnabled(false);
+    const senators = Array.from({ length: 3 }, (_, i) => cast(stage, 'emperor', `Senator ${i}`, { hair: '#9A9690', beard: i === 1 ? 'long' : 'short', beardColor: '#9A9690' }).place(4 + i * 1.2, 16, Math.PI * 0.7));
+    for (const s of senators) s.root.setEnabled(false);
+
+    return [
+      {
+        duration: 5,
+        fade: { from: 1, to: 0, time: 2 },
+        music: 'warm',
+        shot: { from: [18, 3, 1], at: [15, 1, 9], to: [17, 2.6, 3], fov: FOV.normal },
+        narrate: 'The boys grew up in the training yard, the way their father had grown up in a cell: fighting.',
+      },
+      {
+        shot: () => portrait(bullies[1]!, { angle: 0.3, distance: 2.2 }),
+        run: () => {
+          for (const b of bullies) b.setPose('point');
+          marcusBoy.setMood('angry').lookAt(bullies[1]!.headPosition());
+        },
+        say: { who: 'Boy 1', as: 'A boy', text: 'Go back east, Mongol! Go back to your real father!', mood: 'angry' },
+      },
+      {
+        duration: 2.6,
+        shot: () => portrait(marcusBoy, { angle: -0.3, distance: 1.8 }),
+        run: () => {
+          marcusBoy.setPose('punch').setMood('shout');
+          bullies[1]!.setPose('lie').setMood('surprised');
+        },
+        sound: 'thunder',
+      },
+      {
+        duration: 3,
+        shot: () => portrait(luciusBoy, { angle: 0.3, distance: 1.8 }),
+        run: () => luciusBoy.setPose('cheer').setMood('happy'),
+        say: { who: 'Lucius', text: 'Again! Hit him again, Marcus!', mood: 'happy' },
+      },
+      {
+        shot: () => overShoulder(cassian, marcusBoy),
+        run: () => {
+          for (const b of bullies) b.walkTo(b.root.position.x + 8, 0, 4);
+          cassian.place(15, 8.6, 0).setPose('kneel');
+          marcusBoy.setPose('stand').setMood('crying').lookAt(cassian.headPosition());
+        },
+        say: { who: 'Marcus', text: 'Is it true, father? That I am not yours?', mood: 'crying' },
+      },
+      {
+        shot: () => portrait(cassian, { angle: 0.3, distance: 2.0, rise: 0.2 }),
+        run: () => cassian.setMood('warm').lookAt(marcusBoy.headPosition()),
+        say: { who: 'Cassian', text: 'I was raised by monks who were not my blood. They were my fathers anyway. Blood is not a story, Marcus. What you do is the story.', mood: 'warm' },
+      },
+      {
+        duration: 5,
+        music: 'hope',
+        shot: { from: [19, 2.2, 4], at: [15, 1.4, 10], to: [18, 2.4, 6], fov: FOV.normal },
+        run: () => {
+          for (const a of [marcusBoy, luciusBoy]) a.root.setEnabled(false);
+          for (const a of [marcus, lucius]) a.root.setEnabled(true);
+          cassian.setPose('raiseSword').setMood('happy').place(13, 10, Math.PI / 2);
+          upright(sword(stage.world.parts, cassian.grips[0]));
+          upright(sword(stage.world.parts, marcus.grips[0]));
+          marcus.setPose('raiseSword').setMood('angry');
+          lucius.setPose('cheer').setMood('happy');
+        },
+        narrate: 'Years. Marcus grew tall and fast and angry. Lucius grew up watching him, and wanting to be him.',
+      },
+      {
+        shot: () => overShoulder(marcus, cassian),
+        run: () => {
+          cassian.setPose('stand').setMood('warm').lookAt(marcus.headPosition());
+          marcus.setPose('stand').setMood('neutral').lookAt(cassian.headPosition());
+        },
+        say: { who: 'Cassian', text: 'One day this city will be yours, Marcus. Not because you are my eldest. Because you are ready.', mood: 'warm' },
+      },
+      {
+        duration: 4,
+        shot: { from: [6, 2, 20], at: [5.2, 1.6, 16], fov: FOV.normal },
+        run: () => {
+          for (const s of senators) {
+            s.root.setEnabled(true);
+            s.setMood('angry').lookAt(marcus.headPosition());
+          }
+        },
+        narrate: 'Not everyone in the city agreed with him. They only said so behind closed doors.',
         fade: { to: 1, time: 3.5 },
       },
     ];
   },
 };
 
-/** A second castle yard far along x, for the years later. */
-function castleYardAt(stage: Stage, x: number): void {
-  for (const side of [-1, 1]) stage.box('#C8BCA6', [12, 7, 2], [x + side * 8, 3.5, -10]);
-  stage.box('#C8BCA6', [4, 2.4, 2], [x, 5.8, -10]);
-  stage.box('#7A7468', [40, 0.1, 40], [x, -0.03, 0], 0, { castShadow: false });
+/** The wagons of grain on the forest road, and the old legate's few men. */
+function wagon(stage: Stage, x: number, z: number): void {
+  const g = stage.group('wagon', x, 0, z);
+  const p = stage.world.parts;
+  p.part('box', SET.wagon, g, [1.6, 0.5, 3], [0, 0.8, 0]);
+  for (let i = 0; i < 4; i++) p.part('box', SET.grain, g, [0.6, 0.5, 0.6], [((i % 2) - 0.5) * 0.7, 1.3, -0.8 + Math.floor(i / 2) * 1.2]);
+  for (const sx of [-0.9, 0.9]) for (const sz of [-1, 1]) p.part('disc', '#4A3424', g, [0.9, 0.12, 0.9], [sx, 0.45, sz]).rotation.z = Math.PI / 2;
 }
 
-export const lastNight: Cutscene = {
-  id: 'last-night',
+export const patrolRoad: Cutscene = {
+  id: 'patrol-road',
+  create(stage: Stage): Beat[] {
+    stage.light('day');
+    stage.ground('#3E5A30', 160, 'forest');
+    roadForest(stage);
+    wagon(stage, 0, 4);
+    wagon(stage, 0, 9);
+    const cassian = cast(stage, 'cassianGrey', 'Cassian').place(0.4, 0, Math.PI);
+    const men = Array.from({ length: 8 }, (_, i) => cast(stage, 'legionary', `Legionary ${i}`).place(i % 2 === 0 ? -1.4 : 1.4, 1 + i * 1.3, Math.PI));
+    const greeks = Array.from({ length: 12 }, (_, i) => {
+      const side = i % 2 === 0 ? -1 : 1;
+      return cast(stage, i === 0 ? 'strategos' : 'hoplite', i === 0 ? 'Strategos' : `Greek ${i}`).place(side * (6 + (i % 3)), -4 + Math.floor(i / 2) * 2, side > 0 ? -Math.PI / 2 : Math.PI / 2).setPose('raiseSword');
+    });
+    for (const g of greeks) g.root.setEnabled(false);
+
+    return [
+      {
+        duration: 6,
+        fade: { from: 1, to: 0, time: 2 },
+        music: 'warm',
+        sound: 'wind',
+        shot: { from: [1.6, 2.2, -8], at: [0, 1.4, 3], to: [1.4, 2.6, -6], fov: FOV.normal },
+        narrate: 'The hill towns were starving that winter. Cassian would not send the grain with strangers. He took it himself.',
+      },
+      {
+        shot: () => portrait(men[0]!, { angle: 0.4 }),
+        run: () => men[0]!.setMood('happy').lookAt(cassian.headPosition()),
+        say: { who: 'Legionary 0', as: 'A legionary', text: 'An emperor driving wagons. My mother will never believe me.', mood: 'happy' },
+      },
+      {
+        shot: () => portrait(cassian, { angle: 0.4, distance: 2.2 }),
+        run: () => cassian.setMood('happy'),
+        say: { who: 'Cassian', text: 'Tell her the emperor also sang. Badly. All the way.', mood: 'happy' },
+      },
+      {
+        duration: 3,
+        sound: 'horn',
+        tags: [{ who: 'Strategos', text: 'Greeks' }],
+        shot: { from: [0, 6, -9], at: [0, 0.5, 2], fov: FOV.wide },
+        run: () => {
+          for (const g of greeks) {
+            g.root.setEnabled(true);
+            g.walkTo(g.root.position.x * 0.4, g.root.position.z, 4.5);
+          }
+        },
+        narrate: 'Greek raiders. They had followed the grain from the coast. Bronze shields, in the trees, on both sides.',
+      },
+      {
+        duration: 3,
+        shot: () => portrait(cassian, { angle: 0.2, distance: 2.0 }),
+        run: () => {
+          cassian.setPose('raiseSword').setMood('shout');
+          upright(sword(stage.world.parts, cassian.grips[0]));
+        },
+        say: { who: 'Cassian', text: 'Around the wagons! Shields! Nobody touches the grain!', mood: 'shout' },
+        fade: { to: 1, time: 2.6 },
+      },
+    ];
+  },
+};
+
+export const cassianFalls: Cutscene = {
+  id: 'cassian-falls',
   create(stage: Stage, story: StoryContext): Beat[] {
+    stage.light('dusk');
+    stage.ground('#3E5A30', 160, 'forest');
+    roadForest(stage);
+    wagon(stage, 0, 6);
+    for (let i = 0; i < 6; i++) cast(stage, 'hoplite', `Fallen Greek ${i}`).place(-4 + (i % 3) * 3.5, -3 + Math.floor(i / 3) * 6, i).setPose('lie', true).eyesClosed = true;
+    const cassian = cast(stage, 'cassianGrey', 'Cassian').place(0, 0, Math.PI / 2).setPose('lie', true).setMood('sad', true);
+    cassian.setWounded(true);
+    const felix = cast(stage, 'felixOld', 'Felix').place(1.2, 0.3, -Math.PI / 2).setPose('kneel', true).setMood('crying', true);
+    const rufus = cast(stage, 'rufusOld', 'Rufus').place(0.3, 1.3, Math.PI).setPose('kneel', true).setMood('crying', true);
+    const cross = upright(woodenCross(stage.world.parts, cassian.grips[0], 1.0));
+    const eirik = cast(stage, 'eirik', 'Eirik').place(-2, 2.6, Math.PI * 0.8);
+    if (story.save.choices.eirikSpared !== true) eirik.root.setEnabled(false);
+    const legion = Array.from({ length: 6 }, (_, i) => cast(stage, 'legionary', `Rider ${i}`).place(-5 + i * 2, 6, Math.PI).setPose('pray', true));
+
+    return [
+      {
+        duration: 6,
+        fade: { from: 1, to: 0, time: 2 },
+        music: 'sorrow',
+        shot: { from: [4, 3, 6], at: [0, 0.6, 0], to: [3, 2, 4.5], fov: FOV.normal },
+        narrate: 'Felix and Rufus rode all night when they heard. The Greeks were gone by the time they came. The grain was still there. So was he.',
+      },
+      {
+        shot: () => portrait(rufus, { angle: 0.4 }),
+        say: { who: 'Rufus', text: 'Hold on, old man. You hear me? You do not get to go first. I had a joke saved for this.', mood: 'crying' },
+      },
+      {
+        shot: () => portrait(cassian, { angle: 1.3, distance: 1.9, rise: 0.6 }),
+        run: () => cassian.lookAt(rufus.headPosition()),
+        say: { who: 'Cassian', text: 'Tell it, Rufus. I never laughed at a single one. I always wanted to.', mood: 'warm' },
+      },
+      {
+        shot: () => portrait(cassian, { angle: 1.2, distance: 1.8, rise: 0.6, push: 0.2 }),
+        run: () => cassian.lookAt(felix.headPosition()).setPose('offer'),
+        say: { who: 'Cassian', text: 'Felix. The cross goes to Marcus. He will need it more than Lucius. Tell Livia... tell her the road led home.', mood: 'sad' },
+      },
+      {
+        duration: 4,
+        sound: 'heartbeat',
+        shot: { from: [0.8, 0.9, -1.2], at: [0, 0.3, 0.1], fov: FOV.close },
+        run: () => {
+          cross.parent = felix.grips[0];
+          cross.position.set(0, 0, 0);
+          felix.setPose('clutch');
+        },
+      },
+      {
+        duration: 5,
+        music: 'monastery',
+        shot: { from: [-1.6, 1.6, 1.8], at: [0, 0.3, 0], to: [-2.4, 3, 3], fov: FOV.normal },
+        run: () => {
+          cassian.eyesClosed = true;
+          cassian.lookAt(null);
+          cassian.setPose('lie');
+          for (const l of legion) l.setPose('kneel');
+        },
+        narrate: 'Somewhere far away, a bell was ringing. That is what Rufus swore, for the rest of his life.',
+      },
+      {
+        duration: 5,
+        title: { text: 'Cassian', sub: 'Monk. Prisoner. Smith. Legate. Emperor. Father.' },
+        shot: { from: [0, 12, 4], at: [0, 0, 0], to: [0, 20, 6], fov: FOV.wide },
+        fade: { to: 1, time: 4.5 },
+      },
+    ];
+  },
+};
+
+/** A field outside the walls at night: the pyre, a ring of mourners with candles, the city behind. */
+function funeralField(stage: Stage): void {
+  stage.ground('#2E3A28', 120, 'hills');
+  for (let i = 0; i < 9; i++) stage.box('#8A8070', [12, 9, 3], [-48 + i * 12, 4.5, -34]);
+  for (let i = 0; i < 5; i++) stage.box('#8A8070', [3.6, 13, 3.6], [-48 + i * 24, 6.5, -34]);
+  stage.box('#6A6050', [8, 7, 3.4], [0, 3.5, -33.8]);
+}
+
+export const mourning: Cutscene = {
+  id: 'mourning',
+  create(stage: Stage): Beat[] {
     stage.light('night');
-    castleYard(stage);
-    campfire(stage, 0, 2, 0.7);
-    const yardGrave = grave(stage, 5, -3, 0.3);
-    const old = cast(stage, 'cassianOld', 'Cassian').place(-1.2, 2.4, Math.PI / 2).setStance('sit', true).setPose('hunch', true).setMood('warm', true);
-    const marcus = cast(stage, 'marcusYoung', 'Marcus').place(1.2, 2.4, -Math.PI / 2).setStance('sit', true).setPose('sit', true);
-    const livia = cast(stage, 'liviaOld', 'Livia').place(-3, -6, Math.PI);
-    const felix = cast(stage, 'felixOld', 'Felix').place(-1.5, -14, 0);
-    const rufus = cast(stage, 'rufusOld', 'Rufus').place(1.5, -14, 0);
-    const eirik = cast(stage, 'eirik', 'Eirik', { hair: '#C8C0A8', beard: 'long', beardColor: '#C8C0A8' }).place(3.5, -14, 0);
-    const eirikHere = story.save.choices.eirikSpared === true;
-    for (const a of [felix, rufus, eirik]) a.root.setEnabled(false);
-    const dead = Array.from({ length: 9 }, (_, i) =>
-      cast(stage, 'dead', `The dead ${i}`, { outfit: (['rags', 'viking', 'legion'] as const)[i % 3], color: '#5A5A50' }).place(-10 + i * 2.6, -20 - (i % 3), 0),
+    funeralField(stage);
+    ringOfPeople(stage, 0, 0, 8, 4, 0);
+    const pyre = stage.group('pyre', 0, 0, -1);
+    stage.world.parts.part('box', SET.pyre, pyre, [3, 1.4, 2], [0, 0.7, 0]);
+    stage.world.parts.part('box', '#B8322A', pyre, [2.2, 0.3, 0.9], [0, 1.55, 0]);
+    const livia = cast(stage, 'liviaOld', 'Livia').place(-1, 2.5, Math.PI);
+    const marcus = cast(stage, 'marcusRoman', 'Marcus').place(-2.4, 2.6, Math.PI);
+    const lucius = cast(stage, 'luciusBare', 'Lucius').place(1, 2.5, Math.PI);
+    const felix = cast(stage, 'felixOld', 'Felix').place(3, 3.4, Math.PI);
+    const rufus = cast(stage, 'rufusOld', 'Rufus').place(4.2, 3.8, Math.PI);
+    upright(woodenCross(stage.world.parts, marcus.grips[0], 1.0));
+    for (const [i, a] of [livia, marcus, lucius, felix, rufus].entries()) a.setMood(i === 1 ? 'angry' : 'sad');
+    for (let i = 0; i < 28; i++) {
+      const a = (i / 28) * Math.PI * 2;
+      stage.fire(Math.sin(a) * 7.4, Math.cos(a) * 7.4, 0.08, 0.9);
+    }
+
+    return [
+      {
+        duration: 7,
+        fade: { from: 1, to: 0, time: 3 },
+        music: 'sorrow',
+        shot: { from: [0, 14, 20], at: [0, 1, 0], to: [0, 10, 15], fov: FOV.wide },
+        narrate: 'My husband told the first part of this story. I am Livia. I will tell you the end.',
+      },
+      {
+        duration: 6,
+        shot: { from: [5, 2, 9], at: [0, 1.4, -1], fov: FOV.normal },
+        narrate: 'The whole city came, with candles. The same city that once threw him a borrowed sword.',
+      },
+      {
+        duration: 4,
+        shot: () => portrait(marcus, { angle: 0.3, distance: 2 }),
+        run: () => marcus.setPose('clutch'),
+        narrate: 'Marcus held his father\'s cross all night. He would not let anyone else light the fire.',
+      },
+      {
+        duration: 5,
+        sound: 'fire',
+        shot: { from: [-4, 2.4, 7], at: [0, 1.4, -1], to: [-5, 3.4, 9], fov: FOV.normal },
+        run: () => {
+          stage.fire(0, -1, 2.4, 1.4);
+          stage.light('fireNight');
+          marcus.setPose('pray');
+        },
+        narrate: 'He burned like a legion. Bright and fast and all at once.',
+      },
+      {
+        duration: 4,
+        shot: () => portrait(lucius, { angle: -0.4, distance: 2 }),
+        run: () => lucius.setMood('crying').lookAt(marcus.headPosition()),
+        narrate: 'Lucius cried. Marcus did not. Even then, I should have seen it coming.',
+        fade: { to: 1, time: 3.5 },
+      },
+    ];
+  },
+};
+
+export const theCrowning: Cutscene = {
+  id: 'the-crowning',
+  create(stage: Stage, story: StoryContext): Beat[] {
+    stage.light('interior');
+    throneRoom(stage);
+    const senators = Array.from({ length: 8 }, (_, i) =>
+      cast(stage, 'emperor', `Senator ${i}`, { hair: i % 3 === 0 ? '#E8E6E0' : '#9A9690', beard: i % 2 === 0 ? 'short' : 'none', beardColor: '#9A9690' })
+        .place(i % 2 === 0 ? -3.2 : 3.2, -11 + Math.floor(i / 2) * 2, i % 2 === 0 ? Math.PI / 2 : -Math.PI / 2)
+        .setMood('neutral', true),
     );
-    for (const d of dead) d.root.setEnabled(false);
-    const risen = cast(stage, 'dead', 'The first').place(5, -3, Math.PI);
-    risen.root.position.y = -1.9;
-    const oldSword = upright(sword(stage.world.parts, old.grips[0]));
-    oldSword.setEnabled(false);
-    const cross = upright(woodenCross(stage.world.parts, old.grips[1], 1.3));
-    cross.setEnabled(false);
+    const livia = cast(stage, 'liviaOld', 'Livia').place(-1.4, -12.6, 0);
+    const marcus = cast(stage, 'marcusRoman', 'Marcus').place(-0.6, -6, Math.PI);
+    const lucius = cast(stage, 'luciusBare', 'Lucius').place(0.8, -6, Math.PI);
+    const cross = upright(woodenCross(stage.world.parts, marcus.grips[0], 1.0));
 
     return [
       {
         duration: 5,
-        fade: { from: 1, to: 0, time: 2.5 },
-        music: 'warm',
-        sound: 'fire',
-        shot: { from: [0, 2, 7], at: [0, 1, 2], to: [0, 1.6, 5.5], fov: FOV.normal },
-        narrate: 'And that, my son...',
+        fade: { from: 1, to: 0, time: 2 },
+        music: 'dread',
+        sound: 'crowd',
+        shot: { from: [0, 2.6, 2], at: [0, 1.6, -12], to: [0, 2.2, -3], fov: FOV.normal },
+        narrate: 'Nine days later, the Senate met to name the new emperor. Outside, the crowd was chanting.',
       },
       {
-        shot: () => overShoulder(old, marcus),
-        run: () => old.lookAt(marcus.headPosition()),
-        say: { who: 'Cassian', text: '...is the whole story. All of it. The bells, the cross, Varro. Everything.', mood: 'warm' },
+        shot: () => portrait(senators[0]!, { angle: 0.4 }),
+        run: () => senators[0]!.setMood('angry'),
+        say: { who: 'Senator 0', as: 'Old senator', text: 'The law says the eldest. But listen to them out there. They will never kneel to the Mongol\'s son.', mood: 'angry' },
       },
       {
-        shot: () => overShoulder(marcus, old, { side: -1 }),
-        run: () => marcus.lookAt(old.headPosition()).setMood('sad'),
-        say: { who: 'Marcus', text: 'You never wanted to talk about the war. Why tell me now, father?', mood: 'sad' },
+        shot: () => portrait(marcus, { angle: 0.3, distance: 2.0 }),
+        run: () => marcus.setMood('shout').setPose('point'),
+        say: { who: 'Marcus', text: 'I am Cassian\'s son! He called me his son in the square, in front of all of you!', mood: 'shout' },
       },
       {
-        shot: () => portrait(old, { angle: 0.4, distance: 2.4 }),
-        run: () => old.lookAt({ x: 0, y: 3, z: -10 }).setMood('sad'),
-        say: { who: 'Cassian', text: 'Tonight I dreamed of the monks. Anselm was ringing the bell. He looked... glad to see me.', mood: 'sad' },
+        shot: () => portrait(senators[3]!, { angle: -0.3 }),
+        say: { who: 'Senator 3', as: 'A senator', text: 'And Cassian is dead. Crown the eastern boy and there will be blood in the streets by morning. His blood, first.', mood: 'neutral' },
       },
       {
         duration: 4,
-        music: 'dread',
-        sound: 'thunder',
-        shot: { from: [2.5, 1.2, 2], at: [5, 0.4, -3], fov: FOV.normal },
-        run: () => yardGrave.scaling.set(1.2, 0.5, 1.2),
-        during: (_s, p) => {
-          risen.root.position.y = -1.9 + p * 1.9;
-        },
+        sound: 'heartbeat',
+        shot: () => portrait(livia, { angle: 0.2, distance: 2.2 }),
+        run: () => livia.setMood('crying').lookAt(marcus.headPosition()),
+        narrate: 'I looked at my son, and I saw them dragging him out into that crowd. I made the choice that kept him alive. I have never stopped paying for it.',
       },
       {
-        shot: () => portrait(marcus, { angle: 0.4 }),
+        shot: () => portrait(livia, { angle: 0.1, distance: 2.0, push: 0.2 }),
+        run: () => livia.setPose('reach'),
+        say: { who: 'Livia', text: 'Crown Lucius. For peace. For both of them.', mood: 'crying' },
+      },
+      {
+        duration: 3,
+        shot: () => portrait(lucius, { angle: -0.4, distance: 2.0 }),
+        run: () => lucius.setMood('afraid').lookAt(marcus.headPosition()),
+        say: { who: 'Lucius', text: 'Marcus... I never asked for this.', mood: 'afraid' },
+      },
+      {
+        shot: () => portrait(marcus, { angle: 0.2, distance: 1.8, push: 0.2 }),
+        run: () => marcus.setMood('crying').lookAt(livia.headPosition()),
+        say: { who: 'Marcus', text: 'You too, mother? Even you?', mood: 'crying' },
+      },
+      {
+        shot: () => portrait(marcus, { angle: 0.4, distance: 2.2, rise: -0.2 }),
+        run: () => marcus.setMood('shout').setPose('raiseSword'),
+        say: { who: 'Marcus', text: 'Keep your city. Keep your crown. One day I will come back for both, and this city will learn what the Mongol\'s son can do.', mood: 'shout' },
+      },
+      {
+        duration: 3.5,
+        sound: 'door',
+        shot: { from: [2, 2.2, -12], at: [0, 1.4, -3], fov: FOV.normal },
         run: () => {
-          risen.root.position.y = 0;
-          risen.setPose('reach');
-          marcus.setStance('pose').setPose('cower').setMood('afraid').lookAt(risen.headPosition());
+          marcus.setPose('stand');
+          marcus.walkTo(0, 4, 3);
+          for (const s of senators) s.setMood('afraid');
         },
-        say: { who: 'Marcus', text: 'Father... the grave...', mood: 'afraid' },
+        narrate: 'He walked out with his father\'s cross in his fist, and he did not look back.',
+      },
+      {
+        duration: 1,
+        shot: { from: [0, 3, -1], at: [0, 1.4, 6], fov: FOV.normal },
+        run: () => cross.setEnabled(true),
+        choice: {
+          options: ['Follow Marcus, the elder. Into the dark.', 'Follow Lucius, the younger. Onto the throne.'],
+          pick: (i) => story.choose({ son: i === 0 ? 'marcus' : 'lucius' }),
+        },
+      },
+    ];
+  },
+};
+
+/** A barrow field in the hills at night, mist on the graves. */
+function barrows(stage: Stage): void {
+  stage.ground('#2A3A2A', 140, 'hills');
+  stage.weather('motes');
+  for (let i = 0; i < 14; i++) grave(stage, -8 + (i % 7) * 2.6, -3 + Math.floor(i / 7) * 4.5, (i % 3) * 0.2, i % 2 === 0);
+  for (let i = 0; i < 20; i++) stage.box(SET.mist, [3, 0.3, 1.6], [-10 + (i % 5) * 5, 0.2, -6 + Math.floor(i / 5) * 4], i * 0.5, { castShadow: false });
+  // Standing stones.
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2;
+    stage.box('#6A6A66', [1, 3.2 + (i % 3) * 0.6, 0.8], [Math.sin(a) * 13, 1.6, -1 + Math.cos(a) * 13], a);
+  }
+}
+
+export const marcusPath: Cutscene = {
+  id: 'marcus-path',
+  create(stage: Stage): Beat[] {
+    stage.light('night');
+    barrows(stage);
+    const marcus = cast(stage, 'marcusMongol', 'Marcus').place(0, 10, Math.PI);
+    const wizard = cast(stage, 'wizard', 'The Wizard').place(0, -1, 0).setMood('happy', true);
+    const staff = stage.group('staff', 0, 0, 0);
+    stage.world.parts.part('box', '#3A2A1E', staff, [0.08, 2.2, 0.08], [0, 0.4, 0]);
+    stage.world.parts.part('sphere', '#7AF0C8', staff, [0.3, 0.3, 0.3], [0, 1.55, 0], { glow: true });
+    staff.parent = wizard.grips[0];
+    staff.position.set(0, 0, 0);
+    const exiles = Array.from({ length: 6 }, (_, i) => cast(stage, 'mongol', `Exile ${i}`).place(-4 + i * 1.6, 14, Math.PI));
+    const dead: Actor[] = Array.from({ length: 14 }, (_, i) => {
+      const d = cast(stage, 'dead', `Dead ${i}`).place(-8 + (i % 7) * 2.6, -3 + Math.floor(i / 7) * 4.5 + 0.4, 0);
+      d.root.position.y = -2;
+      d.setPose('reach', true);
+      return d;
+    });
+
+    return [
+      {
+        duration: 6,
+        fade: { from: 1, to: 0, time: 2 },
+        music: 'dread',
+        sound: 'wind',
+        shot: { from: [4, 2.6, 22], at: [0, 1.4, 10], to: [3, 2.2, 16], fov: FOV.normal },
+        run: () => marcus.walkTo(0, 4, 1.4),
+        narrate: 'Marcus rode east, into the lands his blood came from. They did not want him either.',
+      },
+      {
+        duration: 4,
+        shot: { from: [-6, 2, 18], at: [0, 1.4, 14], fov: FOV.normal },
+        narrate: 'A few Mongol outcasts followed him anyway. Men nobody wanted, behind a prince nobody wanted.',
+      },
+      {
+        duration: 4,
+        sound: 'thunder',
+        shot: () => portrait(wizard, { angle: 0.3, distance: 3, rise: -0.3 }),
+        run: () => {
+          marcus.finishWalk();
+          wizard.lookAt(marcus.headPosition());
+        },
+        narrate: 'In a field of old graves, someone was waiting for him.',
+      },
+      {
+        shot: () => overShoulder(wizard, marcus),
+        say: { who: 'The Wizard', text: 'Cassian\'s boy. The Mongol\'s boy. Nobody\'s boy. I know how it feels. Nobody wanted me either.', mood: 'happy' },
+      },
+      {
+        shot: () => overShoulder(marcus, wizard, { side: -1 }),
+        run: () => marcus.setMood('angry'),
+        say: { who: 'Marcus', text: 'What are you?', mood: 'angry' },
+      },
+      {
+        shot: () => portrait(wizard, { angle: 0.2, distance: 2.2 }),
+        say: { who: 'The Wizard', text: 'A friend to the forgotten. The living chose your brother. But the dead... the dead do not care what your face looks like.', mood: 'happy' },
+      },
+      {
+        shot: () => portrait(wizard, { angle: 0.1, distance: 2.0, push: 0.2 }),
+        say: { who: 'The Wizard', text: 'Give me the thing your father loved most, and I will give you an army that never sleeps.', mood: 'neutral' },
+      },
+      {
+        duration: 4,
+        sound: 'heartbeat',
+        shot: () => portrait(marcus, { angle: -0.3, distance: 1.8 }),
+        run: () => marcus.setPose('clutch').setMood('crying'),
+        narrate: 'He took out his father\'s cross. He held it a long time.',
+      },
+      {
+        duration: 3,
+        shot: () => portrait(marcus, { angle: 0.3, distance: 2.0 }),
+        run: () => marcus.setPose('offer').setMood('angry'),
+        say: { who: 'Marcus', text: 'Take it.', mood: 'angry' },
       },
       {
         duration: 6,
-        shot: { from: [0, 5, 6], at: [0, 1.5, -18], fov: FOV.wide },
+        music: 'dread',
+        sound: 'thunder',
+        shot: { from: [8, 3, 8], at: [-1, 0.6, -1], to: [6, 4, 10], fov: FOV.wide },
         run: () => {
-          for (const [i, d] of dead.entries()) {
-            d.root.setEnabled(true);
-            d.setPose('reach').walkTo(-8 + i * 2, -11, 0.7);
-          }
-          old.setStance('pose').setPose('stand').setMood('angry');
+          stage.light('fireNight');
+          wizard.setPose('cheer');
+          for (const e of exiles) e.setPose('cower').setMood('afraid');
         },
-        narrate: 'The dead came. Vikings, Romans, farmers. Everyone the war had ever taken.',
-      },
-      {
-        shot: () => overShoulder(livia, old),
-        run: () => {
-          for (const d of dead) d.finishWalk();
-          livia.place(-1.4, 0.6, 0.6).setMood('crying').lookAt(old.headPosition());
-          old.place(-0.4, 2.0, Math.PI + 0.6);
+        during: (_s, p) => {
+          dead.forEach((d, i) => {
+            const rise = Math.min(1, Math.max(0, p * 1.6 - i * 0.04));
+            d.root.position.y = -2 + rise * 2;
+          });
         },
-        say: { who: 'Livia', text: 'Cassian.', mood: 'crying' },
+        narrate: 'And the graves opened.',
       },
       {
-        shot: () => overShoulder(old, livia, { side: -1 }),
-        run: () => old.lookAt(livia.headPosition()).setMood('warm'),
-        say: { who: 'Cassian', text: 'Take Marcus to the tower and bar the door. Not this time, Livia. Someone has to ring the bell.', mood: 'warm' },
+        duration: 4,
+        shot: () => portrait(marcus, { angle: 0.4, distance: 2.2, rise: -0.2 }),
+        run: () => marcus.setPose('raiseSword').setMood('shout'),
+        say: { who: 'Marcus', text: 'Now, little brother. Now we talk.', mood: 'shout' },
+        fade: { to: 1, time: 3.5 },
+      },
+    ];
+  },
+};
+
+export const luciusPath: Cutscene = {
+  id: 'lucius-path',
+  create(stage: Stage): Beat[] {
+    stage.light('dusk');
+    stage.ground('#5A7A3A', 120, 'hills');
+    grave(stage, 0, 0, 0, false);
+    const lucius = cast(stage, 'lucius', 'Lucius').place(0.4, 2.4, Math.PI);
+    const livia = cast(stage, 'liviaOld', 'Livia').place(-1.2, 2.6, Math.PI);
+    const felix = cast(stage, 'felixOld', 'Felix').place(-3, 4.4, Math.PI);
+    const rufus = cast(stage, 'rufusOld', 'Rufus').place(3, 4.4, Math.PI);
+    const scout = cast(stage, 'messenger', 'Scout').place(0, 16, Math.PI);
+    scout.root.setEnabled(false);
+
+    return [
+      {
+        duration: 6,
+        fade: { from: 1, to: 0, time: 2 },
+        music: 'sorrow',
+        shot: { from: [4, 2.4, 7], at: [0, 1, 0], to: [3, 2, 5], fov: FOV.normal },
+        narrate: 'Lucius was crowned on a grey morning. The helmet was too big. He wore it anyway.',
       },
       {
-        shot: () => portrait(marcus, { angle: -0.3 }),
-        run: () => marcus.setPose('fist').setMood('crying').lookAt(old.headPosition()),
-        say: { who: 'Marcus', text: 'I will fight with you!', mood: 'crying' },
+        shot: () => portrait(lucius, { angle: 0.4, distance: 2.0 }),
+        run: () => lucius.setMood('sad').lookAt({ x: 0, y: 0.4, z: -0.8 }),
+        say: { who: 'Lucius', text: 'I do not know how to be you, father. I only know how to be the little brother.', mood: 'sad' },
       },
       {
-        shot: () => portrait(old, { angle: 0.3, distance: 2.2, push: 0.3 }),
-        run: () => {
-          old.lookAt(marcus.headPosition()).setPose('embrace').setMood('crying');
-          marcus.setPose('embrace');
-        },
-        say: { who: 'Cassian', text: 'No. You will live. That is how you fight tonight. Remember the story.', mood: 'crying' },
+        shot: () => portrait(livia, { angle: -0.3, distance: 2.0 }),
+        run: () => livia.lookAt(lucius.headPosition()),
+        say: { who: 'Livia', text: 'Your father did not know either. He was a monk who could not even cook. He learned.', mood: 'warm' },
+      },
+      {
+        shot: () => portrait(rufus, { angle: -0.4 }),
+        run: () => rufus.setPose('fist').setMood('happy'),
+        say: { who: 'Rufus', text: 'And we are still here, boy. Old, slow, and very, very cranky. The best kind of soldier.', mood: 'happy' },
+      },
+      {
+        duration: 3,
+        shot: () => portrait(felix, { angle: 0.4 }),
+        run: () => felix.setPose('fist').setMood('warm'),
+        say: { who: 'Felix', text: 'Our swords are yours. As they were his.', mood: 'warm' },
       },
       {
         duration: 4,
         sound: 'horn',
-        music: 'hope',
-        shot: { from: [0, 2, -4], at: [0, 1.6, -13], fov: FOV.normal },
+        shot: { from: [2, 2, 8], at: [0, 1.4, 14], fov: FOV.normal },
         run: () => {
-          livia.walkTo(-6, -2, 1.2);
-          marcus.walkTo(-6, -3, 1.2);
-          felix.root.setEnabled(true);
-          rufus.root.setEnabled(true);
-          eirik.root.setEnabled(eirikHere);
-          for (const a of [felix, rufus, eirik]) a.walkTo(a.root.position.x, -7, 1.4);
+          scout.root.setEnabled(true);
+          scout.walkTo(0, 7, 4);
+          for (const a of [lucius, livia, felix, rufus]) a.turnTo(0);
         },
-        narrate: 'Then a horn, at the gate. Old friends answer old horns.',
       },
       {
-        shot: () => portrait(rufus, { angle: 0.3 }),
+        shot: () => portrait(scout, { angle: 0.2, distance: 2.4 }),
         run: () => {
-          for (const a of [felix, rufus, eirik, livia, marcus]) a.finishWalk();
-          rufus.setMood('happy');
+          scout.finishWalk();
+          scout.setPose('point').setMood('afraid');
         },
-        say: { who: 'Rufus', text: 'Did you think we would let you have all the fun? Hehe... he.', mood: 'happy' },
+        say: { who: 'Scout', as: 'A scout', text: 'Caesar! Your brother is coming from the east. Riders... and behind them... the dead. The dead are walking, Caesar!', mood: 'afraid' },
       },
       {
-        shot: () => portrait(felix, { angle: -0.3 }),
-        say: { who: 'Felix', text: 'One more time, brother.', mood: 'warm' },
+        shot: () => portrait(lucius, { angle: 0.3, distance: 2.0, push: 0.2 }),
+        run: () => lucius.setMood('angry').setPose('raiseSword'),
+        say: { who: 'Lucius', text: 'Ring every bell in the city. Man the walls. And nobody kills my brother but me.', mood: 'angry' },
+        fade: { to: 1, time: 3.5 },
       },
+    ];
+  },
+};
+
+export const brothersEnd: Cutscene = {
+  id: 'brothers-end',
+  create(stage: Stage, story: StoryContext): Beat[] {
+    stage.light('dusk');
+    CAPITAL.build(stage);
+    stage.weather('ash');
+    for (const [x, z] of [[-10, -10], [12, 8], [-16, 12]] as const) stage.fire(x, z, 1.2, 0.3);
+    for (let i = 0; i < 10; i++) cast(stage, 'dead', `Dead ${i}`).place(-8 + (i % 5) * 4, -8 + Math.floor(i / 5) * 12, i).setPose('lie', true).eyesClosed = true;
+    const marcusWon = isMarcus(story);
+    const luciusWon = isLucius(story);
+    const marcus = cast(stage, 'marcusMongol', 'Marcus').place(0, 3, Math.PI);
+    const lucius = cast(stage, 'lucius', 'Lucius').place(0, 1.2, 0);
+    const livia = cast(stage, 'liviaOld', 'Livia').place(-3, 2, Math.PI / 2);
+    const cross = woodenCross(stage.world.parts, stage.root, 1.0);
+    cross.position.set(0.4, 0.05, 2.2);
+    cross.rotation.set(Math.PI / 2, 0.3, 0);
+
+    return [
+      // Lucius won: Marcus lies wounded in the square.
       {
-        when: () => eirikHere,
-        shot: () => portrait(eirik, { angle: 0.3 }),
-        say: { who: 'Eirik', text: 'I said I would not forget. I did not.', mood: 'warm' },
-      },
-      {
-        duration: 1,
-        shot: () => portrait(old, { angle: 0.2, distance: 2.6 }),
+        when: luciusWon,
+        duration: 5,
+        fade: { from: 1, to: 0, time: 2 },
+        music: 'sorrow',
+        shot: { from: [4, 3, 8], at: [0, 0.6, 2], to: [3, 2.2, 6], fov: FOV.normal },
         run: () => {
-          oldSword.setEnabled(true);
-          cross.setEnabled(true);
-          old.setPose('raiseSword').setMood('angry');
+          marcus.place(0, 3, Math.PI / 2).setPose('lie').setMood('sad');
+          marcus.setWounded(true);
+          lucius.place(0.9, 2.6, -Math.PI / 2).setPose('kneel').setMood('crying');
         },
-        choice: {
-          options: ['Hold them in the tunnel under the gate.', 'Wait for them in the courtyard.'],
-          pick: (i) => story.choose({ lastStand: i === 0 ? 'tunnel' : 'courtyard' }),
-        },
+        narrate: 'When the Mongol\'s son fell, the dead fell with him, all at once, like puppets with their strings cut.',
       },
       {
-        duration: 3.5,
-        shot: () => portrait(old, { angle: 0.1, distance: 2.4, rise: -0.3 }),
-        run: () => old.setMood('shout'),
-        say: { who: 'Cassian', text: 'For the last time! With me!', mood: 'shout' },
-        fade: { to: 1, time: 3 },
+        when: luciusWon,
+        shot: () => portrait(marcus, { angle: 1.3, distance: 1.9, rise: 0.6 }),
+        run: () => marcus.lookAt(lucius.headPosition()),
+        say: { who: 'Marcus', text: 'Little brother. You got good. When did you get good?', mood: 'sad' },
+      },
+      {
+        when: luciusWon,
+        shot: () => portrait(lucius, { angle: -0.3, distance: 1.8 }),
+        say: { who: 'Lucius', text: 'I learned from you. I always learned from you. Why, Marcus? Why the dead?', mood: 'crying' },
+      },
+      {
+        when: luciusWon,
+        shot: () => portrait(marcus, { angle: 1.2, distance: 1.8, rise: 0.6, push: 0.2 }),
+        say: { who: 'Marcus', text: 'Because they were the only ones who did not look at my face. Tell mother... tell her I gave the cross away. I am sorry for that. Only that.', mood: 'crying' },
+      },
+      {
+        when: luciusWon,
+        duration: 5,
+        sound: 'heartbeat',
+        shot: { from: [-1.6, 1.4, 4.4], at: [0, 0.4, 3], fov: FOV.normal },
+        run: () => {
+          marcus.eyesClosed = true;
+          lucius.setPose('cradle');
+          livia.walkTo(-0.8, 3.6, 0.8);
+        },
+        narrate: 'Lucius held him until he was cold. I did not get there in time. I never got there in time, for Marcus.',
+      },
+      // Marcus won: the throne is his, and his brother is on his knees.
+      {
+        when: marcusWon,
+        duration: 5,
+        fade: { from: 1, to: 0, time: 2 },
+        music: 'dread',
+        shot: { from: [5, 3, -4], at: [0, 1.2, 2], to: [4, 2.4, -2], fov: FOV.normal },
+        run: () => {
+          lucius.setPose('kneel').setMood('afraid');
+          marcus.setPose('raiseSword').setMood('angry');
+          upright(sword(stage.world.parts, marcus.grips[0]));
+        },
+        narrate: 'The city fell to its own son. Lucius was brought to the square in chains, and Marcus raised his sword.',
+      },
+      {
+        when: marcusWon,
+        shot: () => overShoulder(livia, marcus),
+        run: () => {
+          livia.place(-0.8, 2.2, Math.PI * 0.2).setPose('reach').setMood('crying');
+          livia.lookAt(marcus.headPosition());
+        },
+        say: { who: 'Livia', text: 'Your father had the man who burned his home at his feet once. He let him go. Do you know why?', mood: 'crying' },
+      },
+      {
+        when: marcusWon,
+        shot: () => portrait(marcus, { angle: 0.3, distance: 2.0 }),
+        run: () => marcus.setMood('crying'),
+        say: { who: 'Marcus', text: 'Because it had to end with someone.', mood: 'crying' },
+      },
+      {
+        when: marcusWon,
+        duration: 4,
+        sound: 'thunder',
+        shot: () => portrait(marcus, { angle: 0.2, distance: 2.4, rise: -0.2 }),
+        run: () => {
+          marcus.setPose('stand').setMood('sad');
+          lucius.setPose('stand').setMood('surprised');
+        },
+        narrate: 'He let the sword fall. Behind him, the dead stopped, and lay down, and were only dead again. Whatever he had given away, he took back.',
+      },
+      {
+        when: marcusWon,
+        shot: () => overShoulder(lucius, marcus),
+        run: () => lucius.lookAt(marcus.headPosition()),
+        say: { who: 'Lucius', text: 'Two emperors, then. Like the old days. You take the east. You always wanted to see it.', mood: 'warm' },
+      },
+      {
+        duration: 5,
+        shot: { from: [0, 6, 12], at: [0, 1, 2], to: [0, 10, 16], fov: FOV.wide },
+        run: () => cross.setEnabled(true),
+        fade: { to: 1, time: 4.5 },
       },
     ];
   },
@@ -275,116 +925,59 @@ export const lastNight: Cutscene = {
 
 export const theEnd: Cutscene = {
   id: 'the-end',
-  create(stage: Stage): Beat[] {
-    stage.light('night');
-    castleYard(stage);
-    const old = cast(stage, 'cassianOld', 'Cassian').place(0, -8.6, 0).setPose('kneel', true).setMood('sad', true);
-    upright(woodenCross(stage.world.parts, old.grips[0], 1.3));
-    // The white place: far away on the same stage.
-    const W = 200;
-    stage.box('#FFFFFF', [80, 0.1, 80], [W, -0.04, 0], 0, { castShadow: false });
-    const young = cast(stage, 'cassianCommander', 'Cassian ').place(W, 2, Math.PI);
-    const varro = cast(stage, 'varro', 'Varro').place(W, -6, 0);
-    const anselm = cast(stage, 'anselm', 'Anselm').place(W - 2, -9, 0);
-    [-4, -1, 1, 4].map((x, i) => cast(stage, 'monk', `Brother ${i}`).place(W + x, -11 - (i % 2), 0).setPose('pray', true));
-    // Dawn on the walls: Marcus alone.
-    const D = -200;
-    castleYardAt(stage, D);
-    stage.box('#C8BCA6', [16, 0.6, 3], [D, 7, -10]);
-    const marcus = cast(stage, 'marcusYoung', 'Marcus').place(D, -10, Math.PI);
-    marcus.root.position.y = 7.3;
-    upright(sword(stage.world.parts, marcus.grips[0]));
-    upright(woodenCross(stage.world.parts, marcus.grips[1], 1.3));
+  create(stage: Stage, story: StoryContext): Beat[] {
+    stage.light('goldenMorning');
+    stage.ground('#6E9A48', 120, 'hills');
+    stage.weather('motes');
+    const marcusLives = isMarcus(story);
+    grave(stage, -1.2, 0, 0, false);
+    const second = grave(stage, 1.2, 0, 0, false);
+    second.setEnabled(!marcusLives());
+    const livia = cast(stage, 'liviaOld', 'Livia').place(0, 3, Math.PI).setPose('kneel', true);
+    const lucius = cast(stage, 'lucius', 'Lucius', { helmet: false }).place(-1.6, 4.4, Math.PI);
+    const marcus = cast(stage, 'marcusMongol', 'Marcus', { helmet: false }).place(1.6, 4.4, Math.PI);
+    marcus.root.setEnabled(marcusLives());
+    const cross = upright(woodenCross(stage.world.parts, stage.root, 1.3));
+    cross.position.set(-1.2, 0.9, -1.0);
+    const ribbon = stage.box('#4A7AC8', [0.4, 0.04, 0.06], [-1.2, 1.1, -0.92], 0, { castShadow: false });
+    ribbon.rotation.z = 0.3;
 
     return [
       {
-        duration: 5,
-        fade: { from: 1, to: 0, time: 1.5 },
-        music: 'silence',
-        sound: 'heartbeat',
-        shot: { from: [1.5, 1.0, -6], at: [0, 0.9, -8.6], fov: FOV.normal },
-        run: () => {
-          old.trembling = true;
-        },
-        narrate: 'At the gate, under the tunnel, I held them as long as I could.',
-      },
-      {
-        duration: 4,
-        shot: () => portrait(old, { angle: 0.4, distance: 2.4 }),
-        run: () => {
-          old.trembling = false;
-          old.setPose('lie').setMood('warm');
-          old.eyesClosed = true;
-        },
-        fade: { to: 1, color: 'white', time: 3.5 },
-      },
-      {
-        duration: 4,
+        duration: 7,
+        fade: { from: 1, to: 0, time: 3 },
         music: 'monastery',
-        sound: 'bell',
-        fade: { to: 0, color: 'white', time: 3 },
-        shot: { from: [W, 1.7, 6], at: [W, 1.6, -6], fov: FOV.normal },
-        run: () => {
-          stage.light('white');
-          stage.weather('motes');
-          young.lookAt(varro.headPosition());
-        },
+        shot: { from: [0, 3, 10], at: [0, 1, 0], to: [0, 2.4, 7], fov: FOV.wide },
+        narrate: 'I come here every spring. I bring a ribbon. The old one always blows away.',
       },
       {
-        shot: () => overShoulder(varro, young),
-        run: () => {
-          varro.place(W, -1.2, 0).setMood('warm').lookAt(young.headPosition());
-        },
-        say: { who: 'Varro', text: 'My son.', mood: 'warm' },
+        when: marcusLives,
+        shot: () => portrait(marcus, { angle: 0.4 }),
+        run: () => marcus.setMood('warm').lookAt(livia.headPosition()),
+        narrate: 'Marcus rides in from the east every spring too. He never says much. He fixes my fence.',
       },
       {
-        shot: () => overShoulder(young, varro, { side: -1 }),
-        run: () => young.setMood('crying'),
-        say: { who: 'Cassian', text: 'Father.', mood: 'crying' },
+        when: () => !marcusLives(),
+        duration: 5,
+        shot: { from: [2.6, 1.2, 1.6], at: [1.2, 0.5, -0.6], fov: FOV.normal },
+        narrate: 'Beside his father. Where he always should have been.',
       },
       {
-        duration: 4,
-        shot: { from: [W + 3, 1.8, 3], at: [W, 1.4, 0.4], fov: FOV.normal },
-        run: () => {
-          young.setPose('embrace').setMood('happy');
-          varro.setPose('embrace').setMood('happy');
-        },
-      },
-      {
-        shot: () => portrait(anselm, { angle: 0.3 }),
-        run: () => {
-          anselm.place(W - 1.6, -2.6, 0.5).setMood('warm').lookAt(young.headPosition());
-        },
-        say: { who: 'Anselm', text: 'Welcome home, little brother. You kept it close.', mood: 'warm' },
+        shot: () => portrait(lucius, { angle: -0.3 }),
+        run: () => lucius.setMood('warm').lookAt(livia.headPosition()),
+        narrate: 'Lucius brings his children. They ask about the monk who became an emperor. I tell them about the bells first.',
       },
       {
         duration: 5,
-        shot: { from: [W, 3, 8], at: [W, 1.4, -4], to: [W, 6, 14], fov: FOV.wide },
-        fade: { to: 1, color: 'white', time: 4.5 },
+        shot: { from: [-0.4, 1.2, 1.6], at: [-1.2, 1.0, -1], fov: FOV.close },
+        narrate: 'Crooked. Perfect. It knew the way home after all.',
       },
       {
         duration: 6,
-        fade: { from: 1, to: 0, color: 'white', time: 3 },
-        music: 'hope',
-        shot: { from: [D + 4, 8.4, -6], at: marcus, to: [D + 2.5, 8.2, -7.5], fov: FOV.normal },
-        run: () => {
-          stage.light('goldenMorning');
-          stage.weather('none');
-          marcus.setPose('clutch').setMood('sad');
-        },
-        narrate: 'Dawn.',
-      },
-      {
-        shot: () => portrait(marcus, { angle: 0.3, distance: 2.4 }),
-        run: () => marcus.setMood('warm'),
-        say: { who: 'Marcus', text: 'Crooked. And perfect.', mood: 'warm' },
-      },
-      {
-        duration: 7,
-        fade: { to: 1, time: 3 },
-        title: { text: 'Tumblehorde', sub: 'Thank you for playing' },
+        shot: { from: [0, 6, 14], at: [0, 1, 0], to: [0, 14, 24], fov: FOV.wide },
+        title: { text: 'Tumblehorde', sub: 'The story of Cassian, and his sons' },
+        fade: { to: 1, time: 5.5 },
       },
     ];
   },
 };
-

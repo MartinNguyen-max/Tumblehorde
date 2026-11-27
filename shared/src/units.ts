@@ -51,7 +51,8 @@ const FACTION_CARRIED: Record<Faction, Partial<Record<UnitKind, readonly Weapon[
   roman: {},
   // Spear for marching and the shield wall, the axe comes out to attack.
   viking: { commander: VIKING_COMMANDER_WEAPONS, swordsman: ['spear', 'axe'] },
-  bandit: { swordsman: ['sword'] },
+  // Raiders on horseback (the Mongols) swing curved sabers, not lances.
+  bandit: { swordsman: ['sword'], rider: ['sword'] },
   zombie: { swordsman: ['claw'], commander: ['claw'] },
 };
 

@@ -7,14 +7,16 @@ import { createLegion, type Legionary } from './roster.ts';
  * chapter start and each battle) and read back with `parseSave`, which trusts nothing it reads.
  */
 
-export type LastStand = 'tunnel' | 'courtyard';
+/** Cassian's sons: Marcus, the elder, and Lucius. The player plays one of them at the end. */
+export type Son = 'marcus' | 'lucius';
 
 export interface CampaignChoices {
   /** Spared Eirik at the burning village. Null: not asked yet. */
   eirikSpared: boolean | null;
   /** Spared Hrolf at the end of the last battle. */
   hrolfSpared: boolean | null;
-  lastStand: LastStand | null;
+  /** The son the player follows after Cassian's death. */
+  son: Son | null;
 }
 
 export interface CampaignGear {
@@ -51,7 +53,7 @@ export function newSave(now: number): CampaignSave {
     strength: 0,
     workouts: 0,
     gear: { armor: false, shield: false, sword: false, dracoSword: false },
-    choices: { eirikSpared: null, hrolfSpared: null, lastStand: null },
+    choices: { eirikSpared: null, hrolfSpared: null, son: null },
     legion: createLegion(),
     fallen: [],
     letters: 0,
@@ -85,10 +87,12 @@ function parseGear(value: unknown): CampaignGear | null {
 
 function parseChoices(value: unknown): CampaignChoices | null {
   if (!isRecord(value)) return null;
-  const { eirikSpared, hrolfSpared, lastStand } = value;
+  const { eirikSpared, hrolfSpared } = value;
+  // Saves from before the sons have no `son` yet.
+  const son = value.son ?? null;
   if (!isNullableBoolean(eirikSpared) || !isNullableBoolean(hrolfSpared)) return null;
-  if (lastStand !== null && lastStand !== 'tunnel' && lastStand !== 'courtyard') return null;
-  return { eirikSpared, hrolfSpared, lastStand };
+  if (son !== null && son !== 'marcus' && son !== 'lucius') return null;
+  return { eirikSpared, hrolfSpared, son };
 }
 
 function parseLegionary(value: unknown): Legionary | null {

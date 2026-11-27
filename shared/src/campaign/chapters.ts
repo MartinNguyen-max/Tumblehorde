@@ -23,8 +23,14 @@ export type ChapterId =
   | 'outpost'
   | 'night-raid'
   | 'last-battle'
-  | 'peace'
-  | 'last-night'
+  | 'feast'
+  | 'march-south'
+  | 'open-field'
+  | 'the-gate'
+  | 'new-life'
+  | 'last-patrol'
+  | 'two-sons'
+  | 'brothers'
   | 'the-end';
 
 export interface Chapter {
@@ -56,9 +62,15 @@ export const CHAPTERS: readonly Chapter[] = [
   { id: 'outpost', number: 14, title: 'The Outpost', kind: 'battle', optional: false, loadingLine: 'Into the white north, where the lakes are stone.' },
   { id: 'night-raid', number: 15, title: 'The Night Raid', kind: 'battle', optional: false, loadingLine: 'Torches in the dark. Hold until dawn.' },
   { id: 'last-battle', number: 16, title: 'The Last Battle', kind: 'battle', optional: false, loadingLine: 'Hrolf the Red waits on the frozen field.' },
-  { id: 'peace', number: 17, title: 'Peace', kind: 'cutscene', optional: false, loadingLine: 'Years pass like seasons in a window.' },
-  { id: 'last-night', number: 18, title: 'The Last Night', kind: 'battle', optional: false, loadingLine: 'Tonight he dreamed of the monks.' },
-  { id: 'the-end', number: 19, title: 'The End', kind: 'cutscene', optional: false, loadingLine: 'Dawn.' },
+  { id: 'feast', number: 17, title: 'The Feast', kind: 'cutscene', optional: false, loadingLine: 'Wine, songs, and a rider covered in dust.' },
+  { id: 'march-south', number: 18, title: 'The March South', kind: 'cutscene', optional: false, loadingLine: 'Home is burning. Every day counts.' },
+  { id: 'open-field', number: 19, title: 'The Open Field', kind: 'battle', optional: false, loadingLine: 'They ride like the wind, and they never stop.' },
+  { id: 'the-gate', number: 20, title: 'The Gate', kind: 'battle', optional: false, loadingLine: 'Alone, through the streets he once walked free.' },
+  { id: 'new-life', number: 21, title: 'A New Life', kind: 'cutscene', optional: false, loadingLine: 'Years pass like seasons in a window.' },
+  { id: 'last-patrol', number: 22, title: 'The Last Patrol', kind: 'battle', optional: false, loadingLine: 'An old soldier, a cart of grain, a quiet road.' },
+  { id: 'two-sons', number: 23, title: 'Two Sons', kind: 'cutscene', optional: false, loadingLine: 'One crown. Two brothers.' },
+  { id: 'brothers', number: 24, title: 'Brothers', kind: 'battle', optional: false, loadingLine: 'The dead march with the elder.' },
+  { id: 'the-end', number: 25, title: 'The End', kind: 'cutscene', optional: false, loadingLine: 'Dawn.' },
 ];
 
 export function chapterById(id: ChapterId): Chapter {

@@ -15,18 +15,19 @@ export class BattleSet {
   private readonly world: World;
   private time = 0;
 
-  constructor(world: World, map: MapId, time: TimeOfDay, options: { burning: boolean; torches: readonly { x: number; z: number }[] }) {
+  /** `burning`: every house, or only those within `radius` of a spot (a whole city alight would be too much). */
+  constructor(world: World, map: MapId, time: TimeOfDay, options: { burning: boolean | { x: number; z: number; radius: number }; torches: readonly { x: number; z: number }[] }) {
     this.world = world;
     this.root = new TransformNode('battle-set', world.scene);
     setTimeOfDay(world, map, time);
-    if (options.burning) this.setHousesAlight(map);
+    if (options.burning) this.setHousesAlight(map, options.burning === true ? null : options.burning);
     for (const t of options.torches) this.addTorch(map, t.x, t.z);
   }
 
   /** Flames on the roof of every house and fires on the ground beside them, licking up and down. */
-  private setHousesAlight(map: MapId): void {
+  private setHousesAlight(map: MapId, near: { x: number; z: number; radius: number } | null): void {
     mapStructures(map)
-      .filter((s) => s.kind === 'house')
+      .filter((s) => s.kind === 'house' && (!near || Math.hypot(s.x - near.x, s.z - near.z) < near.radius))
       .forEach((s, i) => {
         // A burning heap (hay, a cart, a fence) beside the house.
         const side = i % 2 === 0 ? 1 : -1;

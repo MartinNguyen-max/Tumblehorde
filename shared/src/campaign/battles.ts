@@ -1,4 +1,4 @@
-import { FOREST_POINTS, FORTRESS_POINTS, type MapPoint, NORTH_POINTS, OLD_FRIENDS_POINTS, RIVER_POINTS, VILLAGE_POINTS } from '../maps.ts';
+import { CAPITAL_POINTS, FOREST_POINTS, FORTRESS_POINTS, type MapPoint, MEADOW_POINTS, NORTH_POINTS, RIVER_POINTS, VILLAGE_POINTS } from '../maps.ts';
 import { declareVictory } from '../match.ts';
 import type { ArmySetup, BotStyle, Faction, Formation, MatchSettings, MatchState, Order } from '../types.ts';
 import { type ChapterId, isAtOrAfter } from './chapters.ts';
@@ -81,16 +81,35 @@ export const STORY_BATTLE = {
   hrolfToughness: 3,
   /** A veteran legionary's hit points, times this. */
   veteranToughness: 1.2,
-  lastNightLegion: 20,
-  oldFriendsArmy: 15,
-  /** The last night ends when Cassian first falls, or after this long at the latest. */
-  lastStandMax: 240,
-  /** Seconds the dead keep coming after Cassian falls, before the story moves on. */
-  lastStandAftermath: 3,
   /** Seconds between the ambush scene and the charge: just enough to form a ring. */
   ambushWarning: 4,
-  zombiesFirst: 40,
-  zombieWave: { every: 6, count: 9 },
+  /** The Mongols: riders, fewer than the Vikings but tougher than raiders on foot, and a second band on the flank. */
+  mongolRiders: 28,
+  mongolFlank: 16,
+  mongolFlankAt: 35,
+  riderHorde: { hp: 0.4, damage: 0.35 },
+  khanToughness: 2.5,
+  /** Hrolf's best men, if he was spared. */
+  hrolfBand: 24,
+  /** Cassian alone, up the street to Livia, against this many. */
+  streetMongols: 5,
+  /** The five in the street: half-starved looters, not the Khan's best. */
+  looters: { hp: 0.5, damage: 0.3 },
+  /** The last patrol: a handful of men against the Greeks, who keep coming. */
+  patrolMen: 12,
+  greeksPerSide: 20,
+  /** Old, but still the toughest man on the road. */
+  oldLegateToughness: 1.6,
+  greekWave: { every: 10, count: 5 },
+  /** A last stand ends when Cassian first falls, or after this long at the latest. */
+  lastStandMax: 240,
+  /** Seconds the enemy keeps coming after Cassian falls, before the story moves on. */
+  lastStandAftermath: 3,
+  /** The brothers' war: the legion of Lucius with Felix and Rufus, against Marcus's riders and the dead. */
+  luciusLegion: 30,
+  oldFriendsArmy: 14,
+  marcusRiders: 16,
+  theDead: 34,
 } as const;
 
 /** The line at the top of the screen in each story battle. */
@@ -102,7 +121,9 @@ const BATTLE_OBJECTIVES: Partial<Record<ChapterId, string>> = {
   outpost: 'Take the outpost',
   'night-raid': 'Hold the camp',
   'last-battle': 'Break the horde. Find Hrolf the Red',
-  'last-night': 'Hold them back',
+  'open-field': 'Break the Mongol riders',
+  'the-gate': 'Fight your way to Livia',
+  'last-patrol': 'Protect the wagons',
 };
 
 function at(point: MapPoint): ArmySetup['spawn'] {
@@ -123,6 +144,10 @@ interface Side {
   commanderToughness?: number;
   reinforce?: { every: number; count: number };
   horde?: { hp: number; damage: number };
+  /** All soldiers ride (the Mongols). */
+  mounted?: boolean;
+  /** A people's color other than the faction's (the Mongols, the Greeks). */
+  color?: string;
   startOrder?: Order;
   startFormation?: Formation;
   /** Named people's looks (see `ArmySetup.looks`). */
@@ -136,6 +161,9 @@ export const STORY_COLORS: Record<Faction, string> = {
   bandit: '#4A4A3A',
   zombie: '#4E4638',
 };
+
+/** Peoples that fight as another faction in the simulation but wear their own colors. */
+export const PEOPLE_COLORS = { mongol: '#3A6A8A', greek: '#2E5AA8' } as const;
 
 /**
  * How the story's people look in each part of the story, named after the client's cast, so a
@@ -158,11 +186,18 @@ export const STORY_LOOKS = {
   galba: 'galba',
   quintus: 'quintus',
   hrolf: 'hrolf',
+  cassianGrey: 'cassianGrey',
+  mongol: 'mongol',
+  khan: 'khan',
+  hoplite: 'hoplite',
+  strategos: 'strategos',
+  lucius: 'lucius',
+  marcusMongol: 'marcusMongol',
 } as const;
 
 /** Cassian as he looks in `chapter`: silver armor from the smith, the legion's red from the Emperor on, old at the end. */
 function cassianLook(chapter: ChapterId): string {
-  if (chapter === 'last-night') return STORY_LOOKS.cassianOld;
+  if (isAtOrAfter(chapter, 'new-life')) return STORY_LOOKS.cassianGrey;
   return isAtOrAfter(chapter, 'emperor') ? STORY_LOOKS.cassianLegate : STORY_LOOKS.cassianSilver;
 }
 
@@ -189,8 +224,9 @@ function army(side: Side): ArmySetup {
     faction: side.faction,
     soldiers: side.soldiers,
     spawn: at(side.spawn),
-    color: STORY_COLORS[side.faction],
+    color: side.color ?? STORY_COLORS[side.faction],
   };
+  if (side.mounted) setup.mounted = true;
   if (side.looks) setup.looks = side.looks;
   if (side.commander) setup.commander = true;
   if (side.heroes) setup.heroes = side.heroes;
@@ -226,6 +262,7 @@ const TUTORIALS: Partial<Record<ChapterId, readonly TutorialStep[]>> = {
   ],
   'dark-forest': [{ text: 'Ambush! They are all around you. Keep 2 held down and pick Circle around me.', points: 'hold', done: { formation: 'circle' } }],
   'last-battle': [{ text: 'Press 6 for a rally speech: your legion fights with courage.', points: 'rally', done: { seconds: 10 } }],
+  'open-field': [{ text: 'Riders! Keep 2 held down and pick Square: horses will not charge into a hedge of spears.', points: 'hold', done: { formation: 'square' } }],
 };
 
 /** True once the player has done what a hint asks (or it has been up long enough). */
@@ -247,14 +284,17 @@ export function tutorialStepDone(step: TutorialStep, state: MatchState, shownFor
  */
 export const CASSIAN_NAMES = { wanderer: 'Cassian', legate: 'Legate Cassian', old: 'Old Cassian' } as const;
 
+/** The sons, as their armies are named at the end. */
+export const SON_NAMES = { marcus: 'Marcus', lucius: 'Lucius' } as const;
+
 /**
  * Where Cassian fights on foot: before the Emperor gives him a horse, in the dark forest where
  * everyone dismounted for the ambush, and at the night camp.
  */
-const ON_FOOT: readonly ChapterId[] = ['forest-road', 'burning-village', 'dark-forest', 'night-raid'];
+const ON_FOOT: readonly ChapterId[] = ['forest-road', 'burning-village', 'dark-forest', 'night-raid', 'the-gate', 'last-patrol'];
 
 function cassianName(chapter: ChapterId): string {
-  if (chapter === 'last-night') return CASSIAN_NAMES.old;
+  if (isAtOrAfter(chapter, 'new-life')) return CASSIAN_NAMES.old;
   return isAtOrAfter(chapter, 'emperor') ? CASSIAN_NAMES.legate : CASSIAN_NAMES.wanderer;
 }
 
@@ -349,41 +389,100 @@ export function campaignBattle(chapter: ChapterId, save: CampaignSave): Campaign
         warlordArmy: 3,
       };
     }
-    case 'last-night': {
-      const spot = save.choices.lastStand === 'tunnel' ? FORTRESS_POINTS.tunnel : FORTRESS_POINTS.courtyard;
-      const old = cassian(save, chapter, spot, heroes.filter((h) => h === 'eirik'), false);
-      // Years later the legion is a new one, with Marcus at his father's side.
-      const heroNames = ['Marcus', ...(old.setup.heroes ?? [])];
-      const me: ArmySetup = {
-        ...old.setup,
-        soldiers: STORY_BATTLE.lastNightLegion + heroNames.length,
-        heroes: heroNames,
-        looks: { ...old.setup.looks, Marcus: STORY_LOOKS.marcus },
-      };
-      const felix = army({ name: 'Felix', team: 0, faction: 'roman', soldiers: STORY_BATTLE.oldFriendsArmy, spawn: OLD_FRIENDS_POINTS.felix, commander: true, style: 'steady', looks: { commander: STORY_LOOKS.felixOld } });
-      const rufus = army({ name: 'Rufus', team: 0, faction: 'roman', soldiers: STORY_BATTLE.oldFriendsArmy, spawn: OLD_FRIENDS_POINTS.rufus, commander: true, style: 'steady', looks: { commander: STORY_LOOKS.rufusOld } });
-      const dead = army({
-        name: 'The Dead',
-        team: 1,
-        faction: 'zombie',
-        soldiers: STORY_BATTLE.zombiesFirst,
-        spawn: FORTRESS_POINTS.graveyard,
-        style: 'charge',
-        reinforce: STORY_BATTLE.zombieWave,
-      });
+    case 'open-field': {
+      const me = cassian(save, chapter, MEADOW_POINTS.legion, heroes, true);
+      const sides: ArmySetup[] = [me.setup];
+      const commanders: Record<number, string> = {};
+      // Hrolf's best men if he was spared; Galba's cohort if not.
+      if (save.choices.hrolfSpared === true) {
+        commanders[sides.length] = 'Hrolf the Red';
+        sides.push(army({ name: 'Hrolf', team: 0, faction: 'viking', soldiers: STORY_BATTLE.hrolfBand, spawn: MEADOW_POINTS.vikings, commander: true, style: 'charge', looks: { commander: STORY_LOOKS.hrolf } }));
+      } else {
+        commanders[sides.length] = 'Galba';
+        sides.push(army({ name: 'Galba', team: 0, faction: 'roman', soldiers: STORY_BATTLE.hrolfBand, spawn: MEADOW_POINTS.vikings, commander: true, style: 'steady', looks: { commander: STORY_LOOKS.galba } }));
+      }
+      const riders = (name: string, soldiers: number, spawn: MapPoint, extra: Partial<Side> = {}): ArmySetup =>
+        army({ name, team: 1, faction: 'bandit', soldiers, spawn, mounted: true, style: 'flank', horde: STORY_BATTLE.riderHorde, color: PEOPLE_COLORS.mongol, looks: { soldier: STORY_LOOKS.mongol, commander: STORY_LOOKS.khan }, ...extra });
+      const khanArmy = sides.length;
+      commanders[khanArmy] = 'Jorgai the Hawk';
+      sides.push(riders('Mongols', STORY_BATTLE.mongolRiders, MEADOW_POINTS.riders, { commander: true, commanderToughness: STORY_BATTLE.khanToughness }));
+      sides.push(riders('Mongols', STORY_BATTLE.mongolFlank, MEADOW_POINTS.flank, { arriveAt: STORY_BATTLE.mongolFlankAt }));
+      return { ...base, onLoss: 'retryOrLeave', settings: settings('meadow', sides), legionNames: me.legionNames, commanders, warlordArmy: khanArmy };
+    }
+    case 'the-gate': {
+      // Alone: the legion holds the gate behind him while he runs up the street to her house.
+      const me = cassian(save, chapter, CAPITAL_POINTS.gate, [], false);
+      const street = army({ name: 'Mongols', team: 1, faction: 'bandit', soldiers: STORY_BATTLE.streetMongols, spawn: CAPITAL_POINTS.street, style: 'rush', horde: STORY_BATTLE.looters, color: PEOPLE_COLORS.mongol, looks: { soldier: STORY_LOOKS.mongol } });
+      return { ...base, time: 'night', settings: settings('city', [me.setup, street], 0), legionNames: [] };
+    }
+    case 'last-patrol': {
+      // Years later: an old legate, a few men and the grain wagons, and the Greeks in the trees.
+      const old = cassian(save, chapter, FOREST_POINTS.column, [], false);
+      const me: ArmySetup = { ...old.setup, soldiers: STORY_BATTLE.patrolMen, commanderToughness: STORY_BATTLE.oldLegateToughness };
+      const greeks = (spawn: MapPoint, extra: Partial<Side> = {}): ArmySetup =>
+        army({ name: 'Greeks', team: 1, faction: 'roman', soldiers: STORY_BATTLE.greeksPerSide, spawn, style: 'rush', horde: STORY_BATTLE.weakling, color: PEOPLE_COLORS.greek, reinforce: STORY_BATTLE.greekWave, looks: { soldier: STORY_LOOKS.hoplite, commander: STORY_LOOKS.strategos }, ...extra });
       return {
         ...base,
         goal: { kind: 'lastStand' },
-        time: 'night',
         onLoss: 'continue',
-        settings: settings('fortress', [me, felix, rufus, dead]),
+        settings: settings('forest', [me, greeks(FOREST_POINTS.ambushNorth, { commander: true }), greeks(FOREST_POINTS.ambushSouth)], STORY_BATTLE.ambushWarning),
         legionNames: [],
-        commanders: { 1: 'Felix', 2: 'Rufus' },
+        commanders: { 1: 'The Strategos' },
       };
     }
+    case 'brothers':
+      return brothersBattle(save, base);
     default:
       return null;
   }
+}
+
+/**
+ * The last battle: Lucius holds the capital with Felix and Rufus; Marcus comes with his riders and
+ * the dead. The player is whichever son they chose; the other side is played by the bots.
+ */
+function brothersBattle(save: CampaignSave, base: Omit<CampaignBattle, 'settings' | 'legionNames'>): CampaignBattle {
+  const playMarcus = save.choices.son === 'marcus';
+  const lucius = army({
+    name: SON_NAMES.lucius,
+    team: playMarcus ? 1 : 0,
+    bot: playMarcus,
+    faction: 'roman',
+    soldiers: STORY_BATTLE.luciusLegion,
+    spawn: CAPITAL_POINTS.forum,
+    commander: true,
+    style: 'steady',
+    looks: { commander: STORY_LOOKS.lucius },
+  });
+  const friend = (name: 'Felix' | 'Rufus', spawn: MapPoint, look: string): ArmySetup =>
+    army({ name, team: playMarcus ? 1 : 0, faction: 'roman', soldiers: STORY_BATTLE.oldFriendsArmy, spawn, commander: true, style: 'steady', looks: { commander: look } });
+  const marcus = army({
+    name: SON_NAMES.marcus,
+    team: playMarcus ? 0 : 1,
+    bot: !playMarcus,
+    faction: 'bandit',
+    soldiers: STORY_BATTLE.marcusRiders,
+    spawn: CAPITAL_POINTS.southGate,
+    mounted: true,
+    commander: true,
+    style: 'flank',
+    color: PEOPLE_COLORS.mongol,
+    looks: { commander: STORY_LOOKS.marcusMongol, soldier: STORY_LOOKS.mongol },
+  });
+  const dead = army({ name: 'The Dead', team: playMarcus ? 0 : 1, faction: 'zombie', soldiers: STORY_BATTLE.theDead, spawn: CAPITAL_POINTS.eastGate, style: 'charge' });
+  const roman = [lucius, friend('Felix', CAPITAL_POINTS.forumWest, STORY_LOOKS.felixOld), friend('Rufus', CAPITAL_POINTS.forumEast, STORY_LOOKS.rufusOld)];
+  const armies = playMarcus ? [marcus, dead, ...roman] : [...roman, marcus, dead];
+  const commanders: Record<number, string> = playMarcus ? { 2: SON_NAMES.lucius, 3: 'Felix', 4: 'Rufus' } : { 1: 'Felix', 2: 'Rufus', 3: SON_NAMES.marcus };
+  return {
+    ...base,
+    objective: playMarcus ? 'Take the capital from your brother' : 'Hold the capital against your brother',
+    time: 'dusk',
+    onLoss: 'retryOrLeave',
+    settings: settings('city', armies),
+    legionNames: [],
+    commanders,
+    warlordArmy: playMarcus ? 2 : 3,
+  };
 }
 
 /** How a battle went for the story, read from the finished (or abandoned) match. */

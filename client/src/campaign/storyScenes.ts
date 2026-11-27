@@ -17,8 +17,13 @@ export const SCENES_BEFORE: Partial<Record<ChapterId, readonly string[]>> = {
   varro: ['varro-death', 'roll-call'],
   outpost: ['letter-one'],
   'last-battle': ['rally-speech'],
-  peace: ['peace'],
-  'last-night': ['last-night'],
+  feast: ['victory-feast', 'capital-falls'],
+  'march-south': ['camp-south'],
+  'open-field': ['riders-come'],
+  'the-gate': ['gate-arrive'],
+  'new-life': ['rebuilding', 'two-boys'],
+  'last-patrol': ['patrol-road'],
+  'two-sons': ['mourning', 'the-crowning', 'marcus-path', 'lucius-path'],
   'the-end': ['the-end'],
 };
 
@@ -28,4 +33,8 @@ export const SCENES_AFTER: Partial<Record<ChapterId, readonly string[]>> = {
   'burning-village': ['village-after'],
   'night-raid': ['letter-two'],
   'last-battle': ['hrolf-mirror'],
+  'open-field': ['hrolf-farewell'],
+  'the-gate': ['livia-found'],
+  'last-patrol': ['cassian-falls'],
+  brothers: ['brothers-end'],
 };

@@ -218,10 +218,26 @@ export const NORTH_POINTS = {
   raidEast: { x: 62, z: -20, yaw: -Math.PI / 2 },
 } satisfies Record<string, MapPoint>;
 
-/** The last night: Felix's and Rufus's armies in the fortress courtyard. */
-export const OLD_FRIENDS_POINTS = {
-  felix: { x: 45, z: 6, yaw: -Math.PI / 2 },
-  rufus: { x: 45, z: -6, yaw: -Math.PI / 2 },
+/** The open field on the way back south: the legion and Hrolf's Vikings against the Mongol riders. */
+export const MEADOW_POINTS = {
+  legion: { x: 0, z: -60, yaw: 0 },
+  vikings: { x: -32, z: -56, yaw: 0 },
+  riders: { x: 0, z: 72, yaw: Math.PI },
+  flank: { x: 82, z: -8, yaw: -Math.PI / 2 },
+} satisfies Record<string, MapPoint>;
+
+/**
+ * The capital (the city map): the street Cassian fights his way up to Livia, and where the
+ * brothers' armies meet at the end.
+ */
+export const CAPITAL_POINTS = {
+  gate: { x: 36, z: -62, yaw: 0 },
+  street: { x: 36, z: -30, yaw: Math.PI },
+  forum: { x: 0, z: 2, yaw: Math.PI },
+  forumWest: { x: -12, z: 2, yaw: Math.PI },
+  forumEast: { x: 12, z: 2, yaw: Math.PI },
+  southGate: { x: 0, z: -62, yaw: 0 },
+  eastGate: { x: 62, z: 0, yaw: -Math.PI / 2 },
 } satisfies Record<string, MapPoint>;
 
 export const NORTH = {
@@ -326,15 +342,12 @@ export function inRiver(river: River, x: number, z: number): boolean {
   return Math.abs(x - river.x) < river.halfWidth && Math.abs(z) >= river.bridgeHalf;
 }
 
-/** The northern fortress: the castle under snow, its gate passage the "tunnel" of the last night. */
+/** The northern fortress: the castle under snow, where the horde is broken. */
 export const FORTRESS_POINTS = {
   legion: { x: -8, z: 0, yaw: WEST },
   leftWing: { x: -6, z: 30, yaw: WEST },
   rightWing: { x: -6, z: -30, yaw: WEST },
   horde: { x: -86, z: 0, yaw: EAST },
-  tunnel: { x: CASTLE.west + 3, z: 0, yaw: WEST },
-  courtyard: { x: CASTLE.centerX - 4, z: 0, yaw: WEST },
-  graveyard: { x: -40, z: 0, yaw: EAST },
 } satisfies Record<string, MapPoint>;
 
 export interface MapDefinition {

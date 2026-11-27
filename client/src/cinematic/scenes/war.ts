@@ -340,7 +340,7 @@ export const hrolfMirror: Cutscene = {
     const cassian = cast(stage, 'cassianHelmet', 'Cassian').place(0, 1.0, Math.PI).setPose('point', true).setMood('angry', true);
     upright(sword(stage.world.parts, cassian.grips[0]));
     const legion = Array.from({ length: 8 }, (_, i) => cast(stage, 'legionary', `Legionary ${i}`).place(-5 + (i % 4) * 3.2, 4 + Math.floor(i / 4) * 1.5, Math.PI));
-    const friends = [cast(stage, 'felix', 'Felix', { outfit: 'legion', color: '#4E7A9A' }).place(-2.4, 2.6, Math.PI), cast(stage, 'rufus', 'Rufus', { outfit: 'legion', color: '#9A6A3A' }).place(2.4, 2.6, Math.PI)];
+    const friends = [cast(stage, 'felixLegion', 'Felix').place(-2.4, 2.6, Math.PI), cast(stage, 'rufusLegion', 'Rufus').place(2.4, 2.6, Math.PI)];
     const eirik = cast(stage, 'eirik', 'Eirik').place(3.6, 3.4, Math.PI);
     if (story.save.choices.eirikSpared !== true) eirik.root.setEnabled(false);
     const spared = (): boolean => story.save.choices.hrolfSpared === true;

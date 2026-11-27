@@ -17,13 +17,19 @@ export interface StoryBattleHost {
   startBattle: (settings: MatchSettings, onEnd: (view: MatchView) => void, objective?: (view: MatchView) => string | null) => LocalSession;
 }
 
-/** Torches round the night camp, and along the column in the dark forest. */
+/** Places on fire when the battle is fought: the raided village, and the street up to Livia in the taken capital. */
+const BURNING: Partial<Record<CampaignBattle['chapter'], true | { x: number; z: number; radius: number }>> = {
+  'burning-village': true,
+  'the-gate': { x: 36, z: -46, radius: 28 },
+};
+
+/** Torches round the night camp, along the column in the dark forest, and up the street to Livia. */
 const TORCHES: Partial<Record<CampaignBattle['chapter'], readonly { x: number; z: number }[]>> = {
   'night-raid': [
     { x: -38, z: -30 }, { x: -22, z: -30 }, { x: -30, z: -38 }, { x: -30, z: -22 }, { x: -36, z: -24 }, { x: -24, z: -36 },
   ],
   'dark-forest': [{ x: 10, z: 4.5 }, { x: 18, z: -4.5 }, { x: 26, z: 4.5 }],
-  'last-night': [{ x: 40, z: 6 }, { x: 40, z: -6 }, { x: 52, z: 10 }, { x: 52, z: -10 }],
+  'the-gate': [{ x: 33, z: -58 }, { x: 39, z: -52 }, { x: 33, z: -44 }, { x: 39, z: -38 }],
 };
 
 function clock(seconds: number): string {
@@ -56,7 +62,7 @@ export class StoryBattle {
       (view) => this.objective(view),
     );
     this.set = new BattleSet(world, battle.settings.map, battle.time, {
-      burning: battle.chapter === 'burning-village',
+      burning: BURNING[battle.chapter] ?? false,
       torches: TORCHES[battle.chapter] ?? [],
     });
     this.hint = new TutorialHint(battle.tutorial);

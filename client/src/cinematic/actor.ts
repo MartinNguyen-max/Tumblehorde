@@ -24,7 +24,13 @@ export type Outfit =
   | 'villager'
   | 'viking'
   | 'warlord'
-  | 'bandit';
+  | 'bandit'
+  /** A Mongol rider: a long coat with a sash, fur trim, a pointed fur-rimmed helmet, a curved saber. */
+  | 'mongol'
+  /** A Greek hoplite: bronze cuirass over a blue tunic, a crested bronze helmet, a big round shield. */
+  | 'hoplite'
+  /** The dark wizard: a hooded robe to the ground. */
+  | 'wizard';
 
 export type HairStyle = 'short' | 'long' | 'tonsure' | 'bald' | 'braids';
 export type Beard = 'none' | 'stubble' | 'short' | 'long';
@@ -501,7 +507,7 @@ function applyLeg(limb: Limb, angles: readonly [number, number], swing: number):
 }
 
 function isRobed(outfit: Outfit): boolean {
-  return outfit === 'monk' || outfit === 'abbot' || outfit === 'emperor' || outfit === 'healer';
+  return outfit === 'monk' || outfit === 'abbot' || outfit === 'emperor' || outfit === 'healer' || outfit === 'wizard';
 }
 
 /** Women wear the healer's dress; their faces and hair get a woman's touches. */
@@ -535,6 +541,12 @@ export function clothOf(look: ActorLook): { main: string; dark: string; sleeve: 
       return { main: look.color ?? CLOTH.vikingTunic, dark: CLOTH.pelt, sleeve: look.color ?? CLOTH.vikingTunic };
     case 'bandit':
       return { main: CLOTH.bandit, dark: CLOTH.leather, sleeve: CLOTH.bandit };
+    case 'mongol':
+      return { main: look.color ?? CLOTH.mongolCoat, dark: CLOTH.fur, sleeve: look.color ?? CLOTH.mongolCoat };
+    case 'hoplite':
+      return { main: look.color ?? CLOTH.hopliteTunic, dark: CLOTH.bronze, sleeve: look.color ?? CLOTH.hopliteTunic };
+    case 'wizard':
+      return { main: CLOTH.wizardRobe, dark: CLOTH.wizardTrim, sleeve: CLOTH.wizardRobe };
   }
 }
 
@@ -542,7 +554,7 @@ function addLeg(parts: PartFactory, body: TransformNode, side: number, skin: str
   const upper = childNode('thigh', body, side * 0.17, HIP, 0);
   const robed = isRobed(look.outfit);
   const bare = look.outfit === 'rags';
-  const trousers = look.outfit === 'viking' || look.outfit === 'warlord' || look.outfit === 'bandit' || look.outfit === 'villager';
+  const trousers = look.outfit === 'viking' || look.outfit === 'warlord' || look.outfit === 'bandit' || look.outfit === 'villager' || look.outfit === 'mongol';
   const norse = look.outfit === 'viking' || look.outfit === 'warlord';
   const legColor = robed ? clothOf(look).main : trousers ? (norse ? CLOTH.leather : CLOTH.ragsDark) : skin;
   parts.part('box', legColor, upper, [0.26, 0.34, 0.28], [0, -0.16, 0], GLOSS);
@@ -555,7 +567,7 @@ function addLeg(parts: PartFactory, body: TransformNode, side: number, skin: str
 function addArm(parts: PartFactory, torso: TransformNode, side: number, skin: string, look: ActorLook): Limb {
   const cloth = clothOf(look);
   const upper = childNode('arm', torso, side * 0.5, SHOULDER, 0.02);
-  const longSleeve = isRobed(look.outfit) || look.outfit === 'viking' || look.outfit === 'warlord' || look.outfit === 'bandit';
+  const longSleeve = isRobed(look.outfit) || look.outfit === 'viking' || look.outfit === 'warlord' || look.outfit === 'bandit' || look.outfit === 'mongol';
   parts.part('box', cloth.sleeve, upper, [0.22, 0.32, 0.24], [0, -0.14, 0], GLOSS);
   const lower = childNode('forearm', upper, 0, -0.3, 0);
   parts.part('box', longSleeve ? cloth.sleeve : skin, lower, [0.2, 0.24, 0.21], [0, -0.11, 0], GLOSS);
@@ -632,6 +644,26 @@ function addTorso(parts: PartFactory, torso: TransformNode, look: ActorLook): vo
     case 'bandit':
       parts.part('box', CLOTH.leather, torso, [0.82, 0.08, 0.54], [0, 0.14, 0], GLOSS);
       parts.part('box', CLOTH.ragsDark, torso, [0.3, 0.8, 0.03], [0.1, 0.38, 0.26], SMALL).rotation.z = -0.6;
+      return;
+    case 'mongol':
+      // The long coat, crossed over the chest, a wide sash, fur at the collar.
+      parts.part('box', cloth.main, torso, [0.84, 0.42, 0.56], [0, -0.14, 0], GLOSS);
+      parts.part('box', cloth.dark, torso, [0.34, 0.72, 0.03], [-0.12, 0.36, 0.26], SMALL).rotation.z = 0.35;
+      parts.part('box', CLOTH.mongolSash, torso, [0.84, 0.12, 0.56], [0, 0.12, 0], GLOSS);
+      parts.part('box', cloth.dark, torso, [0.9, 0.14, 0.6], [0, 0.76, 0], GLOSS);
+      return;
+    case 'hoplite':
+      parts.part('box', CLOTH.bronze, torso, [0.84, 0.52, 0.56], [0, 0.46, 0], METAL);
+      parts.part('box', cloth.main, torso, [0.8, 0.3, 0.52], [0, 0.02, 0], GLOSS);
+      // A skirt of leather strips under the cuirass.
+      for (let i = 0; i < 5; i++) parts.part('box', CLOTH.leather, torso, [0.14, 0.3, 0.04], [-0.3 + i * 0.15, -0.06, 0.27], SMALL);
+      return;
+    case 'wizard':
+      parts.part('box', cloth.main, torso, [0.86, 0.6, 0.6], [0, -0.2, 0], GLOSS);
+      parts.part('box', cloth.dark, torso, [0.1, 1.0, 0.03], [0, 0.2, 0.27], SMALL);
+      parts.part('box', cloth.dark, torso, [0.9, 0.08, 0.6], [0, 0.12, 0], GLOSS);
+      // The hood, down on the shoulders.
+      parts.part('box', cloth.main, torso, [0.7, 0.34, 0.24], [0, 0.8, -0.24], GLOSS);
       return;
   }
 }
@@ -730,7 +762,29 @@ function addHeadgear(parts: PartFactory, head: TransformNode, look: ActorLook): 
     parts.part('box', CLOTH.gold, head, [HEAD + 0.06, 0.08, 0.08], [0, half - 0.08, -half - 0.02], METAL);
   }
   if (look.outfit === 'bandit') parts.part('box', CLOTH.ragsDark, head, [HEAD + 0.04, 0.18, HEAD + 0.04], [0, -0.16, 0.0], GLOSS);
+  if (look.outfit === 'wizard') {
+    // A tall pointed hood up over the head.
+    parts.part('box', CLOTH.wizardRobe, head, [HEAD + 0.1, 0.24, HEAD + 0.1], [0, half + 0.02, -0.02], GLOSS);
+    parts.part('cone', CLOTH.wizardRobe, head, [0.32, 0.5, 0.32], [0, half + 0.36, -0.06], GLOSS);
+    for (const side of [-1, 1]) parts.part('box', CLOTH.wizardRobe, head, [0.06, HEAD, HEAD * 0.9], [side * (half + 0.04), 0, -0.04], GLOSS);
+  }
   if (!look.helmet) return;
+  if (look.outfit === 'mongol') {
+    // A pointed steel cap on a fur rim, with a little spike and flaps over the ears.
+    parts.part('box', CLOTH.fur, head, [HEAD + 0.1, 0.14, HEAD + 0.1], [0, half - 0.06, -0.01], GLOSS);
+    parts.part('cone', CLOTH.steel, head, [0.3, 0.32, 0.3], [0, half + 0.15, -0.01], METAL);
+    parts.part('box', CLOTH.steel, head, [0.04, 0.16, 0.04], [0, half + 0.36, -0.01], METAL);
+    for (const side of [-1, 1]) parts.part('box', CLOTH.fur, head, [0.06, 0.24, 0.22], [side * (half + 0.04), -0.06, -0.02], GLOSS);
+    return;
+  }
+  if (look.outfit === 'hoplite') {
+    // The Greek helmet: bronze all round with cheek guards, and a crest across from ear to ear.
+    parts.part('box', CLOTH.bronze, head, [HEAD + 0.08, 0.24, HEAD + 0.08], [0, half - 0.04, -0.01], METAL);
+    parts.part('box', CLOTH.bronze, head, [HEAD + 0.08, 0.4, 0.1], [0, 0.0, -half - 0.04], METAL);
+    for (const side of [-1, 1]) parts.part('box', CLOTH.bronze, head, [0.06, 0.3, 0.2], [side * (half + 0.04), -0.08, half - 0.1], METAL);
+    parts.part('box', look.cape ?? CLOTH.legion, head, [0.62, 0.26, 0.12], [0, half + 0.2, 0], GLOSS);
+    return;
+  }
   const roman = look.outfit === 'legion' || look.outfit === 'commander';
   const metal = look.outfit === 'commander' ? CLOTH.gold : look.outfit === 'silver' ? CLOTH.silver : CLOTH.steel;
   parts.part('box', metal, head, [HEAD + 0.08, 0.2, HEAD + 0.08], [0, half - 0.02, -0.01], METAL);

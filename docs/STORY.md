@@ -2,7 +2,7 @@
 
 One long single-player story. One difficulty only. Progress is saved in the browser at every
 checkpoint (each chapter start and each battle). Losing a battle restarts that battle; losing the
-final battle offers "fight again" or "leave". The zombie night can never be won.
+big battles offer "fight again" or "leave". The last patrol can never be won: it is where Cassian dies.
 
 The fights play like the battle mode (same controls, orders, formations). Cutscenes are made in the
 game with the same chunky characters: real camera shots, letterbox bars, faces with brows, mouths and
@@ -14,16 +14,19 @@ Short loading screens show one line of story. After every won battle the survivo
 
 | Name | Who |
 |---|---|
-| **Cassian** | You. Raised as Brother Cassian among monks. Prisoner, gladiator, commander, lord, old man. |
+| **Cassian** | You. Raised as Brother Cassian among monks. Prisoner, gladiator, legate, emperor, father. Dies on a patrol, years after the war. |
 | **Abbot Anselm** | The old abbot who raised him and taught him to carve. Dies in the raid. |
 | **Varro** | Blacksmith in the capital. Gruff, warm, a father to Cassian. Lost his son Lucius in a street fight years ago. Dies after the forest ambush. |
 | **Felix and Rufus** | Two brothers, villagers saved from bandits. Felix talks, Rufus laughs. Later sub-commanders, at the end old lords with their own armies. |
 | **Galba** | Roman commander saved at the burning village. Brings Cassian into the legion; leads an allied army in the final battle. |
-| **Emperor Severus** | Gives Cassian his legion and the mission. |
-| **Livia** | A healer in the capital who bandages Cassian after the village. Writes him letters on the march. His wife. |
-| **Marcus** | Their son. A boy in the happy ending, a young man on the zombie night. |
-| **Eirik** | A young Viking who surrenders at the burning village. If spared, he follows Cassian, guides him in the north and dies beside him on the last night. |
-| **Hrolf the Red** | The Viking warlord who burned the monastery. In the end Cassian learns Romans burned Hrolf's village when he was a boy: the same story, mirrored. |
+| **Emperor Severus** | Gives Cassian his legion and the mission. Killed when the Mongols take the capital. |
+| **Livia** | A healer in the capital who bandages Cassian after the village; ties a blue ribbon on his wrist before the march. Writes him letters. Assaulted by Mongols when they take the city (never shown; she tells Cassian what she chooses to). His wife. Tells the end of the story after Cassian dies. |
+| **Marcus** | Livia's first son, with the face of the east (a child of the assault). The city hates him; Cassian lifts him up in the square and calls him his son. Passed over for the throne, he leaves, makes a pact with a dark wizard and comes back with the dead. |
+| **Lucius** | Cassian and Livia's second son. Crowned instead of Marcus. |
+| **Jorgai the Hawk** | Leader of the Mongol riders who take the capital while the legion is in the north. |
+| **The Wizard** | A friend to the forgotten. Raises the dead for Marcus, for the thing Cassian loved most: the wooden cross. |
+| **Eirik** | A young Viking who surrenders at the burning village. If spared, he follows Cassian and guides him in the north. |
+| **Hrolf the Red** | The Viking warlord who burned the monastery. In the end Cassian learns Romans burned Hrolf's village when he was a boy: the same story, mirrored. If spared, he comes back with his best men to fight the Mongols, dies after a promise of peace, and his sons take him home. |
 | **Legionaries** | Each of the 25 has a name (Titus, Decimus, Gaius, ...). Survivors become veterans; the fallen are read out at the campfire. |
 
 ## Choices
@@ -34,9 +37,10 @@ Small choices that change lines and who is with you at the end, never the story'
 2. **Eirik at the burning village:** spare him or not. Spared: he joins, guides you in the north,
    fights on the last night and dies beside you. Not spared: Varro is quietly disappointed; Eirik's
    place is empty.
-3. **Hrolf at the end of the final battle:** spare him or end him. Changes his last words and one
-   line in the epilogue.
-4. **The zombie night:** defend inside the tunnel, or wait for them in the courtyard.
+3. **Hrolf at the end of the last battle:** spare him (he leaves; later he rides with you against the
+   Mongols and dies beside you) or end him (Galba's cohort rides with you instead).
+4. **The sons:** after Cassian's death, follow Marcus (into the dark, with the dead) or Lucius (onto the
+   throne). The last battle and the ending are played from that son's side.
 
 ## Chapters
 
@@ -63,9 +67,15 @@ heroes other than Cassian are knocked out instead of dying, until the story says
 | 15 | **The Outpost** | Battle (ice) | A letter from Livia. Into the frozen north: raid a Viking outpost (20 Vikings) on the ice to learn where Hrolf strikes. Eirik (if spared) guides you. |
 | 16 | **The Night Raid** | Battle (night) | At the northern fortress camp, the Vikings attack by torchlight: 25 Vikings. Galba and the allies arrive at dawn. A second letter from Livia. |
 | 17 | **The Last Battle** | Cutscene + battle | Your legion in the middle, Galba's and Legate Quintus's armies (20 each) on the wings, Hrolf's horde of ~80 ahead. Cassian's rally speech (the cross in his hand). Defeat Hrolf: the mirror reveal and the third choice. Win: celebration. Lose: fight again or leave. |
-| 18 | **Peace** | Cutscene | Promotion, a castle, the wedding with Livia, a statue of Varro, a son, Marcus. Felix and Rufus get their own armies. Years pass: hair turns white, backs bend. |
-| 19 | **The Last Night** | Cutscene + battle | Old Cassian finishes telling Marcus the whole story by the fire (the narrator was him all along). "Why tell me now?" "Tonight I dreamed of the monks." A grave in the yard breaks open; the dead rise: Vikings, Romans, villagers, anything. Goodbyes to Livia and Marcus; old Felix and Rufus answer the horn; Eirik at his side if spared. The fourth choice. The dead come without end. |
-| 20 | **The End** | Cutscene | Cassian falls at the tunnel. White. Varro's voice: "my son…". Varro, Anselm and the monks waiting. Dawn: Marcus alone on the walls with his father's sword and the wooden cross. |
+| 17 | **The Feast** | Cutscene | The fortress drinks to the end of the war. A rider bursts in: Mongol riders took the capital while the army was north; the Emperor is dead. The fall of the city, as Felix's cousin told it: riders through the gate, the guard dying in the square, Livia going back inside to her wounded and barring the door. What happened behind it is never shown. |
+| 18 | **The March South** | Cutscene | Eleven days in the saddle; Cassian silent. At camp, Hrolf (if spared) rides in with his best men: "my sons asked me how it ends." Otherwise Galba's cohort. |
+| 19 | **The Open Field** | Battle (hard) | Mongol riders in a loose cloud, a second band on the flank; the hint teaches the square. Hrolf's Vikings or Galba on your side. After: Hrolf dies after a promise of peace; his sons thank Cassian and take him home; some Vikings stay. |
+| 20 | **The Gate** | Battle (night) | The legion holds the burnt south gate; Cassian goes alone up a burning street against five Mongol looters. He finds Livia in her wrecked infirmary; she tells him only what she can. |
+| 21 | **A New Life** | Cutscene | The city rebuilt; the Senate makes Cassian emperor; the wedding; Varro's statue. Marcus is born with the face of the east; the city whispers; Cassian lifts him up in the square. Lucius two years later. The boys grow up fighting; Cassian prepares Marcus for the throne; senators frown. |
+| 22 | **The Last Patrol** | Battle (last stand) | Cassian takes grain to the starving hill towns himself; Greek raiders in the trees. A last stand that cannot be won. Felix and Rufus arrive too late: the cross goes to Marcus, a message to Livia: "the road led home." |
+| 23 | **Two Sons** | Cutscene + choice | Livia takes over the story. The funeral pyre. The Senate will not crown "the Mongol's son"; Livia, to keep him alive, asks them to crown Lucius. Marcus swears revenge and leaves with the cross. The player picks a son: Marcus (the wizard, the cross given away, the graves opening) or Lucius (the crown, Cassian's grave, Felix and Rufus swear to him, the scout: "the dead are walking"). |
+| 24 | **Brothers** | Battle | The capital: Lucius with old Felix and Rufus against Marcus's riders and the dead, played from the chosen son's side. After: Lucius's win, Marcus dies in his arms and the dead fall with him; Marcus's win, Livia reminds him why his father spared Hrolf, he spares his brother and the dead lie down. |
+| 25 | **The End** | Cutscene | Spring, Livia at Cassian's grave (and Marcus's), the cross, a new blue ribbon. "It knew the way home after all." |
 
 ## Army through the campaign
 

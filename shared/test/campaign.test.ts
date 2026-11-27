@@ -72,7 +72,7 @@ describe('heroes', () => {
     expect(heroesIn('forest-road', null)).toEqual(['varro', 'felix', 'rufus']);
     expect(heroesIn('bridge', true)).toEqual(['varro', 'felix', 'rufus', 'eirik']);
     expect(heroesIn('outpost', false)).toEqual(['felix', 'rufus']);
-    expect(heroesIn('last-night', true)).toEqual(['felix', 'rufus', 'eirik']);
+    expect(heroesIn('brothers', true)).toEqual(['felix', 'rufus', 'eirik']);
   });
 });
 
@@ -92,8 +92,14 @@ describe('save', () => {
     expect(parseSave({ ...good, gold: -5 })).toBeNull();
     expect(parseSave({ ...good, gold: 1.5 })).toBeNull();
     expect(parseSave({ ...good, legion: [{ name: 'Titus' }] })).toBeNull();
-    expect(parseSave({ ...good, choices: { eirikSpared: 'yes', hrolfSpared: null, lastStand: null } })).toBeNull();
-    expect(parseSave({ ...good, choices: { eirikSpared: null, hrolfSpared: null, lastStand: 'roof' } })).toBeNull();
+    expect(parseSave({ ...good, choices: { eirikSpared: 'yes', hrolfSpared: null, son: null } })).toBeNull();
+    expect(parseSave({ ...good, choices: { eirikSpared: null, hrolfSpared: null, son: 'titus' } })).toBeNull();
+  });
+
+  it('reads saves from before the sons: no son chosen yet', () => {
+    const good = JSON.parse(JSON.stringify(newSave(0))) as Record<string, unknown>;
+    const old = parseSave({ ...good, choices: { eirikSpared: true, hrolfSpared: false, lastStand: 'tunnel' } });
+    expect(old?.choices).toEqual({ eirikSpared: true, hrolfSpared: false, son: null });
   });
 });
 

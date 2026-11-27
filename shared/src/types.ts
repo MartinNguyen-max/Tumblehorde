@@ -253,6 +253,8 @@ export interface ArmySetup {
   style?: BotStyle;
   /** Story battles: the commander starts without a horse (before he has one, or after the riders dismounted). */
   onFoot?: boolean;
+  /** Every soldier rides (the Mongols): riders on horses instead of swordsmen. */
+  mounted?: boolean;
   /** Story battles: each soldier's hit points, times this (veterans are tougher); missing means 1. */
   toughness?: readonly number[];
   /**

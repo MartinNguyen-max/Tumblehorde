@@ -16,7 +16,7 @@ const METAL: PartOptions = { metal: true };
 const SMALL: PartOptions = { gloss: true, castShadow: false };
 
 /** What a story person carries on the left arm. */
-type ShieldKind = 'wood' | 'scutum' | 'officer' | 'round';
+type ShieldKind = 'wood' | 'scutum' | 'officer' | 'round' | 'aspis';
 
 const WOOD_POSE: ShieldPose = { rest: [-0.62, 0.86, 0.08], restYaw: 0.3, raised: [-0.05, 1.0, 0.5] };
 const SCUTUM_POSE: ShieldPose = { rest: [-0.7, 0.66, 0.1], restYaw: 0.35, raised: [-0.06, 0.7, 0.52] };
@@ -30,7 +30,10 @@ function shieldFor(look: ActorLook): ShieldKind {
       return 'officer';
     case 'viking':
     case 'warlord':
+    case 'mongol':
       return 'round';
+    case 'hoplite':
+      return 'aspis';
     default:
       return 'wood';
   }
@@ -46,13 +49,15 @@ function armored(look: ActorLook): string | null {
       return CLOTH.gold;
     case 'warlord':
       return CLOTH.steel;
+    case 'hoplite':
+      return CLOTH.bronze;
     default:
       return null;
   }
 }
 
 function addLegs(parts: PartFactory, torso: TransformNode, look: ActorLook, skin: string): [TransformNode, TransformNode] {
-  const trousers = look.outfit === 'viking' || look.outfit === 'warlord' || look.outfit === 'bandit' || look.outfit === 'villager';
+  const trousers = look.outfit === 'viking' || look.outfit === 'warlord' || look.outfit === 'bandit' || look.outfit === 'villager' || look.outfit === 'mongol';
   const color = trousers ? CLOTH.ragsDark : skin;
   const legs = [-1, 1].map((side) => {
     const leg = childNode('leg', torso, side * 0.18, HIP_HEIGHT, 0);
@@ -87,6 +92,13 @@ function addBody(parts: PartFactory, torso: TransformNode, look: ActorLook): voi
     // Torn: a patch of darker cloth and a rope for a belt.
     parts.part('box', cloth.dark, torso, [0.3, 0.22, 0.03], [-0.15, 1.0, 0.26], SMALL);
     parts.part('box', CLOTH.rope, torso, [0.84, 0.06, 0.56], [0, 0.82, 0], SMALL);
+    return;
+  }
+  if (look.outfit === 'mongol') {
+    parts.part('box', cloth.main, torso, [0.86, 0.4, 0.56], [0, 0.56, 0], GLOSS);
+    parts.part('box', CLOTH.mongolSash, torso, [0.86, 0.12, 0.58], [0, 0.82, 0], GLOSS);
+    parts.part('box', CLOTH.fur, torso, [0.92, 0.14, 0.6], [0, 1.4, 0], GLOSS);
+    parts.part('box', CLOTH.fur, torso, [0.3, 0.6, 0.03], [-0.12, 1.08, 0.27], SMALL).rotation.z = 0.35;
     return;
   }
   parts.part('box', CLOTH.leather, torso, [0.86, 0.1, 0.58], [0, 0.82, 0], GLOSS);
@@ -126,8 +138,20 @@ function addHelmet(parts: PartFactory, head: TransformNode, look: ActorLook): Tr
   const helmet = childNode('helmet', head);
   if (!look.helmet) return helmet;
   const half = HEAD / 2;
+  if (look.outfit === 'mongol') {
+    parts.part('box', CLOTH.fur, helmet, [HEAD + 0.1, 0.14, HEAD + 0.1], [0, half - 0.06, -0.01], GLOSS);
+    parts.part('cone', CLOTH.steel, helmet, [0.3, 0.32, 0.3], [0, half + 0.15, -0.01], METAL);
+    parts.part('box', CLOTH.steel, helmet, [0.04, 0.16, 0.04], [0, half + 0.36, -0.01], METAL);
+    return helmet;
+  }
   const metal = armored(look) ?? CLOTH.steel;
   parts.part('box', metal, helmet, [HEAD + 0.08, 0.2, HEAD + 0.08], [0, half - 0.02, -0.01], METAL);
+  if (look.outfit === 'hoplite') {
+    parts.part('box', metal, helmet, [HEAD + 0.08, 0.4, 0.1], [0, 0, -half - 0.04], METAL);
+    for (const side of [-1, 1]) parts.part('box', metal, helmet, [0.06, 0.3, 0.2], [side * (half + 0.04), -0.08, half - 0.1], METAL);
+    parts.part('box', look.cape ?? CLOTH.legion, helmet, [0.62, 0.26, 0.12], [0, half + 0.2, 0], GLOSS);
+    return helmet;
+  }
   if (look.outfit === 'legion' || look.outfit === 'commander') {
     parts.part('box', metal, helmet, [HEAD + 0.08, 0.3, 0.08], [0, 0.05, -half - 0.04], METAL);
     const crest = look.cape ?? CLOTH.legion;
@@ -155,6 +179,13 @@ function addShield(parts: PartFactory, torso: TransformNode, kind: ShieldKind, p
       parts.part('box', CLOTH.gold, shield, [0.16, 0.24, 0.24], [-0.03, 0, 0], METAL);
       return { shield, pose: OFFICER_POSE };
     }
+    case 'aspis': {
+      // The hoplite's great round shield: bronze-faced, held across the body.
+      const shield = childNode('aspis', torso, ...SCUTUM_POSE.rest);
+      parts.part('disc', CLOTH.bronze, shield, [1.15, 0.1, 1.15], [0, 0, 0], METAL).rotation.z = Math.PI / 2;
+      parts.part('disc', palette.body, shield, [0.5, 0.11, 0.5], [0.01, 0, 0], GLOSS).rotation.z = Math.PI / 2;
+      return { shield, pose: SCUTUM_POSE };
+    }
     case 'round':
     case 'wood': {
       const shield = childNode('wood-shield', torso, ...WOOD_POSE.rest);
@@ -165,6 +196,20 @@ function addShield(parts: PartFactory, torso: TransformNode, kind: ShieldKind, p
       return { shield, pose: WOOD_POSE };
     }
   }
+}
+
+/** The Mongol's curved saber: a blade in three bends, and a small guard. */
+function addSaber(parts: PartFactory, grip: TransformNode): TransformNode {
+  const saber = childNode('saber', grip);
+  // Held like the legion's sword: the grip in the hand, the blade hanging down from it.
+  parts.part('box', CLOTH.leather, saber, [0.075, 0.18, 0.075], [0, 0.07, 0], GLOSS);
+  parts.part('box', CLOTH.mongolSash, saber, [0.22, 0.05, 0.09], [0, -0.03, 0], METAL);
+  const bends: readonly [number, number, number][] = [[0.34, -0.22, 0], [0.3, -0.52, 0.18], [0.24, -0.78, 0.42]];
+  for (const [length, y, tilt] of bends) {
+    const piece = parts.part('box', CLOTH.steel, saber, [0.05, length, 0.11], [0, y, tilt * 0.3], METAL);
+    piece.rotation.x = -tilt;
+  }
+  return saber;
 }
 
 /** A battle body for someone whose look the cutscenes define. */
@@ -197,7 +242,7 @@ export function buildFromLook(parts: PartFactory, body: TransformNode, look: Act
     armR,
     shield,
     shieldPose: pose,
-    weapons: { sword: addSword(parts, grip), spear: addSpear(parts, grip) },
+    weapons: { sword: look.outfit === 'mongol' ? addSaber(parts, grip) : addSword(parts, grip), spear: addSpear(parts, grip) },
     sheathed: null,
     sideArm: 'sword',
     cup: null,

@@ -16,7 +16,7 @@ the city falling and the aftermath, and Livia tells Cassian later.
 - [x] Varro is "Blacksmith" until we know his name; a yellow arrow over whoever to go to next
 
 ## 2. Looks that match between scenes and battles
-- [ ] Cassian: prisoner rags with a wooden shield and sword in the first arena fight, silver armor and helmet once bought (worn at once), the legion's red only after the Emperor; one red line through all his clothes
+- [x] Cassian: prisoner rags with a wooden shield and sword in the first arena fight, silver armor and helmet once bought (worn at once), the legion's red only after the Emperor; one red line through all his clothes
 - [x] Varro in silver armor, not Roman blue; Felix and Rufus look like villagers, never like bandits
 - [x] Battles use the same looks as the scenes around them
 
@@ -45,11 +45,11 @@ the city falling and the aftermath, and Livia tells Cassian later.
 - [x] Livia: looks like a woman, much more story with Cassian
 
 ## 7. The new story after Hrolf
-- [ ] Hrolf tells his story; spare (he leaves) or kill; a celebration in the castle, interrupted
-- [ ] The Mongolians (new people: riders with sabers) take the capital while the army is north: big war scenes, Livia taken (off-screen)
-- [ ] The march back with a camp on the way; Hrolf (if spared) joins with his best Vikings
-- [ ] Open-field battle against the Mongol cavalry (hard); Hrolf dies after a peace promise, his sons thank Cassian, some Vikings stay
-- [ ] Inside the walls: alone down a narrow street to Livia against 5 Mongols; Livia tells what happened
-- [ ] Rebuilding and a happy life; Livia's first child looks Mongolian and the city hates him, Cassian takes him as his son; a second son
-- [ ] The patrol attacked by Greeks: Cassian dies; the city mourns; the city crowns the second son; the elder swears revenge
-- [ ] The player picks which son to play; the elder's pact with a dark wizard and the dead; the final battle
+- [x] Hrolf tells his story; spare (he leaves) or kill; a celebration in the castle, interrupted
+- [x] The Mongolians (new people: riders with sabers) take the capital while the army is north: big war scenes, Livia taken (off-screen)
+- [x] The march back with a camp on the way; Hrolf (if spared) joins with his best Vikings
+- [x] Open-field battle against the Mongol cavalry (hard); Hrolf dies after a peace promise, his sons thank Cassian, some Vikings stay
+- [x] Inside the walls: alone down a narrow street to Livia against 5 Mongols; Livia tells what happened
+- [x] Rebuilding and a happy life; Livia's first child looks Mongolian and the city hates him, Cassian takes him as his son; a second son
+- [x] The patrol attacked by Greeks: Cassian dies; the city mourns; the city crowns the second son; the elder swears revenge
+- [x] The player picks which son to play; the elder's pact with a dark wizard and the dead; the final battle

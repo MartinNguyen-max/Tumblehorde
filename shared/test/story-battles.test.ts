@@ -109,19 +109,63 @@ describe('the story battles', () => {
     expect(forest.settings.prepareTime).toBe(0);
   });
 
-  it('the dead keep coming on the last night, and never break', () => {
-    const save = saveAt('last-night');
-    save.choices.lastStand = 'tunnel';
-    const battle = campaignBattle('last-night', save)!;
-    expect(battle.goal.kind).toBe('lastStand');
+  it('the Mongols ride: every one on a horse, with a saber; a second band comes round the flank', () => {
+    const battle = campaignBattle('open-field', saveAt('open-field'))!;
     const state = createMatch(battle.settings);
-    const dead = state.armies[3]!;
-    expect(state.units[dead.soldierIds[0]!]?.maxHp).toBe(ZOMBIE.hp);
-    for (const id of dead.soldierIds) killUnit(state, state.units[id]!, 0, { x: 0, y: 1, z: 0 });
-    run(state, STORY_BATTLE.zombieWave.every + 0.5);
-    expect(dead.eliminated).toBe(false);
-    expect(livingSoldiers(state, dead).length).toBeGreaterThanOrEqual(STORY_BATTLE.zombieWave.count);
+    const mongols = state.armies.filter((a) => a.name === 'Mongols');
+    expect(mongols).toHaveLength(2);
+    for (const army of mongols) {
+      for (const soldier of livingSoldiers(state, army)) {
+        expect(soldier.kind).toBe('rider');
+        expect(soldier.mountId).not.toBeNull();
+        expect(soldier.weapon).toBe('sword');
+      }
+    }
+    expect(battle.settings.armies.find((a) => a.name === 'Mongols' && a.arriveAt)?.arriveAt).toBe(STORY_BATTLE.mongolFlankAt);
+    expect(battle.settings.armies.some((a) => a.name === 'Hrolf')).toBe(false);
+  });
+
+  it('Hrolf rides with Cassian against the Mongols, but only if he was spared', () => {
+    const save = saveAt('open-field');
+    save.choices.hrolfSpared = true;
+    const battle = campaignBattle('open-field', save)!;
+    const hrolf = battle.settings.armies.find((a) => a.name === 'Hrolf');
+    expect(hrolf?.team).toBe(0);
+    expect(battle.commanders[battle.warlordArmy!]).toBe('Jorgai the Hawk');
+  });
+
+  it('the gate: Cassian alone, on foot, against five', () => {
+    const battle = campaignBattle('the-gate', saveAt('the-gate'))!;
+    const state = createMatch(battle.settings);
+    expect(livingSoldiers(state, state.armies[0]!)).toHaveLength(0);
+    expect(state.units[state.armies[0]!.commanderId!]!.mountId).toBeNull();
+    expect(livingSoldiers(state, state.armies[1]!)).toHaveLength(STORY_BATTLE.streetMongols);
+  });
+
+  it('the last patrol is a last stand: the Greeks keep coming', () => {
+    const battle = campaignBattle('last-patrol', saveAt('last-patrol'))!;
+    expect(battle.goal.kind).toBe('lastStand');
+    expect(battle.onLoss).toBe('continue');
+    const state = createMatch(battle.settings);
+    const greeks = state.armies[1]!;
+    for (const id of greeks.soldierIds) killUnit(state, state.units[id]!, 0, { x: 0, y: 1, z: 0 });
+    run(state, STORY_BATTLE.greekWave.every + 0.5);
+    expect(livingSoldiers(state, greeks).length).toBeGreaterThanOrEqual(STORY_BATTLE.greekWave.count);
     expect(state.phase).toBe('playing');
+  });
+
+  it('the brothers: the player leads the son they chose; Marcus fights beside the dead', () => {
+    const lucius = campaignBattle('brothers', { ...saveAt('brothers'), choices: { eirikSpared: null, hrolfSpared: null, son: 'lucius' } })!;
+    expect(lucius.settings.armies[0]!.name).toBe('Lucius');
+    expect(lucius.settings.armies[0]!.isBot).toBe(false);
+    const marcus = campaignBattle('brothers', { ...saveAt('brothers'), choices: { eirikSpared: null, hrolfSpared: null, son: 'marcus' } })!;
+    expect(marcus.settings.armies[0]!.name).toBe('Marcus');
+    expect(marcus.settings.armies[0]!.isBot).toBe(false);
+    const dead = marcus.settings.armies.find((a) => a.faction === 'zombie')!;
+    expect(dead.team).toBe(marcus.settings.armies[0]!.team);
+    const state = createMatch(marcus.settings);
+    expect(state.units[state.armies[0]!.commanderId!]!.mountId).not.toBeNull();
+    expect(livingSoldiers(state, state.armies[1]!)[0]?.maxHp).toBe(ZOMBIE.hp);
   });
 });
 
@@ -175,9 +219,9 @@ describe('review fixes for story battles', () => {
     expect(isCelebrating(state, state.armies[0]!)).toBe(false);
   });
 
-  it('the last night ends when Cassian first falls', async () => {
+  it('the last patrol ends when Cassian first falls', async () => {
     const { checkStoryGoal } = await import('../src/campaign/battles.ts');
-    const battle = campaignBattle('last-night', saveAt('last-night'))!;
+    const battle = campaignBattle('last-patrol', saveAt('last-patrol'))!;
     const state = createMatch(battle.settings);
     expect(checkStoryGoal(state, battle)).toBeNull();
     killUnit(state, state.units[state.armies[0]!.commanderId!]!, 3, { x: 0, y: 1, z: 0 });
@@ -195,7 +239,8 @@ describe('horses in the story', () => {
     expect(mounted('forest-road')).toBe(false);
     expect(mounted('dark-forest')).toBe(false);
     expect(mounted('bridge')).toBe(true);
-    expect(mounted('last-night')).toBe(true);
+    expect(mounted('open-field')).toBe(true);
+    expect(mounted('the-gate')).toBe(false);
   });
 });
 

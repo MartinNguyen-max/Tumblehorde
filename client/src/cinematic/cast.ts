@@ -52,6 +52,22 @@ export const CAST = {
   legionary: { look: { outfit: 'legion', color: LEGION_RED, helmet: true, hair: HAIR.brown }, voice: { pitch: 150, rate: 0.12 } },
   villager: { look: { outfit: 'villager', color: '#8A7A5A', hair: HAIR.brown }, voice: { pitch: 170, rate: 0.12 } },
   dead: { look: { outfit: 'rags', skin: SKIN.grey, hair: HAIR.grey, hairStyle: 'long' }, voice: { pitch: 90, rate: 0.2 } },
+  // The Mongols, the Greeks, and the people of the years after the war.
+  mongol: { look: { outfit: 'mongol', hair: HAIR.black, hairStyle: 'braids', beard: 'stubble', beardColor: HAIR.black, skin: SKIN.tan, helmet: true }, voice: { pitch: 130, rate: 0.11 } },
+  khan: { look: { outfit: 'mongol', color: '#7A2A2A', hair: HAIR.black, hairStyle: 'braids', beard: 'long', beardColor: HAIR.black, skin: SKIN.tan, helmet: true, scar: true }, voice: { pitch: 100, rate: 0.15 } },
+  hoplite: { look: { outfit: 'hoplite', hair: HAIR.black, beard: 'short', beardColor: HAIR.black, skin: SKIN.tan, helmet: true }, voice: { pitch: 140, rate: 0.12 } },
+  strategos: { look: { outfit: 'hoplite', color: '#6A2A7A', cape: '#E8E0CC', hair: HAIR.grey, beard: 'long', beardColor: HAIR.grey, skin: SKIN.tan, helmet: true }, voice: { pitch: 115, rate: 0.14 } },
+  cassianGrey: { look: { outfit: 'commander', color: LEGION_RED, cape: LEGION_RED, hair: HAIR.grey, hairStyle: 'short', beard: 'short', beardColor: HAIR.grey }, voice: { pitch: 155, rate: 0.13 } },
+  marcusBaby: { look: { outfit: 'villager', color: '#E8E0CC', hair: HAIR.black, hairStyle: 'short', skin: SKIN.tan, age: 'child' }, voice: { pitch: 400, rate: 0.08 } },
+  marcusBoy: { look: { outfit: 'villager', color: '#6A8A9A', hair: HAIR.black, hairStyle: 'long', skin: SKIN.tan, age: 'child' }, voice: { pitch: 350, rate: 0.09 } },
+  marcusMongol: { look: { outfit: 'mongol', color: '#2A2A3A', hair: HAIR.black, hairStyle: 'long', beard: 'stubble', beardColor: HAIR.black, skin: SKIN.tan, helmet: true }, voice: { pitch: 175, rate: 0.12 } },
+  marcusRoman: { look: { outfit: 'legion', color: LEGION_RED, hair: HAIR.black, hairStyle: 'long', beard: 'stubble', beardColor: HAIR.black, skin: SKIN.tan }, voice: { pitch: 175, rate: 0.12 } },
+  luciusBoy: { look: { outfit: 'villager', color: '#B8322A', hair: HAIR.brown, hairStyle: 'short', age: 'child' }, voice: { pitch: 370, rate: 0.09 } },
+  lucius: { look: { outfit: 'commander', color: LEGION_RED, cape: LEGION_RED, helmet: true, hair: HAIR.brown, hairStyle: 'short', beard: 'none' }, voice: { pitch: 190, rate: 0.11 } },
+  luciusBare: { look: { outfit: 'commander', color: LEGION_RED, cape: LEGION_RED, hair: HAIR.brown, hairStyle: 'short', beard: 'none' }, voice: { pitch: 190, rate: 0.11 } },
+  liviaMother: { look: { outfit: 'healer', color: '#6A4A7A', hair: HAIR.black, hairStyle: 'long', skin: SKIN.light }, voice: { pitch: 245, rate: 0.12 } },
+  wizard: { look: { outfit: 'wizard', hair: HAIR.white, hairStyle: 'long', beard: 'long', beardColor: HAIR.white, skin: '#B8B4A8', age: 'old' }, voice: { pitch: 85, rate: 0.17 } },
+  messenger: { look: { outfit: 'legion', color: LEGION_RED, hair: HAIR.brown, hairStyle: 'short', beard: 'stubble', beardColor: HAIR.brown }, voice: { pitch: 170, rate: 0.1 } },
 } as const satisfies Record<string, Role>;
 
 export type RoleName = keyof typeof CAST;
