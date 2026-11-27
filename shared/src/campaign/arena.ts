@@ -1,5 +1,4 @@
-import { MATCH } from '../config.ts';
-import type { MapDefinition, MapId, Structure } from '../maps.ts';
+import type { MapDefinition, Structure } from '../maps.ts';
 import type { ArmySetup, MatchSettings } from '../types.ts';
 
 /**
@@ -70,11 +69,6 @@ export interface ArenaFighter {
  */
 export function arenaSettings(player: FighterKit, opponents: readonly ArenaFighter[], seed: number): MatchSettings {
   const you: ArmySetup = { name: 'You', team: 0, isBot: false, soldiers: 0, kit: player };
-  const others: ArmySetup[] = opponents.map((o, i) => ({ name: o.name, team: i + 1, isBot: true, soldiers: 1, kit: o.kit }));
-  return { mode: 'ffa', armySize: ARENA.armySize, armies: [you, ...others], seed, map: 'arena', arena: true };
-}
-
-/** How long bots form up before they march: short in the arena, the usual time elsewhere. */
-export function prepareTimeFor(map: MapId): number {
-  return map === 'arena' ? ARENA.prepareTime : MATCH.prepareTime;
+  const others: ArmySetup[] = opponents.map((o, i) => ({ name: o.name, team: i + 1, isBot: true, soldiers: 1, kit: o.kit, style: 'charge' }));
+  return { mode: 'ffa', armySize: ARENA.armySize, armies: [you, ...others], seed, map: 'arena', arena: true, prepareTime: ARENA.prepareTime };
 }

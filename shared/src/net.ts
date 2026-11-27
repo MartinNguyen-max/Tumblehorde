@@ -1,6 +1,6 @@
 import { ARMY, NET, WEAPONS } from './config.ts';
 import { sanitizeCommand, sanitizeInput } from './input.ts';
-import { BATTLE_MAP_IDS, isMapChoice, type MapChoice, type MapId, MAPS, mapFromRandom } from './maps.ts';
+import { isMapChoice, MAP_IDS, type MapChoice, type MapId, MAPS, mapFromRandom } from './maps.ts';
 import { DEFENDER_TEAM } from './spawn.ts';
 import { createRandom, nextRandom } from './random.ts';
 import { createMatch } from './setup.ts';
@@ -131,7 +131,7 @@ export function canStartBattle(lobby: Pick<LobbyMessage, 'mode' | 'players' | 'm
 
 /** A random map never lands on the castle when the teams do not fit a siege. */
 function randomMap(lobby: LobbyMessage, random: number): MapId {
-  const choices = BATTLE_MAP_IDS.filter((m) => MAPS[m].layout !== 'siege' || siegeTeamsFit(lobby));
+  const choices = MAP_IDS.filter((m) => MAPS[m].layout !== 'siege' || siegeTeamsFit(lobby));
   return mapFromRandom(random, choices);
 }
 
@@ -360,6 +360,7 @@ export function decodeSnapshot(bytes: Uint8Array, ctx: SnapshotContext): MatchVi
       invulnerable: (flags & FLAG_INVULNERABLE) !== 0,
       drunk: (flags & FLAG_DRUNK) !== 0,
       crouching: (flags & FLAG_CROUCH) !== 0,
+      hero: null,
       stunTimer,
       action,
       actionTimer,
@@ -423,5 +424,6 @@ function emptyUnit(info: Roster[number]): UnitView {
     weapon: 'sword',
     drunk: false,
     crouching: false,
+    hero: null,
   };
 }

@@ -89,9 +89,14 @@ function createArmy(
     spawn.position.x + forward.x * FORMATION.commanderSpawnAhead,
     spawn.position.z + forward.z * FORMATION.commanderSpawnAhead,
   );
-  const faction = settings.armies[armyId]?.faction ?? 'roman';
   const setup = settings.armies[armyId];
-  const commander = isBot && !ARMY.botCommanders ? null : addCommander(state, armyId, commanderPos, spawn.yaw, faction, !settings.arena);
+  const faction = setup?.faction ?? 'roman';
+  const led = !isBot || ARMY.botCommanders || setup?.commander === true;
+  const commander = led ? addCommander(state, armyId, commanderPos, spawn.yaw, faction, !settings.arena) : null;
+  if (commander && setup?.commanderToughness) {
+    commander.maxHp *= setup.commanderToughness;
+    commander.hp = commander.maxHp;
+  }
 
   const kinds = setup?.soldiers === undefined ? soldierKindsFor(settings.armySize, settings.mix) : Array<SoldierKind>(setup.soldiers).fill('swordsman');
   const slots = startingSlots(kinds, spawn.position, spawn.yaw).map((slot) => nearestWalkable(settings.map, slot));
@@ -101,6 +106,7 @@ function createArmy(
     const slot = slots[i] ?? spawn.position;
     const soldier = addUnit(state, (id) => createUnit(id, kind, armyId, groundPos(settings, slot.x, slot.z), spawn.yaw, faction));
     soldier.group = groupForKind(kind, ARMY_GROUPS);
+    soldier.hero = setup?.heroes?.[i] ?? null;
     soldierIds.push(soldier.id);
     soldiers.push(soldier);
     if (kind === 'rider') {
@@ -144,8 +150,9 @@ function createArmy(
     eliminated: false,
     forfeited: false,
     disconnectTimer: null,
+    reinforceTimer: setup?.reinforce?.every ?? 0,
     stats: { kills: 0, deaths: 0, commanderDeaths: 0 },
-    bot: { style: !isBot ? 'steady' : settings.arena ? 'charge' : randomBotStyle(state), contactTimer: 0, flankTimer: 0, regroupTimer: 0, regrouping: false, orderTimer: 0, thinkTimer: 0, standoffTimer: 0, threat: [] },
+    bot: { style: setup?.style ?? (isBot ? randomBotStyle(state) : 'steady'), contactTimer: 0, flankTimer: 0, regroupTimer: 0, regrouping: false, orderTimer: 0, thinkTimer: 0, standoffTimer: 0, threat: [] },
     startingSoldiers: soldierIds.length,
   };
 }

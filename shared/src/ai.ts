@@ -9,7 +9,7 @@ import { nextRandom } from './random.ts';
 import { clearPath, localStep, navigate } from './navigation.ts';
 import { formationTargets, orderOf } from './orders.ts';
 import type { Army, GroupOrder, Intent, MatchState, Unit, Weapon } from './types.ts';
-import { areEnemies, attackWeapon, bodyRadius, canBeTargeted, canUseShield, getUnit, isMounted, meleeStatsFor, setWeapon } from './units.ts';
+import { areEnemies, attackWeapon, bodyRadius, holdWeapon, canBeTargeted, canUseShield, getUnit, isMounted, meleeStatsFor, setWeapon } from './units.ts';
 
 /** Facing within this angle of the target is good enough to swing. */
 const SWING_FACING_TOLERANCE = 0.45;
@@ -460,7 +460,7 @@ export function runArmyAi(state: MatchState, army: Army, dt: number): void {
 export function weaponForOrder(unit: Unit, order: GroupOrder): Weapon | null {
   // A soldier carries two spears: one to throw, one to hold the line with.
   if (unit.kind !== 'swordsman' || unit.action === 'throw') return null;
-  return order.order === 'attack' ? attackWeapon(unit.faction) : 'spear';
+  return order.order === 'attack' ? attackWeapon(unit.faction) : holdWeapon(unit.faction);
 }
 
 /** Spreads the first think of each unit so the whole army does not decide on the same tick. */

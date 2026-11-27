@@ -6,7 +6,8 @@ import { updateIntel } from './perception.ts';
 import { fireArrow, stepArrows, throwPilum } from './arrows.ts';
 import { fadeThreats, runBotArmy, runLeaderlessArmy } from './bot.ts';
 import { celebrate, isCelebrating } from './celebration.ts';
-import { ARCHER, COMMANDER, MATCH, SIM } from './config.ts';
+import { ARCHER, COMMANDER, HERO, MATCH, SIM } from './config.ts';
+import { armySpawn } from './spawn.ts';
 import { applyKnockback, isFreeToAct, killUnit, knockbackVector, resolveMelee, startMelee, thrustsOverShield } from './combat.ts';
 import { distanceXZ, normalizeXZ } from './math.ts';
 import { livingSoldiers, updateFollowAnchors } from './orders.ts';
@@ -15,7 +16,7 @@ import { randomRange } from './random.ts';
 import { steerAroundStructures } from './structures.ts';
 import { terrainHeightAt } from './terrain.ts';
 import type { Army, CommanderInput, MatchState, Unit } from './types.ts';
-import { areEnemies, armiesHostile, canBeTargeted, canUseShield, getUnit, isMounted, isPerson, rangedStatsFor, setWeapon } from './units.ts';
+import { areEnemies, armiesHostile, canBeTargeted, canUseShield, createUnit, getUnit, isMounted, isPerson, rangedStatsFor, setWeapon } from './units.ts';
 
 /** Archers switch from the bow to melee when the target is this close. */
 const ARCHER_BOW_MIN_DISTANCE = ARCHER.melee.range + 0.6;
@@ -155,11 +156,57 @@ function shoveAway(state: MatchState, commander: Unit): void {
 function updateRespawns(state: MatchState, dt: number): void {
   for (const army of state.armies) {
     const commander = getUnit(state, army.commanderId);
-    if (!commander || commander.alive || army.forfeited || army.eliminated || state.settings.arena) continue;
+    if (army.forfeited || army.eliminated) continue;
+    for (const id of army.soldierIds) {
+      const hero = state.units[id];
+      if (!hero || hero.alive || hero.hero === null || hero.respawnTimer <= 0) continue;
+      hero.respawnTimer -= dt;
+      if (hero.respawnTimer <= 0) getBackUp(state, hero, HERO.getUpHealth);
+    }
+    if (!commander || commander.alive || state.settings.arena) continue;
     commander.respawnTimer -= dt;
     if (commander.respawnTimer <= 0) respawnCommander(state, army, commander);
   }
 }
+
+/** A knocked-down hero gets back on their feet where they lie, a little worse for wear. */
+function getBackUp(state: MatchState, unit: Unit, health: number): void {
+  unit.alive = true;
+  unit.hp = unit.maxHp * health;
+  unit.sinceHurt = 0;
+  unit.pos = { x: unit.pos.x, y: terrainHeightAt(state.settings.map, unit.pos.x, unit.pos.z), z: unit.pos.z };
+  unit.vel = { x: 0, y: 0, z: 0 };
+  unit.onGround = true;
+  unit.stunTimer = 0;
+  unit.action = 'none';
+  unit.respawnTimer = 0;
+  unit.invulnerableTimer = COMMANDER.respawnShield;
+  state.events.push({ type: 'respawn', unitId: unit.id });
+}
+
+/** Armies that never run out (the dead on the last night) get fresh soldiers at their spawn. */
+function updateReinforcements(state: MatchState, dt: number): void {
+  state.settings.armies.forEach((setup, index) => {
+    const army = state.armies[index];
+    if (!setup.reinforce || !army || army.forfeited) return;
+    army.reinforceTimer -= dt;
+    if (army.reinforceTimer > 0) return;
+    army.reinforceTimer += setup.reinforce.every;
+    army.eliminated = false;
+    const spawn = armySpawn(state.settings, index);
+    for (let i = 0; i < setup.reinforce.count; i++) {
+      const x = spawn.position.x + randomRange(state.rng, -REINFORCE_SPREAD, REINFORCE_SPREAD);
+      const z = spawn.position.z + randomRange(state.rng, -REINFORCE_SPREAD, REINFORCE_SPREAD);
+      const unit = createUnit(state.units.length, 'swordsman', index, { x, y: terrainHeightAt(state.settings.map, x, z), z }, spawn.yaw, army.faction);
+      unit.group = army.soldierIds.length === 0 ? 0 : (state.units[army.soldierIds[0] ?? 0]?.group ?? 0);
+      state.units.push(unit);
+      army.soldierIds.push(unit.id);
+    }
+  });
+}
+
+/** Reinforcements appear spread over a square this many meters either side of the spawn. */
+const REINFORCE_SPREAD = 6;
 
 /** Kills everything left in an army, e.g. when its player stayed disconnected for too long. */
 export function forfeitArmy(state: MatchState, army: Army): void {
@@ -195,7 +242,13 @@ function updateDisconnects(state: MatchState, dt: number): void {
 
 export function isArmyDefeated(state: MatchState, army: Army): boolean {
   const commander = getUnit(state, army.commanderId);
-  return livingSoldiers(state, army).length === 0 && !commander?.alive;
+  if (state.settings.armies[army.id]?.reinforce) return false;
+  // A hero lying on the ground will get up again: the army is not beaten yet.
+  const heroDown = army.soldierIds.some((id) => {
+    const u = state.units[id];
+    return u !== undefined && u.hero !== null && !u.alive && u.respawnTimer > 0;
+  });
+  return livingSoldiers(state, army).length === 0 && !commander?.alive && !heroDown;
 }
 
 function updateElimination(state: MatchState): void {
@@ -282,9 +335,19 @@ export function stepMatch(state: MatchState, inputs: ReadonlyMap<number, Command
   updateBanquets(state, step);
   updateAlliances(state);
   updateRespawns(state, step);
+  updateReinforcements(state, step);
   updateDisconnects(state, step);
   updateElimination(state);
   updateMatchPhase(state, step);
+}
+
+/** A story battle won by holding out (the clock ran out with the army standing): `team` wins now. */
+export function declareVictory(state: MatchState, team: number): void {
+  if (state.phase !== 'playing') return;
+  state.phase = 'ending';
+  state.endTimer = MATCH.endDelay;
+  state.winnerTeam = team;
+  state.events.push({ type: 'matchOver', winnerTeam: team });
 }
 
 /** Battle duration in seconds, frozen once the winner is decided. */

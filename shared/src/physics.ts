@@ -314,7 +314,7 @@ function updateWading(state: MatchState, unit: Unit): void {
 
 export function stepMovement(state: MatchState, dt: number): void {
   for (const unit of state.units) {
-    if (!unit.alive && unit.kind === 'commander' && unit.respawnTimer > 0) slideDownedCommander(state, unit, dt);
+    if (!unit.alive && unit.respawnTimer > 0) slideDownedCommander(state, unit, dt);
     if (!unit.alive || isMounted(unit)) continue;
     if (isHorse(unit)) steerHorse(state, unit, dt);
     else steerPerson(unit, dt);

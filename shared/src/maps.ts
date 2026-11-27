@@ -1,12 +1,10 @@
 import { ARENA_MAP } from './campaign/arena.ts';
-/** The battlefields. Each has its own terrain shape, its own obstacles and its own way of starting. */
-/** Maps for ordinary battles (the start page, the lobby, "random"). */
-export const BATTLE_MAP_IDS = ['meadow', 'castle', 'city', 'north'] as const;
-/** Maps only the campaign uses. */
-export const STORY_MAP_IDS = ['arena'] as const;
-export const MAP_IDS = [...BATTLE_MAP_IDS, ...STORY_MAP_IDS] as const;
-export type BattleMapId = (typeof BATTLE_MAP_IDS)[number];
-export type MapId = (typeof MAP_IDS)[number];
+/** The battlefields offered for battles. Each has its own terrain shape, its own obstacles and its own way of starting. */
+export const MAP_IDS = ['meadow', 'castle', 'city', 'north'] as const;
+/** Places only the story goes to; never offered (or picked at random) for a battle. */
+export const CAMPAIGN_MAP_IDS = ['forest', 'village', 'river', 'fortress', 'arena'] as const;
+export type MapId = (typeof MAP_IDS)[number] | (typeof CAMPAIGN_MAP_IDS)[number];
+export const ALL_MAP_IDS: readonly MapId[] = [...MAP_IDS, ...CAMPAIGN_MAP_IDS];
 
 export type ObstacleKind = 'tree' | 'rock' | 'cactus';
 
@@ -76,6 +74,16 @@ export const CASTLE = {
 } as const;
 
 function castle(): Structure[] {
+  return [...castleWalls(), ...castleField()];
+}
+
+/** Wooden barricades in the field, cover for the attackers' approach. */
+function castleField(): Structure[] {
+  const fence = (x: number, z: number, length: number, yaw: number): Structure => ({ kind: 'fence', x, z, width: length, depth: 0.4, height: 1.4, yaw });
+  return [fence(-6, 14, 10, 0.3), fence(-6, -14, 10, -0.3), fence(-30, 30, 12, 0.8), fence(-30, -30, 12, -0.8), fence(8, 42, 10, 0), fence(8, -42, 10, 0)];
+}
+
+function castleWalls(): Structure[] {
   const { centerX, half, west, gateHalf, wallHeight: h, wallThickness: t, towerSize, towerHeight } = CASTLE;
   const east = centerX + half;
   const out: Structure[] = [
@@ -102,9 +110,6 @@ function castle(): Structure[] {
   out.push({ kind: 'pillar', x: centerX + 2, z: 4, width: 1.4, depth: 1.4, height: 4, yaw: 0 });
   out.push({ kind: 'pillar', x: centerX + 2, z: -4, width: 1.4, depth: 1.4, height: 4, yaw: 0 });
   for (const [x, z] of [[west + 4, -6], [west + 4.8, -7.2], [east - 4, 6], [east - 5, 7]] as const) out.push({ kind: 'barrel', x, z, width: 1, depth: 1, height: 1.1, yaw: 0 });
-  // Wooden barricades in the field, cover for the attackers' approach.
-  const fence = (x: number, z: number, length: number, yaw: number): Structure => ({ kind: 'fence', x, z, width: length, depth: 0.4, height: 1.4, yaw });
-  out.push(fence(-6, 14, 10, 0.3), fence(-6, -14, 10, -0.3), fence(-30, 30, 12, 0.8), fence(-30, -30, 12, -0.8), fence(8, 42, 10, 0), fence(8, -42, 10, 0));
   return out;
 }
 
@@ -228,10 +233,101 @@ function northVillage(): Structure[] {
   return out;
 }
 
+/** A river along the z axis at `x`, crossed by a bridge where |z| < `bridgeHalf`. */
+export interface River {
+  x: number;
+  halfWidth: number;
+  bridgeHalf: number;
+}
+
+/** A named place where a story battle puts an army. */
+export interface MapPoint {
+  x: number;
+  z: number;
+  yaw: number;
+}
+
+const EAST = Math.PI / 2;
+const WEST = -Math.PI / 2;
+const NORTH_FACING = 0;
+const SOUTH_FACING = Math.PI;
+
+/**
+ * The forest road: thick woods on both sides of a winding road, a camp clearing in the east.
+ * Used by day for the bandits and by night for the ambush.
+ */
+export const FOREST_POINTS = {
+  arrival: { x: -40, z: -2, yaw: EAST },
+  bandits: { x: -14, z: 0, yaw: WEST },
+  villagers: { x: -22, z: 1, yaw: EAST },
+  column: { x: 0, z: 0, yaw: EAST },
+  ambushNorth: { x: 6, z: 46, yaw: SOUTH_FACING },
+  ambushSouth: { x: -6, z: -46, yaw: NORTH_FACING },
+} satisfies Record<string, MapPoint>;
+
+/** A Roman village of plastered houses round a small square, a road coming in from the west. */
+export const VILLAGE_POINTS = {
+  arrival: { x: -52, z: 0, yaw: EAST },
+  raiders: { x: 6, z: -5, yaw: WEST },
+  defenders: { x: 22, z: -6, yaw: WEST },
+} satisfies Record<string, MapPoint>;
+
+function village(): Structure[] {
+  const out: Structure[] = [];
+  const homes: [number, number, number, number, number][] = [
+    [-14, 16, 8, 6, 0.1], [0, 20, 7, 6, -0.05], [14, 17, 8, 5, 0.12], [26, 12, 6, 6, 0.3],
+    [-14, -16, 7, 6, -0.1], [2, -20, 8, 6, 0.08], [16, -17, 7, 5, -0.1], [30, -6, 6, 7, 0.2],
+  ];
+  for (const [x, z, w, d, yaw] of homes) out.push(house(x, z, w, d, yaw, 4.4));
+  out.push({ kind: 'well', x: 6, z: 4, width: 2.4, depth: 2.4, height: 1.2, yaw: 0 });
+  out.push({ kind: 'temple', x: 36, z: 22, width: 9, depth: 12, height: 6, yaw: 0.2 });
+  const fence = (x: number, z: number, length: number, yaw: number): Structure => ({ kind: 'fence', x, z, width: length, depth: 0.3, height: 1.2, yaw });
+  out.push(fence(-30, 22, 14, 0.2), fence(-30, -22, 14, -0.2), fence(44, -24, 12, 0.5));
+  out.push({ kind: 'stall', x: -4, z: 8, width: 3, depth: 2, height: 2.6, yaw: 0 });
+  return out;
+}
+
+/** The river crossing: the legion holds the east end of the bridge while the carts cross. */
+export const RIVER_POINTS = {
+  bridgehead: { x: 14, z: 0, yaw: EAST },
+  firstWave: { x: 78, z: 6, yaw: WEST },
+  secondWave: { x: 66, z: 58, yaw: WEST - 0.6 },
+} satisfies Record<string, MapPoint>;
+
+export const RIVER: River = { x: 0, halfWidth: 7, bridgeHalf: 3.5 };
+
+function riverBanks(): Structure[] {
+  const out: Structure[] = [];
+  // Bridge railings, and an old toll house at the west end.
+  for (const side of [-1, 1]) out.push({ kind: 'fence', x: 0, z: side * (RIVER.bridgeHalf + 0.2), width: RIVER.halfWidth * 2 + 2, depth: 0.3, height: 1.1, yaw: 0 });
+  out.push(house(-18, 10, 6, 5, 0.1, 4));
+  out.push(wall(30, 30, 14, 0.7, 1.4), wall(34, -26, 12, -0.5, 1.4));
+  return out;
+}
+
+export function inRiver(river: River, x: number, z: number): boolean {
+  return Math.abs(x - river.x) < river.halfWidth && Math.abs(z) >= river.bridgeHalf;
+}
+
+/** The northern fortress: the castle under snow, its gate passage the "tunnel" of the last night. */
+export const FORTRESS_POINTS = {
+  legion: { x: -8, z: 0, yaw: WEST },
+  leftWing: { x: -6, z: 30, yaw: WEST },
+  rightWing: { x: -6, z: -30, yaw: WEST },
+  horde: { x: -86, z: 0, yaw: EAST },
+  tunnel: { x: CASTLE.west + 3, z: 0, yaw: WEST },
+  courtyard: { x: CASTLE.centerX - 4, z: 0, yaw: WEST },
+  graveyard: { x: -40, z: 0, yaw: EAST },
+} satisfies Record<string, MapPoint>;
+
 export interface MapDefinition {
   id: MapId;
   name: string;
   layout: MapLayout;
+  /** A river with a bridge. */
+  river?: River;
+  /** Places story battles put armies; kept clear of trees and rocks. */
+  points?: Record<string, MapPoint>;
   /** Frozen water: flat and slippery. */
   ice?: readonly IceSheet[];
   /** Rolling hills: amplitude and frequency of the two sine layers. */
@@ -294,6 +390,71 @@ export const MAPS: Record<MapId, MapDefinition> = {
     sceneryCount: 140,
     structures: northVillage(),
   },
+  forest: {
+    id: 'forest',
+    name: 'The Forest Road',
+    layout: 'open',
+    hills: { amplitude: 2.2, frequencyX: 0.08, frequencyZ: 0.06 },
+    ripples: { amplitude: 0.7, frequencyX: 0.18, frequencyZ: 0.14 },
+    flatRadius: 18,
+    points: FOREST_POINTS,
+    inside: [
+      { kind: 'tree', count: 210, scaleMin: 0.9, scaleMax: 1.5 },
+      { kind: 'rock', count: 24, scaleMin: 0.6, scaleMax: 1.4 },
+    ],
+    scenery: ['tree'],
+    sceneryCount: 220,
+    structures: [],
+  },
+  village: {
+    id: 'village',
+    name: 'The Village',
+    layout: 'open',
+    hills: { amplitude: 1.6, frequencyX: 0.06, frequencyZ: 0.07 },
+    ripples: { amplitude: 0.5, frequencyX: 0.16, frequencyZ: 0.12 },
+    flatRadius: 40,
+    points: VILLAGE_POINTS,
+    inside: [
+      { kind: 'tree', count: 34, scaleMin: 0.85, scaleMax: 1.3 },
+      { kind: 'rock', count: 10, scaleMin: 0.6, scaleMax: 1.2 },
+    ],
+    scenery: ['tree'],
+    sceneryCount: 120,
+    structures: village(),
+  },
+  river: {
+    id: 'river',
+    name: 'The Bridge',
+    layout: 'open',
+    hills: { amplitude: 1.8, frequencyX: 0.06, frequencyZ: 0.05 },
+    ripples: { amplitude: 0.5, frequencyX: 0.15, frequencyZ: 0.12 },
+    flatRadius: 30,
+    river: RIVER,
+    points: RIVER_POINTS,
+    inside: [
+      { kind: 'tree', count: 50, scaleMin: 0.85, scaleMax: 1.35 },
+      { kind: 'rock', count: 16, scaleMin: 0.6, scaleMax: 1.3 },
+    ],
+    scenery: ['tree'],
+    sceneryCount: 130,
+    structures: riverBanks(),
+  },
+  fortress: {
+    id: 'fortress',
+    name: 'The Northern Fortress',
+    layout: 'siege',
+    hills: { amplitude: 1.4, frequencyX: 0.05, frequencyZ: 0.07 },
+    ripples: { amplitude: 0.4, frequencyX: 0.15, frequencyZ: 0.12 },
+    flatRadius: 110,
+    points: FORTRESS_POINTS,
+    inside: [
+      { kind: 'tree', count: 18, scaleMin: 0.9, scaleMax: 1.4 },
+      { kind: 'rock', count: 12, scaleMin: 0.6, scaleMax: 1.3 },
+    ],
+    scenery: ['tree', 'tree', 'rock'],
+    sceneryCount: 120,
+    structures: castleWalls(),
+  },
   city: {
     id: 'city',
     name: 'The City',
@@ -314,7 +475,7 @@ export function isMapId(value: unknown): value is MapId {
 }
 
 /** Picks a map from a 0..1 random number, among `choices` (all maps by default). */
-export function mapFromRandom(random: number, choices: readonly MapId[] = BATTLE_MAP_IDS): MapId {
+export function mapFromRandom(random: number, choices: readonly MapId[] = MAP_IDS): MapId {
   return choices[Math.min(choices.length - 1, Math.floor(random * choices.length))] ?? 'meadow';
 }
 
@@ -322,5 +483,5 @@ export function mapFromRandom(random: number, choices: readonly MapId[] = BATTLE
 export type MapChoice = MapId | 'random';
 
 export function isMapChoice(value: unknown): value is MapChoice {
-  return value === 'random' || (BATTLE_MAP_IDS as readonly unknown[]).includes(value);
+  return value === 'random' || isMapId(value);
 }

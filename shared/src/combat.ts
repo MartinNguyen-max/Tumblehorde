@@ -1,4 +1,4 @@
-import { BANQUET, COMMANDER, DUEL, HORSE, KNOCKBACK, MELEE, RALLY, SHIELD, VIKING, type KnockbackStats, type MeleeStats } from './config.ts';
+import { BANDIT, BANQUET, COMMANDER, DUEL, HERO, HORSE, KNOCKBACK, MELEE, RALLY, SHIELD, VIKING, type KnockbackStats, type MeleeStats } from './config.ts';
 import { rememberAttacker } from './duel.ts';
 import { normalizeXZ, yawToDir, type Vec2, type Vec3 } from './math.ts';
 import { throwRider } from './mounts.ts';
@@ -35,9 +35,9 @@ export interface HitSource {
 
 /** How much a raised shield stops, alone and in a wall: round Viking shields a little less than a scutum. */
 export function shieldBlock(unit: Unit): { alone: number; wall: number } {
-  return unit.faction === 'viking'
-    ? { alone: VIKING.blockFraction, wall: VIKING.wallBlockFraction }
-    : { alone: SHIELD.blockFraction, wall: SHIELD.wallBlockFraction };
+  if (unit.faction === 'viking') return { alone: VIKING.blockFraction, wall: VIKING.wallBlockFraction };
+  if (unit.faction === 'bandit') return { alone: BANDIT.blockFraction, wall: BANDIT.wallBlockFraction };
+  return { alone: SHIELD.blockFraction, wall: SHIELD.wallBlockFraction };
 }
 
 /** True if `target` has its shield raised towards the point `from`. */
@@ -189,6 +189,14 @@ export function killUnit(state: MatchState, unit: Unit, killerArmyId: number | n
     unit.mountId = null;
   }
 
+  if (unit.hero !== null) {
+    // A hero of the story is only knocked down: they slide where the blow sends them and get up later.
+    unit.vel = { x: knockback.x * COMMANDER.downedSlideFactor, y: knockback.y * COMMANDER.downedSlideFactor, z: knockback.z * COMMANDER.downedSlideFactor };
+    unit.onGround = false;
+    unit.respawnTimer = HERO.getUpTime;
+    state.events.push({ type: 'death', unitId: unit.id, killerArmyId, knockback });
+    return;
+  }
   const victimArmy = state.armies[unit.armyId];
   if (victimArmy && (isSoldier(unit) || unit.kind === 'commander')) {
     victimArmy.stats.deaths++;

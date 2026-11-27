@@ -121,7 +121,7 @@ export function defendAgainst(state: MatchState, unit: Unit, threat: Unit, wild:
 }
 
 function canDodge(unit: Unit): boolean {
-  return unit.onGround && !isMounted(unit) && unit.action === 'none' && unit.stunTimer <= 0;
+  return unit.faction !== 'zombie' && unit.onGround && !isMounted(unit) && unit.action === 'none' && unit.stunTimer <= 0;
 }
 
 /** Decides at a think whether the next blow at `target` is a shield bash: worth it against a raised shield. */

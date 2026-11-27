@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ARENA, arenaSettings, type FighterKit } from '../src/campaign/index.ts';
 import { killUnit } from '../src/combat.ts';
-import { BATTLE_MAP_IDS, isMapChoice, mapFromRandom } from '../src/maps.ts';
+import { MAP_IDS, isMapChoice, mapFromRandom } from '../src/maps.ts';
 import { stepMatch } from '../src/match.ts';
 import { createMatch, defaultSettings } from '../src/setup.ts';
 import { getUnit } from '../src/units.ts';
@@ -53,7 +53,7 @@ describe('arena', () => {
   it('never comes up as a random or lobby battlefield', () => {
     for (let r = 0; r < 1; r += 0.01) expect(mapFromRandom(r)).not.toBe('arena');
     expect(isMapChoice('arena')).toBe(false);
-    expect(BATTLE_MAP_IDS).not.toContain('arena');
+    expect(MAP_IDS).not.toContain('arena');
   });
 
   it('leaves ordinary battles unchanged', () => {

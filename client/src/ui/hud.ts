@@ -8,7 +8,7 @@ import {
   type RefusedReason,
   wrapAngle,
   HORSE,
-  prepareTimeFor,
+  MATCH,
   RALLY,
   type MatchView,
   type Order,
@@ -58,7 +58,12 @@ const VIKING_REFUSED_TEXT: Partial<Record<RefusedReason, string>> = {
 const FACTION_WORDS = {
   roman: { feast: 'Banquet 🍷', drunk: 'Drunk! 🍷', feastBanner: 'Banquet! Wine for everyone! 🍷', drunkBanner: 'Your legion is VERY drunk!', rally: 'Rally speech', throw: 'Throw spears', thrown: 'Spears thrown', away: 'Spears away!', main: 'Sword', army: 'legion' },
   viking: { feast: 'Mead feast 🍺', drunk: 'Drunk! 🍺', feastBanner: 'Mead! Horns up, everyone! 🍺', drunkBanner: 'Your warband is VERY drunk!', rally: 'War roar', throw: 'Throw axes', thrown: 'Axes thrown', away: 'Axes away!', main: 'Axe', army: 'warband' },
-} as const satisfies Record<Faction, Record<string, string>>;
+} as const satisfies Record<'roman' | 'viking', Record<string, string>>;
+
+/** Only Romans and Vikings are ever led by a player; anyone else speaks like the legion. */
+function wordsOf(faction: Faction): (typeof FACTION_WORDS)['roman' | 'viking'] {
+  return faction === 'viking' ? FACTION_WORDS.viking : FACTION_WORDS.roman;
+}
 const HP_LABEL_HEIGHT = 2.75;
 const FOE_LABEL_HEIGHT = 3.4;
 const POPUP_RISE = 40;
@@ -141,12 +146,12 @@ export class Hud {
     const main = this.kit.querySelector<HTMLElement>('.weapon');
     if (main) {
       main.dataset.weapon = faction === 'viking' ? 'axe' : 'sword';
-      main.textContent = FACTION_WORDS[faction].main;
+      main.textContent = wordsOf(faction).main;
     }
   }
 
-  private get words(): (typeof FACTION_WORDS)[Faction] {
-    return FACTION_WORDS[this.faction];
+  private get words(): ReturnType<typeof wordsOf> {
+    return wordsOf(this.faction);
   }
 
   private buildWheel(wheelOptions: readonly WheelOption[]): void {
@@ -167,15 +172,15 @@ export class Hud {
     this.mapName.textContent = name;
   }
 
-  /** The current battlefield; the form-up countdown depends on it. */
-  private map: MapId = 'meadow';
+  /** Seconds of the form-up countdown; story battles and the arena set their own. */
+  prepareTime: number = MATCH.prepareTime;
 
   setMap(map: MapId): void {
-    this.map = map;
     this.minimap.setMap(map);
   }
 
   reset(): void {
+    this.prepareTime = MATCH.prepareTime;
     this.feed.replaceChildren();
     this.popupLayer.replaceChildren();
     this.popups = [];
@@ -447,7 +452,7 @@ export class Hud {
 
   /** The form-up phase: bots plan and hold, giving the player time to set up. */
   private updatePrepare(view: MatchView): void {
-    const left = prepareTimeFor(this.map) - view.time;
+    const left = this.prepareTime - view.time;
     const hasBots = view.armies.some((a) => a.isBot);
     const html = left > 0 && hasBots && view.phase === 'playing' ? `Form up! ${Math.ceil(left)}<small>The enemy marches when the timer runs out</small>` : '';
     if (this.prepare.innerHTML !== html) this.prepare.innerHTML = html;

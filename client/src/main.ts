@@ -1,5 +1,5 @@
 import { Vector3 } from './render/babylon.ts';
-import { defaultSettings, type MapId, mapFromRandom, type MatchSettings, type MatchView } from '@tumblehorde/shared';
+import { defaultSettings, MATCH, type MapId, mapFromRandom, type MatchSettings, type MatchView } from '@tumblehorde/shared';
 import { GameController } from './game/controller.ts';
 import { LocalSession, type Session } from './game/session.ts';
 import { InputState } from './input/input.ts';
@@ -46,6 +46,7 @@ async function boot(): Promise<void> {
         stopBattle();
         onEnd(view);
       });
+      hud.prepareTime = settings.prepareTime ?? MATCH.prepareTime;
       input.requestLock();
     },
     stopBattle: () => stopBattle(),

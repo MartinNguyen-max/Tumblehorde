@@ -8,6 +8,8 @@ import {
   RIDER,
   SHIELD,
   SWORDSMAN,
+  BANDIT,
+  ZOMBIE,
   VIKING,
   VIKING_COMMANDER_WEAPONS,
   type MeleeStats,
@@ -44,19 +46,43 @@ const CARRIED: Record<UnitKind, readonly Weapon[]> = {
   horse: [],
 };
 
-const VIKING_CARRIED: Partial<Record<UnitKind, readonly Weapon[]>> = {
-  commander: VIKING_COMMANDER_WEAPONS,
+/** What each people carries where it differs from the legion. */
+const FACTION_CARRIED: Record<Faction, Partial<Record<UnitKind, readonly Weapon[]>>> = {
+  roman: {},
   // Spear for marching and the shield wall, the axe comes out to attack.
-  swordsman: ['spear', 'axe'],
+  viking: { commander: VIKING_COMMANDER_WEAPONS, swordsman: ['spear', 'axe'] },
+  bandit: { swordsman: ['sword'] },
+  zombie: { swordsman: ['claw'], commander: ['claw'] },
 };
 
 export function carriedWeapons(kind: UnitKind, faction: Faction = 'roman'): readonly Weapon[] {
-  return (faction === 'viking' ? VIKING_CARRIED[kind] : undefined) ?? CARRIED[kind];
+  return FACTION_CARRIED[faction][kind] ?? CARRIED[kind];
 }
 
 /** The close-combat weapon a soldier draws to attack. */
 export function attackWeapon(faction: Faction): Weapon {
-  return faction === 'viking' ? 'axe' : 'sword';
+  switch (faction) {
+    case 'viking':
+      return 'axe';
+    case 'zombie':
+      return 'claw';
+    case 'roman':
+    case 'bandit':
+      return 'sword';
+  }
+}
+
+/** The weapon a soldier holds a line with: a spear, if their people carry one. */
+export function holdWeapon(faction: Faction): Weapon {
+  return faction === 'roman' || faction === 'viking' ? 'spear' : attackWeapon(faction);
+}
+
+/** Bandits and the dead are not as tough as soldiers (or tougher). */
+export function maxHpOf(kind: UnitKind, faction: Faction): number {
+  if (kind !== 'swordsman') return maxHpFor(kind);
+  if (faction === 'bandit') return BANDIT.hp;
+  if (faction === 'zombie') return ZOMBIE.hp;
+  return maxHpFor(kind);
 }
 
 export function defaultWeapon(kind: UnitKind, faction: Faction = 'roman'): Weapon {
@@ -64,12 +90,13 @@ export function defaultWeapon(kind: UnitKind, faction: Faction = 'roman'): Weapo
 }
 
 export function createUnit(id: EntityId, kind: UnitKind, armyId: number, pos: Vec3, yaw: number, faction: Faction = 'roman'): Unit {
-  const hp = maxHpFor(kind);
+  const hp = maxHpOf(kind, faction);
   return {
     id,
     kind,
     armyId,
     faction,
+    hero: null,
     hp,
     maxHp: hp,
     alive: true,
@@ -132,9 +159,11 @@ export function meleeStatsForKind(kind: UnitKind, mounted: boolean, weapon: Weap
       if (weapon === 'bow') return null;
       if (weapon === 'spear') return mounted ? COMMANDER.mountedSpear : COMMANDER.spear;
       if (weapon === 'axe') return mounted ? VIKING.mountedAxe : VIKING.commanderAxe;
+      if (weapon === 'claw') return ZOMBIE.claw;
       return mounted ? COMMANDER.mountedMelee : COMMANDER.melee;
     case 'swordsman':
       if (weapon === 'axe') return VIKING.axe;
+      if (weapon === 'claw') return ZOMBIE.claw;
       return weapon === 'spear' ? SWORDSMAN.spear : SWORDSMAN.melee;
     case 'archer':
       return ARCHER.melee;
@@ -147,6 +176,7 @@ export function meleeStatsForKind(kind: UnitKind, mounted: boolean, weapon: Weap
 
 export function meleeStatsFor(unit: Unit): MeleeStats | null {
   if (unit.faction === 'viking' && unit.kind === 'swordsman' && unit.weapon === 'spear') return VIKING.spear;
+  if (unit.faction === 'bandit' && unit.kind === 'swordsman') return BANDIT.sword;
   return meleeStatsForKind(unit.kind, isMounted(unit), unit.weapon);
 }
 
@@ -157,6 +187,7 @@ export function rangedStatsFor(unit: Unit): RangedStats | null {
 }
 
 export function canUseShield(unit: Unit): boolean {
+  if (unit.faction === 'zombie') return false;
   if (unit.kind === 'commander') return unit.weapon !== 'bow';
   return unit.kind === 'swordsman' || unit.kind === 'rider';
 }
@@ -178,7 +209,7 @@ export function footSpeed(unit: Unit): number {
     case 'commander':
       return COMMANDER.speed;
     case 'swordsman':
-      return unit.faction === 'viking' ? VIKING.speed : SWORDSMAN.speed;
+      return unit.faction === 'viking' ? VIKING.speed : unit.faction === 'bandit' ? BANDIT.speed : unit.faction === 'zombie' ? ZOMBIE.speed : SWORDSMAN.speed;
     case 'archer':
       return ARCHER.speed;
     case 'rider':

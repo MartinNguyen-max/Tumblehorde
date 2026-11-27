@@ -6,5 +6,6 @@ export * from './timeline.ts';
 export * from './npc.ts';
 export * from './dialogue.ts';
 export * from './roam.ts';
+export * from './battles.ts';
 export * from './arena.ts';
 export * from './economy.ts';

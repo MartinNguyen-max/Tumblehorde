@@ -31,6 +31,8 @@ export interface UnitView {
   weapon: Weapon;
   drunk: boolean;
   crouching: boolean;
+  /** A named hero of the story (only in story battles, which are never online). */
+  hero: string | null;
 }
 
 export interface ArrowView {
@@ -113,6 +115,7 @@ export function unitView(u: Unit): UnitView {
     weapon: u.weapon,
     drunk: u.drunk,
     crouching: u.crouching,
+    hero: u.hero,
   };
 }
 
