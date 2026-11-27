@@ -217,8 +217,15 @@ function addBody(parts: PartFactory, torso: TransformNode, palette: ArmyPalette,
   parts.part('box', palette.trim, torso, [0.5, 0.08, 0.44], [0, 1.37, 0], GLOSS);
 }
 
-/** A legionary (`officer` false) or the army's commander (`officer` true). */
-export function buildRoman(parts: PartFactory, body: TransformNode, palette: ArmyPalette, officer: boolean): PersonBody {
+/** A big full beard under the helmet's cheek guards (Varro has one). */
+function addBeard(parts: PartFactory, head: TransformNode, color: string): void {
+  parts.part('box', color, head, [HEAD + 0.02, 0.24, 0.14], [0, -0.22, FACE_Z - 0.02], GLOSS);
+  parts.part('box', color, head, [0.34, 0.18, 0.12], [0, -0.37, FACE_Z - 0.04], GLOSS);
+  parts.part('box', color, head, [0.3, 0.06, 0.04], [0, -0.12, FACE_Z + 0.03], SMALL);
+}
+
+/** A legionary (`officer` false) or the army's commander (`officer` true); `beard` gives him one. */
+export function buildRoman(parts: PartFactory, body: TransformNode, palette: ArmyPalette, officer: boolean, beard: string | null = null): PersonBody {
   const torso = childNode('torso', body);
   const legL = addLeg(parts, torso, -1, officer);
   const legR = addLeg(parts, torso, 1, officer);
@@ -226,6 +233,7 @@ export function buildRoman(parts: PartFactory, body: TransformNode, palette: Arm
 
   const head = childNode('head', torso, 0, HEAD_HEIGHT, 0);
   const face = addFace(parts, head);
+  if (beard) addBeard(parts, head, beard);
   const helmet = addHelmet(parts, head, officer ? COLORS.gold : ROMAN.steel, palette.body, officer);
 
   const armL = addArm(parts, torso, -1, palette.body, false);

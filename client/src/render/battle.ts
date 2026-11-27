@@ -72,7 +72,7 @@ export class BattleRenderer {
     const rig =
       unit.kind === 'horse'
         ? createHorseRig(this.world.scene, this.world.parts, palette, unit.id)
-        : createPersonRig(this.world.scene, this.world.parts, unit.kind, palette, view.armies[unit.armyId]?.faction ?? 'roman', unit.id);
+        : createPersonRig(this.world.scene, this.world.parts, unit.kind, palette, view.armies[unit.armyId]?.faction ?? 'roman', unit.id, this.storyName(view, unit));
     this.rigs.set(unit.id, rig);
     return rig;
   }
@@ -167,6 +167,17 @@ export class BattleRenderer {
       const soldier = this.rigs.get(unit.id);
       if (soldier) startCheer(soldier, CHEER_FIRST + Math.random() * CHEER_SPREAD, unit.id);
     }
+  }
+
+  /**
+   * A story hero's name, or in a story battle (one with heroes) a general's: armies there are named
+   * after their leader. In other battles a player called "Eirik" still looks like everyone else.
+   */
+  private storyName(view: MatchView, unit: UnitView): string | null {
+    if (unit.hero) return unit.hero;
+    const army = view.armies[unit.armyId];
+    if (unit.kind !== 'commander' || !army || !view.units.some((u) => u.hero !== null)) return null;
+    return army.name;
   }
 
   /** The battle is won and this soldier is on the winning side. */

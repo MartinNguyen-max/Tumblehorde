@@ -1,7 +1,7 @@
 import { FOREST_POINTS, FORTRESS_POINTS, type MapPoint, NORTH_POINTS, OLD_FRIENDS_POINTS, RIVER_POINTS, VILLAGE_POINTS } from '../maps.ts';
 import { declareVictory } from '../match.ts';
 import type { ArmySetup, BotStyle, Faction, MatchSettings, MatchState } from '../types.ts';
-import type { ChapterId } from './chapters.ts';
+import { type ChapterId, isAtOrAfter } from './chapters.ts';
 import { heroesIn, type HeroId, livingLegion } from './roster.ts';
 import type { CampaignSave } from './save.ts';
 
@@ -127,10 +127,21 @@ function settings(map: MatchSettings['map'], armies: ArmySetup[]): MatchSettings
 }
 
 /** Cassian's own army: the heroes with him first, then the living legionaries (from the Emperor on). */
+/**
+ * What Cassian is called (and so how he looks) at each point of the story: a wanderer before the
+ * Emperor gives him the legion, its legate after, an old man on the last night.
+ */
+export const CASSIAN_NAMES = { wanderer: 'Cassian', legate: 'Legate Cassian', old: 'Old Cassian' } as const;
+
+function cassianName(chapter: ChapterId): string {
+  if (chapter === 'last-night') return CASSIAN_NAMES.old;
+  return isAtOrAfter(chapter, 'emperor') ? CASSIAN_NAMES.legate : CASSIAN_NAMES.wanderer;
+}
+
 function cassian(save: CampaignSave, chapter: ChapterId, spawn: MapPoint, heroes: readonly HeroId[], withLegion: boolean): { setup: ArmySetup; legionNames: string[] } {
   const heroNames = heroes.map((h) => HERO_NAMES[h]);
   const legionNames = withLegion ? livingLegion(save.legion).map((l) => l.name) : [];
-  const setup = army({ name: 'Cassian', team: 0, faction: 'roman', soldiers: heroNames.length + legionNames.length, spawn, bot: false, heroes: heroNames });
+  const setup = army({ name: cassianName(chapter), team: 0, faction: 'roman', soldiers: heroNames.length + legionNames.length, spawn, bot: false, heroes: heroNames });
   return { setup, legionNames };
 }
 

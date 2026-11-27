@@ -1,6 +1,6 @@
 import { type InstancedMesh, TransformNode, type Scene } from './babylon.ts';
-import { approach, DUEL, type Faction, lerp, meleeStatsForKind, type UnitKind, type UnitView, type Weapon } from '@tumblehorde/shared';
-import { ANIMATION, type ArmyPalette, COLORS, ROMAN } from '../visualConfig.ts';
+import { approach, CASSIAN_NAMES, DUEL, type Faction, lerp, meleeStatsForKind, type UnitKind, type UnitView, type Weapon } from '@tumblehorde/shared';
+import { ANIMATION, type ArmyPalette, COLORS, ROMAN, STORY_LOOKS, VIKING_LOOK } from '../visualConfig.ts';
 import { buildBean } from './beans.ts';
 import { buildRoman, type PersonBody } from './legionary.ts';
 import { buildViking, vikingLook } from './viking.ts';
@@ -152,9 +152,37 @@ function addStars(parts: PartFactory, head: TransformNode): TransformNode {
 }
 
 /** Builds the body for a unit of `faction`; Vikings each get their own look from their id. */
-function buildBody(parts: PartFactory, body: TransformNode, kind: UnitKind, palette: ArmyPalette, faction: Faction, id: number): { built: PersonBody; look: string } {
+/** The story's named people look like themselves, whatever army they fight in. */
+function buildStoryBody(parts: PartFactory, body: TransformNode, kind: UnitKind, palette: ArmyPalette, name: string): { built: PersonBody; look: string } | null {
+  const officer = kind === 'commander';
+  switch (name) {
+    case 'Eirik': {
+      const { look } = vikingLook(0);
+      const eirik = { ...look, beard: STORY_LOOKS.eirik.beard, pelt: VIKING_LOOK.pelts[STORY_LOOKS.eirik.pelt] ?? look.pelt, helmet: false, scar: false, braids: true };
+      return { built: buildViking(parts, body, palette, officer, eirik), look: 'eirik' };
+    }
+    case 'Hrolf the Red':
+    case 'Hrolf': {
+      const { look } = vikingLook(0);
+      return { built: buildViking(parts, body, palette, true, { ...look, beard: STORY_LOOKS.hrolfBeard, scar: true, braids: true }), look: 'hrolf' };
+    }
+    case 'Varro':
+      return { built: buildRoman(parts, body, palette, officer, STORY_LOOKS.varroBeard), look: 'varro' };
+    // Before the legion he fights in a plain soldier's kit; old, he is still its general.
+    case CASSIAN_NAMES.wanderer:
+      return { built: buildRoman(parts, body, palette, false, STORY_LOOKS.cassianBeard), look: 'cassian' };
+    case CASSIAN_NAMES.old:
+      return { built: buildRoman(parts, body, palette, true, STORY_LOOKS.oldBeard), look: 'old-cassian' };
+    default:
+      return null;
+  }
+}
+
+function buildBody(parts: PartFactory, body: TransformNode, kind: UnitKind, palette: ArmyPalette, faction: Faction, id: number, name: string | null): { built: PersonBody; look: string } {
   const person = kind === 'swordsman' || kind === 'commander';
   if (!person) return { built: buildBean(parts, body, kind, palette), look: 'bean' };
+  const story = name ? buildStoryBody(parts, body, kind, palette, name) : null;
+  if (story) return story;
   if (faction === 'viking') {
     const { look, variant } = vikingLook(id);
     return { built: buildViking(parts, body, palette, kind === 'commander', look), look: `viking-${variant}` };
@@ -170,12 +198,13 @@ function buildBody(parts: PartFactory, body: TransformNode, kind: UnitKind, pale
   return { built: buildRoman(parts, body, palette, kind === 'commander'), look: 'roman' };
 }
 
-export function createPersonRig(scene: Scene, parts: PartFactory, kind: UnitKind, palette: ArmyPalette, faction: Faction = 'roman', id = 0): PersonRig {
+/** `name`: a story hero (or a named general) who should look like themselves. */
+export function createPersonRig(scene: Scene, parts: PartFactory, kind: UnitKind, palette: ArmyPalette, faction: Faction = 'roman', id = 0, name: string | null = null): PersonRig {
   const scale = kind === 'commander' ? COMMANDER_SCALE : SOLDIER_SCALE;
   const root = new TransformNode(kind, scene);
   const body = childNode('body', root);
   body.scaling.setAll(scale);
-  const { built, look } = buildBody(parts, body, kind, palette, faction, id);
+  const { built, look } = buildBody(parts, body, kind, palette, faction, id, name);
   const stars = addStars(parts, built.head);
   const bubbles = addBubbles(parts, built.head);
   const marker = parts.part('cone', COLORS.toast, root, [0.22, 0.4, 0.22], [0, MARKER_HEIGHT * scale, 0], NO_SHADOW_GLOSS);
