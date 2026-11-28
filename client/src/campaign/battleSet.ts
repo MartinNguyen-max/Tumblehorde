@@ -1,5 +1,6 @@
 import { Color3, Color4, Mesh, MeshBuilder, type Scene, StandardMaterial, TransformNode } from '../render/babylon.ts';
-import { type MapId, mapStructures, terrainHeightAt, type TimeOfDay } from '@tumblehorde/shared';
+import { CASTLE, type MapId, mapStructures, terrainHeightAt, type TimeOfDay } from '@tumblehorde/shared';
+import { Crowd, type Seat } from '../render/crowd.ts';
 import { FIRE, LIGHTING, MAP_THEMES, TIME_OF_DAY } from '../visualConfig.ts';
 import type { World } from '../render/world.ts';
 
@@ -7,6 +8,17 @@ import type { World } from '../render/world.ts';
  * The look of a story battle beyond its map: dusk or night, flames on the burning village's
  * houses, torches round a night camp. Built when the battle starts, undone when it ends.
  */
+/** The story's set pieces in battle: the duel's ring of legionaries, the siege's ladders and ram. */
+const SET_DECOR = {
+  ringScale: 1.6,
+  ringColors: ['#B8322A', '#A82A22', '#C8423A'],
+  wood: '#8A5A32',
+  darkWood: '#5E3E22',
+  log: '#6A4A2A',
+  hide: '#8A6A48',
+  iron: '#3A3A3E',
+} as const;
+
 export class BattleSet {
   private readonly root: TransformNode;
   private readonly flames: Mesh[] = [];
@@ -15,13 +27,76 @@ export class BattleSet {
   private readonly world: World;
   private time = 0;
 
-  /** `burning`: every house, or only those within `radius` of a spot (a whole city alight would be too much). */
-  constructor(world: World, map: MapId, time: TimeOfDay, options: { burning: boolean | { x: number; z: number; radius: number }; torches: readonly { x: number; z: number }[] }) {
+  private crowd: Crowd | null = null;
+
+  /**
+   * `burning`: every house, or only those within `radius` of a spot (a whole city alight would be too much).
+   * `ring`: soldiers standing in a ring of shields round a duel. `siege`: ladders on the castle wall and a ram at the gate.
+   */
+  constructor(
+    world: World,
+    map: MapId,
+    time: TimeOfDay,
+    options: {
+      burning: boolean | { x: number; z: number; radius: number };
+      torches: readonly { x: number; z: number }[];
+      ring?: { x: number; z: number; radius: number };
+      siege?: boolean;
+    },
+  ) {
     this.world = world;
     this.root = new TransformNode('battle-set', world.scene);
     setTimeOfDay(world, map, time);
     if (options.burning) this.setHousesAlight(map, options.burning === true ? null : options.burning);
     for (const t of options.torches) this.addTorch(map, t.x, t.z);
+    if (options.ring) this.addRing(map, options.ring);
+    if (options.siege) this.addSiege(map);
+  }
+
+  /** Legionaries shoulder to shoulder round the duel, cheering, two rows deep. */
+  private addRing(map: MapId, ring: { x: number; z: number; radius: number }): void {
+    const scale = SET_DECOR.ringScale;
+    const seats: Seat[] = [];
+    for (let row = 0; row < 2; row++) {
+      const r = ring.radius + row * 1.4;
+      const count = Math.floor((2 * Math.PI * r) / 1.1);
+      for (let i = 0; i < count; i++) {
+        const a = (i / count) * Math.PI * 2 + row * 0.2;
+        const x = ring.x + Math.sin(a) * r;
+        const z = ring.z + Math.cos(a) * r;
+        seats.push({ x: x / scale, y: terrainHeightAt(map, x, z) / scale, z: z / scale, yaw: a + Math.PI });
+      }
+    }
+    const holder = new TransformNode('duel-ring', this.world.scene);
+    holder.parent = this.root;
+    holder.scaling.setAll(scale);
+    this.crowd = new Crowd(this.world.parts, holder, seats, SET_DECOR.ringColors);
+  }
+
+  /** Ladders against the castle's west wall, and a covered ram rolled up to the gate. */
+  private addSiege(map: MapId): void {
+    const parts = this.world.parts;
+    const wallX = CASTLE.west - CASTLE.wallThickness / 2;
+    for (const z of [-15, -9, 9, 15]) {
+      const ladder = new TransformNode('ladder', this.world.scene);
+      ladder.parent = this.root;
+      ladder.position.set(wallX - 1.6, terrainHeightAt(map, wallX, z), z);
+      ladder.rotation.z = -0.32;
+      for (const side of [-0.4, 0.4]) parts.part('box', SET_DECOR.wood, ladder, [0.14, CASTLE.wallHeight + 1.6, 0.14], [0, (CASTLE.wallHeight + 1.6) / 2, side]);
+      for (let i = 0; i < 9; i++) parts.part('box', SET_DECOR.wood, ladder, [0.1, 0.1, 0.8], [0, 0.6 + i * 0.95, 0], { castShadow: false });
+    }
+    const ram = new TransformNode('ram', this.world.scene);
+    ram.parent = this.root;
+    ram.position.set(wallX - 3.2, terrainHeightAt(map, wallX - 3.2, 0), 0);
+    parts.part('box', SET_DECOR.wood, ram, [4.6, 0.3, 2.2], [0, 0.7, 0]);
+    for (const x of [-1.8, 1.8]) for (const z of [-1.2, 1.2]) parts.part('disc', SET_DECOR.darkWood, ram, [0.9, 0.2, 0.9], [x, 0.45, z]).rotation.x = Math.PI / 2;
+    for (const x of [-2, 2]) for (const z of [-1, 1]) parts.part('box', SET_DECOR.darkWood, ram, [0.2, 2.2, 0.2], [x, 1.8, z]);
+    for (const side of [-1, 1]) {
+      const roof = parts.part('box', SET_DECOR.hide, ram, [4.8, 0.12, 1.5], [0, 3.1, side * 0.6]);
+      roof.rotation.x = side * 0.5;
+    }
+    parts.part('cylinder', SET_DECOR.log, ram, [0.32, 5.4, 0.32], [0.8, 1.4, 0]).rotation.z = Math.PI / 2;
+    parts.part('box', SET_DECOR.iron, ram, [0.5, 0.7, 0.7], [3.5, 1.4, 0], { metal: true });
   }
 
   /** Flames on the roof of every house and fires on the ground beside them, licking up and down. */
@@ -91,6 +166,7 @@ export class BattleSet {
 
   update(dt: number): void {
     this.time += dt;
+    this.crowd?.update(this.time);
     for (const s of this.smoke) {
       s.age = (s.age + dt) % FIRE.smokeLife;
       const t = s.age / FIRE.smokeLife;

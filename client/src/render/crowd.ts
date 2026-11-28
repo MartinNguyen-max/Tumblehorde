@@ -42,13 +42,14 @@ export class Crowd {
   /** 0 = sitting and murmuring, 1 = on their feet roaring. */
   excitement = 0.6;
 
-  constructor(parts: PartFactory, parent: TransformNode, seats: readonly Seat[]) {
+  /** `colors`: what they wear (a legion in red); the crowd's mix by default. */
+  constructor(parts: PartFactory, parent: TransformNode, seats: readonly Seat[], colors: readonly string[] = CROWD.colors) {
     seats.forEach((seat, i) => {
       const node = new TransformNode('spectator', parent.getScene());
       node.parent = parent;
       node.position.set(seat.x, seat.y, seat.z);
       node.rotation.y = seat.yaw;
-      const color = pick(CROWD.colors, i * 7 + 3);
+      const color = pick(colors, i * 7 + 3);
       parts.part('box', color, node, [0.5, 0.62, 0.38], [0, 0.31, 0], { castShadow: false });
       parts.part('box', pick(CROWD.skins, i * 3), node, [0.36, 0.36, 0.36], [0, 0.82, 0], { castShadow: false });
       const arms = [-1, 1].map((side) => {

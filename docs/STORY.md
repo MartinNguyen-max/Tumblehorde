@@ -69,6 +69,7 @@ heroes other than Cassian are knocked out instead of dying, until the story says
 | 15 | **The Outpost** | Battle (ice) | A letter from Livia. Into the frozen north: raid a Viking outpost (20 Vikings) on the ice to learn where Hrolf strikes. Eirik (if spared) guides you. |
 | 16 | **The Night Raid** | Battle (night) | At the northern fortress camp, the Vikings attack by torchlight: 25 Vikings. Galba and the allies arrive at dawn. A second letter from Livia. |
 | 17 | **The Last Battle** | Cutscene + battle | Your legion in the middle, Galba's and Legate Quintus's armies (20 each) on the wings, Hrolf's horde of ~80 ahead. Cassian's rally speech (the cross in his hand). Defeat Hrolf: the mirror reveal and the third choice. Win: celebration. Lose: fight again or leave. |
+| 17b | **The Red-Haired Man** | Battle (duel) | The horde broken, Hrolf stands alone with an axe in each hand. Cassian orders his men back; the legion makes a ring of shields and beats time; one against one. Then Hrolf, on his knees, tells his story. |
 | 17 | **The Feast** | Cutscene | The fortress drinks to the end of the war. A rider bursts in: Mongol riders took the capital while the army was north; the Emperor is dead. The fall of the city, as Felix's cousin told it: riders through the gate, the guard dying in the square, Livia going back inside to her wounded and barring the door. What happened behind it is never shown. |
 | 18 | **The March South** | Cutscene | Eleven days in the saddle; Cassian silent. At camp, Hrolf (if spared) rides in with his best men: "my sons asked me how it ends." Otherwise Galba's cohort. |
 | 19 | **The Open Field** | Battle (hard) | Mongol riders in a loose cloud, a second band on the flank; the hint teaches the square. Hrolf's Vikings or Galba on your side. After: Hrolf dies after a promise of peace; his sons thank Cassian and take him home; some Vikings stay. |
@@ -80,8 +81,11 @@ heroes other than Cassian are knocked out instead of dying, until the story says
 | 25 | **Spring** | Cutscene | Spring, Livia at Cassian's grave (and Marcus's), the cross, a new blue ribbon. If Lucius won, he rode to the Mongols alone and made peace: they ride with Rome since. |
 | 26 | **The Golden City** | Free roam | Walk the capital as the chosen son: a giant statue of Cassian beside Varro's, crowds, soldiers sparring and patrolling, drunks, children, Vikings and Mongols visiting (Lucius or the Mongol chief Toghan in the streets too). A stranger hides behind the market stalls, marked with the yellow arrow. |
 | 27 | **The Spy** | Cutscene | Everyone questions him; he says nothing; they do it the old way. He confesses: the "bandits" who killed Cassian were Greeks in disguise, and Greek gold showed the Vikings the path in the dark forest where Varro died. Rome, the North and the East swear to march together. |
+| 27b | **The Border Fort** | Battle (siege) | A Greek fort bars the road: the ram rolled up under a roof of hides, ladders up the walls with the Vikings first, the gate broken, everyone through. |
 | 28 | **Into Greece** | Cutscene | The three peoples on the march; the Greek city of marble at dusk, bigger than Rome; in through the sewers at midnight (Rufus and the smell); up a ladder into an alley. |
+| 28b | **The Sewers** | Battle (dark, narrow) | Fewer men now, down in the tunnels under the Greek city, against the watch that walks them. |
 | 29 | **The Feast of the Greeks** | Battle (hardest) | The Greeks drunk at their feast notice too late, grab their shields and stand in a tight ring that never breaks; the three peoples close in from every side. |
+| 29b | **The Risen** | Battle | The wizard on the temple steps: the Greeks paid him, and every Greek they killed gets up again. The dead keep coming until the wizard falls. |
 | 30 | **The End** | Cutscene | Home in the spring with the Greeks in chains; the whole city cheering; Livia by the statue. |
 
 ## Army through the campaign

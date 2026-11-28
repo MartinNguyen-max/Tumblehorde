@@ -50,6 +50,8 @@ export interface ActorLook {
   helmet?: boolean;
   /** A scar across one cheek. */
   scar?: boolean;
+  /** In battle, a second weapon in the left hand instead of a shield (Hrolf's two axes). */
+  offhand?: 'axe';
 }
 
 /** Joint angles of a pose. Arms: [raise forward, out to the side, bend elbow]; legs: [raise forward, bend knee]. */

@@ -167,6 +167,12 @@ function buildStoryBody(parts: PartFactory, body: TransformNode, palette: ArmyPa
     if (grip) built.weapons = { axe: addAxe(parts, grip as TransformNode, actorLook.outfit === 'warlord'), spear: built.weapons.spear };
     built.sideArm = 'axe';
   }
+  if (actorLook.offhand === 'axe') {
+    // No shield: a second axe in the left hand.
+    built.shield?.dispose();
+    built.shield = null;
+    addAxe(parts, childNode('grip-left', built.armL, 0, -0.6, 0.04), true);
+  }
   return { built, look: `story-${look}` };
 }
 

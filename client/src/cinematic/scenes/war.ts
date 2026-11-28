@@ -5,6 +5,7 @@ import { FOV, overShoulder, portrait, type Shot } from '../shot.ts';
 import type { Actor } from '../actor.ts';
 import type { Stage } from '../stage.ts';
 import { house } from '../sets.ts';
+import { addAxe } from '../../render/viking.ts';
 import { campfire, forestRing, grave, STORY_COLORS, tents } from '../storySets.ts';
 
 /** The war in the north: Varro's last words, Livia's letters, the speech, and Hrolf. */
@@ -455,6 +456,87 @@ export const rallySpeech: Cutscene = {
   },
 };
 
+/** Two axes in his hands, the axes he is known for. */
+function giveAxes(stage: Stage, actor: Actor): void {
+  for (const grip of actor.grips) addAxe(stage.world.parts, grip, true).rotation.x = Math.PI;
+}
+
+export const hrolfAlone: Cutscene = {
+  id: 'hrolf-alone',
+  create(stage: Stage, story: StoryContext): Beat[] {
+    stage.light('snow');
+    stage.ground(STORY_COLORS.snow, 200, 'snow');
+    forestRing(stage, 40, 40, '#2A4A34');
+    stage.weather('snow');
+    for (let i = 0; i < 24; i++) cast(stage, 'viking', `Fallen ${i}`).place(-16 + (i % 8) * 4.4, -12 + Math.floor(i / 8) * 7, i).setPose('lie', true).eyesClosed = true;
+    const hrolf = cast(stage, 'hrolfDuel', 'Hrolf').place(0, -4, 0).setPose('raiseSword', true).setMood('shout', true);
+    giveAxes(stage, hrolf);
+    const cassian = cast(stage, 'cassianHelmet', 'Cassian').place(0, 6, Math.PI);
+    upright(sword(stage.world.parts, cassian.grips[0]));
+    const felix = cast(stage, 'felixLegion', 'Felix').place(-2, 7.4, Math.PI);
+    const rufus = cast(stage, 'rufusLegion', 'Rufus').place(2, 7.4, Math.PI);
+    const ring = Array.from({ length: 22 }, (_, i) => {
+      const a = (i / 22) * Math.PI * 2;
+      return cast(stage, 'legionary', `Ring ${i}`).place(Math.sin(a) * 13, 1 + Math.cos(a) * 13, a + Math.PI);
+    });
+    for (const [i, man] of ring.entries()) man.place(-8 + (i % 11) * 1.6, 9 + Math.floor(i / 11) * 1.4, Math.PI);
+    const eirik = cast(stage, 'eirik', 'Eirik').place(3.6, 8.2, Math.PI);
+    if (story.save.choices.eirikSpared !== true) eirik.root.setEnabled(false);
+
+    return [
+      {
+        duration: 6,
+        fade: { from: 1, to: 0, time: 2 },
+        music: 'dread',
+        sound: 'wind',
+        shot: { from: [10, 6, 14], at: [0, 1, -2], to: [8, 5, 11], fov: FOV.wide },
+        narrate: 'The horde was broken. The snow was red and still. And in the middle of it, one man was still standing.',
+      },
+      {
+        duration: 4,
+        sound: 'horn',
+        shot: () => portrait(hrolf, { angle: 0.2, distance: 3.2, rise: -0.4 }),
+        say: { who: 'Hrolf', as: 'Hrolf the Red', text: 'COME, THEN! All of you! Hrolf the Red dies with an axe in each hand!', mood: 'shout' },
+      },
+      {
+        shot: () => portrait(felix, { angle: 0.4 }),
+        run: () => felix.setPose('raiseSword').setMood('angry'),
+        say: { who: 'Felix', text: 'Legate! Give the word and we finish him!', mood: 'angry' },
+      },
+      {
+        shot: () => portrait(cassian, { angle: 0.3, distance: 2.2 }),
+        run: () => cassian.setMood('angry'),
+        say: { who: 'Cassian', text: 'No. Twenty years I have waited. He is mine. Nobody steps in. Not for anything.', mood: 'angry' },
+      },
+      {
+        duration: 5,
+        sound: 'crowd',
+        shot: { from: [0, 12, 18], at: [0, 0, 1], to: [0, 14, 20], fov: FOV.wide },
+        run: () => {
+          ring.forEach((man, i) => {
+            const a = (i / ring.length) * Math.PI * 2;
+            man.walkTo(Math.sin(a) * 11, 1 + Math.cos(a) * 11, 3);
+          });
+          for (const [i, f] of [felix, rufus, eirik].entries()) f.walkTo(-3 + i * 3, 12, 2);
+        },
+        narrate: 'The legion made a ring of shields around us and began to beat them with their swords. Slow, like a heartbeat.',
+      },
+      {
+        duration: 3,
+        sound: 'heartbeat',
+        shot: () => portrait(hrolf, { angle: 0.1, distance: 2.4, push: 0.3 }),
+        run: () => {
+          for (const man of ring) man.finishWalk();
+          for (const man of ring) man.setPose('raiseSword').lookAt(hrolf.headPosition());
+          hrolf.setMood('happy');
+        },
+        say: { who: 'Hrolf', as: 'Hrolf the Red', text: 'The little monk. Finally. Come!', mood: 'happy' },
+        fade: { to: 1, time: 2.6 },
+      },
+    ];
+  },
+};
+
 export const hrolfMirror: Cutscene = {
   id: 'hrolf-mirror',
   create(stage: Stage, story: StoryContext): Beat[] {
@@ -480,7 +562,7 @@ export const hrolfMirror: Cutscene = {
         music: 'silence',
         sound: 'wind',
         shot: { from: [5, 3, 6], at: [0, 1, 0], to: [4, 2.2, 4.5], fov: FOV.normal },
-        narrate: 'The horde broke. And the red-haired man was on his knees in the snow, in front of me.',
+        narrate: 'His axes lay in the snow. And the red-haired man was on his knees, in front of me.',
       },
       {
         shot: () => overShoulder(hrolf, cassian),

@@ -2,6 +2,7 @@ import { CityBuilder, houseRow, temple } from '../../campaign/cityKit.ts';
 import { CAPITAL } from '../../campaign/districts.ts';
 import { Crowd, type Seat } from '../../render/crowd.ts';
 import { childNode } from '../../render/parts.ts';
+import type { TransformNode } from '../../render/babylon.ts';
 import type { Actor } from '../actor.ts';
 import { cast } from '../cast.ts';
 import { torch, upright, sword } from '../props.ts';
@@ -361,15 +362,16 @@ export const theSewers: Cutscene = {
       },
       {
         duration: 4,
-        shot: { from: [-1.4, 1.6, -20], at: [1.8, 3.4, -26], fov: FOV.normal },
-        run: () => me.place(1.8, -25.4, Math.PI).setPose('reach'),
-        narrate: 'At the end of the tunnel, a ladder, and above it a grate. Music. Singing. Laughing.',
+        sound: 'horn',
+        shot: { from: [-1.4, 1.6, -14], at: [0, 1.6, -24], fov: FOV.normal },
+        run: () => me.setMood('afraid'),
+        narrate: 'Then torches ahead, coming round the bend. The Greek watch, walking the tunnels.',
       },
       {
         duration: 3,
         shot: () => portrait(me, { angle: 0.3, distance: 2.2, rise: -0.2 }),
-        run: () => me.setMood('angry'),
-        say: { who: meName, text: 'Quiet now. Up, one by one. Nobody makes a sound until I say.', mood: 'neutral' },
+        run: () => me.setPose('raiseSword').setMood('angry'),
+        say: { who: meName, text: 'No room for shields down here. Fast and close. Nobody gets away to warn them.', mood: 'angry' },
         fade: { to: 1, time: 2.6 },
       },
     ];
@@ -456,6 +458,208 @@ export const greekFeastScene: Cutscene = {
         },
         say: { who: meName, text: 'For Cassian! For Varro! NOW!', mood: 'shout' },
         fade: { to: 1, time: 2 },
+      },
+    ];
+  },
+};
+
+/** The Greek border fort: a stone wall with towers, a gate, a ditch; Greek bowmen on top. */
+const FORT = { wallX: -12, height: 7, gateHalf: 2.6, stone: '#B8B2A4', stoneDark: '#8E887A', ditch: '#3A4A3A' } as const;
+
+function borderFortSet(stage: Stage): { doors: TransformNode[] } {
+  stage.ground('#7A8A4A', 160, 'hills');
+  stage.box(FORT.ditch, [4, 0.06, 60], [FORT.wallX - 4, 0.01, 0], 0, { castShadow: false });
+  stage.box('#6A4A2A', [5, 0.3, 5.4], [FORT.wallX - 4, 0.2, 0]);
+  for (const side of [-1, 1]) {
+    const len = 26;
+    stage.box(FORT.stone, [2.4, FORT.height, len], [FORT.wallX, FORT.height / 2, side * (FORT.gateHalf + len / 2)]);
+    for (let i = 0; i < 9; i++) stage.box(FORT.stoneDark, [2.6, 0.8, 1.2], [FORT.wallX, FORT.height + 0.4, side * (FORT.gateHalf + 1 + i * 3)]);
+    stage.box(FORT.stone, [4.4, FORT.height + 4, 4.4], [FORT.wallX, (FORT.height + 4) / 2, side * (FORT.gateHalf + 2.2)]);
+    stage.box(FORT.stone, [4.4, FORT.height + 4, 4.4], [FORT.wallX, (FORT.height + 4) / 2, side * 22]);
+  }
+  stage.box(FORT.stone, [2.6, 2.4, FORT.gateHalf * 2], [FORT.wallX, FORT.height - 1.2, 0]);
+  // The Greeks' banner over the gate.
+  stage.box('#2E5AA8', [0.1, 3, 2], [FORT.wallX - 1.4, FORT.height + 2.4, 0]);
+  const doors = [-1, 1].map((side) => {
+    const hinge = stage.group('fort-door', FORT.wallX - 1.2, 0, side * FORT.gateHalf);
+    stage.world.parts.part('box', '#5E3E22', hinge, [0.3, FORT.height - 2.4, FORT.gateHalf], [0, (FORT.height - 2.4) / 2, -side * FORT.gateHalf / 2]);
+    return hinge;
+  });
+  return { doors };
+}
+
+export const fortSiege: Cutscene = {
+  id: 'fort-siege',
+  create(stage: Stage, story: StoryContext): Beat[] {
+    stage.light('day');
+    const { doors } = borderFortSet(stage);
+    const son = sonOf(story);
+    const me = castSon(stage, story, -36, 3, Math.PI / 2);
+    const sigurd = cast(stage, 'sigurd', 'Sigurd').place(-37, 6, Math.PI / 2);
+    const rufus = cast(stage, 'rufusOld', 'Rufus').place(-38, 0, Math.PI / 2);
+    const archers = Array.from({ length: 10 }, (_, i) => cast(stage, 'hoplite', `Greek ${i}`).place(FORT.wallX + 0.4, -18 + i * 4 + (i >= 5 ? 1 : -1) * 2, -Math.PI / 2).setPose('raiseSword', true));
+    for (const a of archers) a.root.position.y = FORT.height;
+    // The ram under its roof, and the men pushing it.
+    const ram = stage.group('ram', -30, 0, 0);
+    stage.world.parts.part('box', '#6A4A2A', ram, [4.6, 0.3, 2.2], [0, 0.7, 0]);
+    stage.world.parts.part('cylinder', '#5E3E22', ram, [0.32, 5.6, 0.32], [1, 1.4, 0]).rotation.z = Math.PI / 2;
+    stage.world.parts.part('box', '#3A3A3E', ram, [0.5, 0.7, 0.7], [3.8, 1.4, 0], { metal: true });
+    for (const side of [-1, 1]) stage.world.parts.part('box', '#8A6A48', ram, [4.8, 0.12, 1.5], [0, 3.1, side * 0.6]).rotation.x = side * 0.5;
+    const pushers = Array.from({ length: 6 }, (_, i) => cast(stage, 'legionary', `Pusher ${i}`).place(-32 + (i % 3) * 1.4, i < 3 ? -1.4 : 1.4, Math.PI / 2).setPose('reach', true));
+    // Ladders lying on the grass, ready to go up.
+    const ladders = [-14, -8, 8, 14].map((z) => {
+      const g = stage.group('ladder', FORT.wallX - 3.4, 0, z);
+      for (const side of [-0.4, 0.4]) stage.world.parts.part('box', '#8A5A32', g, [0.14, FORT.height + 1.6, 0.14], [0, (FORT.height + 1.6) / 2, side]);
+      for (let i = 0; i < 8; i++) stage.world.parts.part('box', '#8A5A32', g, [0.1, 0.1, 0.8], [0, 0.6 + i * 1.05, 0], { castShadow: false });
+      g.rotation.z = -1.5;
+      return g;
+    });
+    const climbers = [-14, -8, 8, 14].map((z, i) => cast(stage, i % 2 === 0 ? 'viking' : 'legionary', `Climber ${i}`).place(FORT.wallX - 3.6, z, Math.PI / 2));
+    const army = Array.from({ length: 18 }, (_, i) => cast(stage, i % 3 === 0 ? 'viking' : i % 3 === 1 ? 'legionary' : 'mongol', `Soldier ${i}`).place(-42 - (i % 6) * 1.6, -8 + Math.floor(i / 6) * 4, Math.PI / 2));
+    const meName = son === 'marcus' ? 'Marcus' : 'Lucius';
+
+    return [
+      {
+        duration: 6,
+        fade: { from: 1, to: 0, time: 2 },
+        music: 'dread',
+        sound: 'wind',
+        shot: { from: [-48, 9, 18], at: [FORT.wallX, 4, 0], to: [-44, 7, 14], fov: FOV.wide },
+        narrate: 'On the road into Greece, a fort barred the way. A gate that had never fallen, they said.',
+      },
+      {
+        shot: () => portrait(rufus, { angle: 0.4, distance: 2.4 }),
+        run: () => rufus.setMood('neutral').lookAt({ x: FORT.wallX, y: 6, z: 0 }),
+        say: { who: 'Rufus', text: 'Never fallen? Wonderful. I love being the first at things.', mood: 'neutral' },
+      },
+      {
+        shot: () => portrait(me, { angle: 0.3, distance: 2.2 }),
+        run: () => me.setPose('point').setMood('angry'),
+        say: { who: meName, text: 'The ram to the gate! Ladders on the walls! When the gate goes, everyone through it!', mood: 'shout' },
+      },
+      {
+        duration: 5,
+        sound: 'crowd',
+        shot: { from: [-26, 3, 12], at: [-20, 1.6, 0], fov: FOV.wide },
+        during: (_s, p) => {
+          ram.position.x = -30 + p * 12.6;
+          pushers.forEach((m, i) => m.place(-32 + (i % 3) * 1.4 + p * 12.6, i < 3 ? -1.4 : 1.4, Math.PI / 2));
+        },
+        narrate: 'Under a roof of hides, they rolled the ram up to the gate while arrows rained on it.',
+      },
+      {
+        duration: 5,
+        shot: { from: [-26, 5, -22], at: [FORT.wallX, 3.5, -11], fov: FOV.wide },
+        during: (_s, p) => {
+          for (const l of ladders) l.rotation.z = -1.5 + Math.min(1, p * 1.6) * 1.18;
+          climbers.forEach((c, i) => {
+            const up = Math.max(0, p * 1.6 - 0.7) * (FORT.height - 0.5);
+            c.root.position.y = up;
+            c.root.position.x = FORT.wallX - 3.6 + up * 0.28;
+            if (p > 0.85 && i % 2 === 0) archers[i]?.setPose('lie');
+          });
+        },
+        narrate: 'Up went the ladders. Up went the Vikings, first of all, axes in their teeth.',
+      },
+      {
+        duration: 4,
+        sound: 'thunder',
+        shot: { from: [FORT.wallX - 9, 3, 6], at: [FORT.wallX - 1, 2.4, 0], fov: FOV.normal },
+        during: (_s, p) => {
+          const blow = Math.max(0, Math.sin(p * Math.PI * 6));
+          ram.position.x = -17.4 - blow * 1.2;
+          doors.forEach((d, i) => (d.rotation.y = (i === 0 ? 1 : -1) * blow * 0.08));
+        },
+        narrate: 'Boom. Boom. BOOM.',
+      },
+      {
+        duration: 4,
+        sound: 'horn',
+        shot: { from: [FORT.wallX - 14, 4, 8], at: [FORT.wallX, 2, 0], fov: FOV.wide },
+        run: () => {
+          doors.forEach((d, i) => (d.rotation.y = (i === 0 ? 1 : -1) * 1.7));
+          for (const s of [...army, me, sigurd]) s.setPose('raiseSword').setMood('shout');
+          for (const s of army) s.walkTo(FORT.wallX - 6, s.root.position.z * 0.3, 5);
+        },
+        say: { who: meName, text: 'The gate is down! THROUGH! THROUGH!', mood: 'shout' },
+        fade: { to: 1, time: 3.4 },
+      },
+    ];
+  },
+};
+
+/** After the feast: the wizard on the temple steps, and the Greek dead getting up again. */
+export const wizardReturns: Cutscene = {
+  id: 'wizard-returns',
+  create(stage: Stage, story: StoryContext): Beat[] {
+    stage.light('night');
+    greekFeastSquare(stage);
+    const son = sonOf(story);
+    const me = castSon(stage, story, 0, 8, Math.PI);
+    const sigurd = cast(stage, 'sigurd', 'Sigurd').place(-2, 9, Math.PI);
+    const rufus = cast(stage, 'rufusOld', 'Rufus').place(2, 9.2, Math.PI);
+    const wizard = cast(stage, 'wizard', 'The Wizard').place(0, -18, 0);
+    const staff = stage.group('staff', 0, 0, 0);
+    stage.world.parts.part('box', '#3A2A1E', staff, [0.08, 2.2, 0.08], [0, 0.4, 0]);
+    stage.world.parts.part('sphere', '#7AF0C8', staff, [0.3, 0.3, 0.3], [0, 1.55, 0], { glow: true });
+    staff.parent = wizard.grips[0];
+    const dead = Array.from({ length: 20 }, (_, i) => {
+      const a = (i / 20) * Math.PI * 2;
+      const d = cast(stage, 'risen', `Risen ${i}`).place(Math.sin(a) * (3 + (i % 3)), -2 + Math.cos(a) * (3 + (i % 3)), a + Math.PI).setPose('lie', true);
+      d.eyesClosed = true;
+      return d;
+    });
+    const meName = son === 'marcus' ? 'Marcus' : 'Lucius';
+
+    return [
+      {
+        duration: 6,
+        fade: { from: 1, to: 0, time: 2 },
+        music: 'warm',
+        shot: { from: [8, 4, 14], at: [0, 0.6, -2], to: [6, 3, 11], fov: FOV.wide },
+        narrate: 'When it was over, the square was full of Greeks who would never drink again. We had won.',
+      },
+      {
+        duration: 3,
+        shot: () => portrait(rufus, { angle: -0.4, distance: 2.4 }),
+        run: () => rufus.setMood('happy'),
+        say: { who: 'Rufus', text: 'Is there any of their wine left? Asking for a friend. The friend is me.', mood: 'happy' },
+      },
+      {
+        duration: 4,
+        music: 'dread',
+        sound: 'thunder',
+        shot: { from: [0, 2.2, -8], at: wizard, fov: FOV.normal },
+        run: () => {
+          stage.light('fireNight');
+          wizard.setPose('cheer').setMood('happy');
+        },
+        narrate: 'Then a green light on the temple steps. And a voice we had all hoped never to hear again.',
+      },
+      {
+        shot: () => portrait(wizard, { angle: 0.2, distance: 2.8, rise: -0.2 }),
+        say: son === 'marcus'
+          ? { who: 'The Wizard', text: 'Marcus. You broke our bargain. You took back what you gave me. Did you think I would forget?', mood: 'happy' }
+          : { who: 'The Wizard', text: 'Your brother was my friend, little emperor. The Greeks paid me to be theirs. Gold is gold. The dead are the dead.', mood: 'happy' },
+      },
+      {
+        duration: 6,
+        sound: 'thunder',
+        shot: { from: [7, 3, 7], at: [0, 0.6, -2], to: [5, 4, 9], fov: FOV.wide },
+        run: () => {
+          for (const d of dead) {
+            d.eyesClosed = false;
+            d.setPose('reach').setMood('angry');
+          }
+        },
+        during: (_s, p) => dead.forEach((d, i) => d.root.position.y = -0.4 + Math.min(1, p * 2 - i * 0.04) * 0.4),
+        narrate: 'And every Greek we had killed got up again.',
+      },
+      {
+        shot: () => portrait(me, { angle: 0.3, distance: 2.2, rise: -0.2 }),
+        run: () => me.setPose('raiseSword').setMood('shout'),
+        say: { who: meName, text: 'The wizard! Get to the wizard! While he lives, they will never stay down!', mood: 'shout' },
+        fade: { to: 1, time: 2.4 },
       },
     ];
   },

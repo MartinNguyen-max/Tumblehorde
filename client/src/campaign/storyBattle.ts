@@ -3,6 +3,7 @@ import {
   type BattleResult,
   type CampaignBattle,
   checkStoryGoal,
+  DUEL_POINTS,
   holdTimeLeft,
   type MatchSettings,
   type MatchView,
@@ -17,6 +18,13 @@ export interface StoryBattleHost {
   startBattle: (settings: MatchSettings, onEnd: (view: MatchView) => void, objective?: (view: MatchView) => string | null) => LocalSession;
 }
 
+/** The ring of legionaries round the duel with Hrolf. */
+const DUEL_RING = { x: DUEL_POINTS.center.x, z: DUEL_POINTS.center.z, radius: 11 } as const;
+
+const SEWER_TORCHES: readonly { x: number; z: number }[] = [-12, -6, 0, 6, 12].flatMap((z, row) =>
+  [-36, -20, -4, 12, 28].map((x) => ({ x: x + (row % 2) * 8, z: z + (z > 0 ? -1.6 : 1.6) })),
+);
+
 /** Places on fire when the battle is fought: the raided village, and the street up to Livia in the taken capital. */
 const BURNING: Partial<Record<CampaignBattle['chapter'], true | { x: number; z: number; radius: number }>> = {
   'burning-village': true,
@@ -30,6 +38,8 @@ const TORCHES: Partial<Record<CampaignBattle['chapter'], readonly { x: number; z
   ],
   'dark-forest': [{ x: 10, z: 4.5 }, { x: 18, z: -4.5 }, { x: 26, z: 4.5 }],
   'the-gate': [{ x: 33, z: -58 }, { x: 39, z: -52 }, { x: 33, z: -44 }, { x: 39, z: -38 }],
+  // Torches every few paces along the sewer tunnels: the only light down there.
+  sewers: SEWER_TORCHES,
   'greek-feast': [{ x: -12, z: -12 }, { x: 12, z: -12 }, { x: -12, z: 12 }, { x: 12, z: 12 }, { x: 0, z: -15 }, { x: 0, z: 15 }],
 };
 
@@ -65,6 +75,8 @@ export class StoryBattle {
     this.set = new BattleSet(world, battle.settings.map, battle.time, {
       burning: BURNING[battle.chapter] ?? false,
       torches: TORCHES[battle.chapter] ?? [],
+      ring: battle.chapter === 'the-duel' ? DUEL_RING : undefined,
+      siege: battle.chapter === 'border-fort',
     });
     this.hint = new TutorialHint(battle.tutorial);
   }
