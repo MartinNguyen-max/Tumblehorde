@@ -788,24 +788,121 @@ export const theCrowning: Cutscene = {
   },
 };
 
-/** A barrow field in the hills at night, mist on the graves. */
-function barrows(stage: Stage): void {
-  stage.ground('#2A3A2A', 140, 'hills');
+/** The forgotten graveyard where the wizard waits: moonlight, mist, dead trees, ruins and green fire. */
+const GRAVEYARD = {
+  ground: '#26322A',
+  moss: '#33442E',
+  deadGrass: '#5A5A3A',
+  stone: '#7A7A72',
+  stoneDark: '#55554E',
+  bark: '#1E1A16',
+  iron: '#2A2A2E',
+  witchFire: '#6AF0B0',
+  witchCore: '#D8FFE8',
+  moon: '#F4F0D8',
+  candle: '#FFD27A',
+} as const;
+
+/** A dead tree: a black trunk with crooked bare branches. */
+function deadTree(stage: Stage, x: number, z: number, size: number, seed: number): void {
+  const g = stage.group('dead-tree', x, 0, z);
+  g.rotation.y = seed;
+  const p = stage.world.parts;
+  p.part('box', GRAVEYARD.bark, g, [0.35 * size, 3.2 * size, 0.35 * size], [0, 1.6 * size, 0]).rotation.z = 0.08;
+  for (let i = 0; i < 4; i++) {
+    const branch = p.part('box', GRAVEYARD.bark, g, [0.14 * size, 1.4 * size, 0.14 * size], [Math.sin(i * 1.7) * 0.4 * size, (2.0 + i * 0.4) * size, Math.cos(i * 1.7) * 0.4 * size]);
+    branch.rotation.set(Math.cos(i * 2.1) * 0.9, i * 1.3, Math.sin(i * 2.1) * 0.9);
+  }
+}
+
+/** A tombstone, one of three shapes, leaning a little. */
+function tombstone(stage: Stage, x: number, z: number, i: number): void {
+  const g = stage.group('tomb', x, 0, z);
+  g.rotation.set(Math.sin(i * 3.1) * 0.12, Math.sin(i) * 0.3, Math.cos(i * 2.3) * 0.12);
+  const p = stage.world.parts;
+  const kind = i % 3;
+  if (kind === 0) {
+    p.part('box', GRAVEYARD.stone, g, [0.7, 0.9, 0.18], [0, 0.45, 0]);
+    p.part('cylinder', GRAVEYARD.stone, g, [0.35, 0.18, 0.35], [0, 0.9, 0]).rotation.x = Math.PI / 2;
+  } else if (kind === 1) {
+    p.part('box', GRAVEYARD.stoneDark, g, [0.16, 1.2, 0.16], [0, 0.6, 0]);
+    p.part('box', GRAVEYARD.stoneDark, g, [0.7, 0.16, 0.16], [0, 0.85, 0]);
+  } else {
+    p.part('box', GRAVEYARD.stone, g, [0.9, 0.5, 0.3], [0, 0.25, 0]);
+  }
+  p.part('box', GRAVEYARD.moss, g, [0.95, 0.2, 1.7], [0, 0.08, 0.95]);
+}
+
+function graveyard(stage: Stage): void {
+  stage.ground(GRAVEYARD.ground, 150, 'forest');
   stage.weather('motes');
+  // Patches of moss and dead grass.
+  for (let i = 0; i < 40; i++) {
+    const a = i * 2.399;
+    const r = 3 + (i % 10) * 2;
+    stage.box(i % 2 === 0 ? GRAVEYARD.moss : GRAVEYARD.deadGrass, [1.6 + (i % 3), 0.04, 1.2 + (i % 2)], [Math.cos(a) * r, 0.02, -2 + Math.sin(a) * r], a, { castShadow: false });
+  }
+  // Rows of graves, crooked with age, and old mounds.
+  for (let i = 0; i < 24; i++) tombstone(stage, -10 + (i % 8) * 2.8, -4 + Math.floor(i / 8) * 3.6, i);
   for (let i = 0; i < 14; i++) grave(stage, -8 + (i % 7) * 2.6, -3 + Math.floor(i / 7) * 4.5, (i % 3) * 0.2, i % 2 === 0);
-  for (let i = 0; i < 20; i++) stage.box(SET.mist, [3, 0.3, 1.6], [-10 + (i % 5) * 5, 0.2, -6 + Math.floor(i / 5) * 4], i * 0.5, { castShadow: false });
-  // Standing stones.
+  // An iron fence round the graves, its gate hanging open.
+  for (let i = 0; i < 22; i++) {
+    const x = -13 + i * 1.3;
+    if (i === 10 || i === 11) continue;
+    stage.box(GRAVEYARD.iron, [0.08, 1.4, 0.08], [x, 0.7, 8.5], 0, { metal: true });
+    stage.box(GRAVEYARD.iron, [0.04, 0.2, 0.04], [x, 1.5, 8.5], 0, { metal: true });
+  }
+  stage.box(GRAVEYARD.iron, [12.6, 0.06, 0.06], [-6.6, 1.2, 8.5], 0, { metal: true });
+  stage.box(GRAVEYARD.iron, [11.4, 0.06, 0.06], [8.4, 1.2, 8.5], 0, { metal: true });
+  const gate = stage.box(GRAVEYARD.iron, [1.3, 1.3, 0.06], [0.8, 0.7, 9.1], 1.1, { metal: true });
+  gate.rotation.z = 0.05;
+  // The ruined chapel behind the graves: broken walls, an arch, the roof fallen in.
+  for (const [x, z, w, h, yaw] of [[-6, -12, 7, 4.5, 0], [-9.5, -9, 6, 3, Math.PI / 2], [-2.5, -9.5, 5, 2, Math.PI / 2]] as const) {
+    stage.box(GRAVEYARD.stoneDark, [w, h, 0.6], [x, h / 2, z], yaw);
+  }
+  for (const x of [-7.4, -4.6]) stage.box(GRAVEYARD.stone, [0.7, 5.2, 0.7], [x, 2.6, -11.6]);
+  stage.box(GRAVEYARD.stone, [3.4, 0.7, 0.8], [-6, 5.4, -11.6]);
+  const beam = stage.box('#3A2A20', [6, 0.3, 0.3], [-6, 1.6, -10], 0.3);
+  beam.rotation.z = 0.5;
+  // The crypt: steps down into a doorway lit from below with green fire.
+  stage.box(GRAVEYARD.stoneDark, [3.6, 2.6, 3], [6, 1.3, -10]);
+  stage.box(GRAVEYARD.stone, [4, 0.4, 3.4], [6, 2.8, -10]);
+  stage.box('#0E1A14', [1.4, 1.8, 0.1], [6, 0.9, -8.45], 0, { castShadow: false });
+  stage.box(GRAVEYARD.witchFire, [1.2, 0.12, 0.1], [6, 0.08, -8.4], 0, { glow: true, castShadow: false });
+  // A mausoleum with columns.
+  stage.box(GRAVEYARD.stone, [4.4, 0.5, 3.4], [11, 0.25, -3]);
+  for (const x of [9.4, 12.6]) for (const z of [-1.8, -4.2]) stage.shape('cylinder', GRAVEYARD.stone, [0.3, 3, 0.3], [x, 2, z]);
+  stage.box(GRAVEYARD.stoneDark, [4.4, 0.6, 3.4], [11, 3.8, -3]);
+  stage.box(GRAVEYARD.stoneDark, [2.4, 2.6, 2], [11, 1.8, -3.2]);
+  // Dead trees all round, standing stones beyond them.
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2 + 0.2;
+    deadTree(stage, Math.sin(a) * (15 + (i % 3) * 2), -2 + Math.cos(a) * (15 + (i % 3) * 2), 1 + (i % 4) * 0.2, i);
+  }
   for (let i = 0; i < 7; i++) {
     const a = (i / 7) * Math.PI * 2;
-    stage.box('#6A6A66', [1, 3.2 + (i % 3) * 0.6, 0.8], [Math.sin(a) * 13, 1.6, -1 + Math.cos(a) * 13], a);
+    stage.box('#5A5A56', [1, 3.2 + (i % 3) * 0.6, 0.8], [Math.sin(a) * 21, 1.6, -1 + Math.cos(a) * 21], a);
   }
+  // Candles on some graves, a full moon low in the sky, mist along the ground.
+  for (let i = 0; i < 10; i++) stage.box(GRAVEYARD.candle, [0.08, 0.2, 0.08], [-9.5 + i * 2.1, 0.32, -3.5 + (i % 3) * 3.6], 0, { glow: true, castShadow: false });
+  stage.shape('disc', GRAVEYARD.moon, [9, 0.2, 9], [-30, 26, -60], { glow: true, castShadow: false }).rotation.x = Math.PI / 2.4;
+  for (let i = 0; i < 26; i++) stage.shape('bush', SET.mist, [3.2, 0.35, 2], [-12 + (i % 6) * 5, 0.2, -8 + Math.floor(i / 6) * 4], { castShadow: false });
+  // Braziers of green witch-fire, flickering.
+  const flames = [[-3, 2], [3, 2], [0, -6]].map(([x, z]) => {
+    stage.shape('cylinder', GRAVEYARD.iron, [0.35, 0.9, 0.35], [x ?? 0, 0.45, z ?? 0], { metal: true });
+    const f = stage.group('witch-fire', x ?? 0, 1.0, z ?? 0);
+    stage.world.parts.part('box', GRAVEYARD.witchFire, f, [0.5, 0.7, 0.5], [0, 0.35, 0], { glow: true, castShadow: false });
+    stage.world.parts.part('box', GRAVEYARD.witchCore, f, [0.25, 0.4, 0.25], [0, 0.25, 0], { glow: true, castShadow: false });
+    return f;
+  });
+  stage.animate((_dt, t) => flames.forEach((f, i) => f.scaling.set(1, 0.8 + Math.sin(t * 9 + i * 2) * 0.25, 1)));
 }
 
 export const marcusPath: Cutscene = {
   id: 'marcus-path',
   create(stage: Stage): Beat[] {
     stage.light('night');
-    barrows(stage);
+    graveyard(stage);
     const marcus = cast(stage, 'marcusMongol', 'Marcus').place(0, 10, Math.PI);
     const wizard = cast(stage, 'wizard', 'The Wizard').place(0, -1, 0).setMood('happy', true);
     const staff = stage.group('staff', 0, 0, 0);
