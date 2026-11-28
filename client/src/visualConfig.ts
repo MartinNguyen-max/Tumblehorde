@@ -330,6 +330,18 @@ export const MAP_THEMES: Record<MapId, MapTheme> = {
   river: { ...BATTLE_THEMES.meadow },
   fortress: { ...BATTLE_THEMES.north, ice: undefined, plaster: '#D9D2C2', plasters: ['#D9D2C2'], stone: '#9AA0A3' },
   steppe: { ...BATTLE_THEMES.meadow },
+  // Under the Greek city: black water, wet brick, no sky to speak of.
+  sewers: {
+    ...BATTLE_THEMES.city,
+    sky: '#0E1012',
+    fog: '#14181A',
+    hemiSky: '#3A4440',
+    hemiGround: '#141614',
+    sun: '#5A6A60',
+    ground: { hue: 0.08, saturation: 0.18, lightMin: 0.16, lightMax: 0.2 },
+    path: { hue: 0.3, saturation: 0.15, lightMin: 0.18, lightMax: 0.2 },
+    stone: '#5A4A3E',
+  },
 };
 
 export const MAP_NAMES: Record<MapId, string> = {
@@ -343,6 +355,7 @@ export const MAP_NAMES: Record<MapId, string> = {
   river: 'The Bridge',
   fortress: 'The Northern Fortress',
   steppe: 'The Open Field',
+  sewers: 'The Sewers',
 };
 
 /** Falling snow: flakes in a box around the camera, drifting down and sideways. */

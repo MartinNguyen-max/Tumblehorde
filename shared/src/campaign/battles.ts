@@ -1,4 +1,4 @@
-import { CAPITAL_POINTS, FOREST_POINTS, FORTRESS_POINTS, type MapPoint, STEPPE_POINTS, NORTH_POINTS, RIVER_POINTS, VILLAGE_POINTS } from '../maps.ts';
+import { CAPITAL_POINTS, DUEL_POINTS, FOREST_POINTS, FORT_POINTS, FORTRESS_POINTS, type MapPoint, NORTH_POINTS, RIVER_POINTS, SEWER_POINTS, STEPPE_POINTS, VILLAGE_POINTS } from '../maps.ts';
 import { declareVictory } from '../match.ts';
 import type { ArmySetup, BotStyle, Faction, Formation, MatchSettings, MatchState, Order } from '../types.ts';
 import { type ChapterId, isAtOrAfter } from './chapters.ts';
@@ -132,6 +132,24 @@ export const STORY_BATTLE = {
   alliedLegion: 24,
   alliedVikings: 22,
   alliedRiders: 18,
+  /** The duel: Hrolf alone, tougher than any man, with an axe in each hand. */
+  /** Two axes: he hits much harder, and blocks nothing (no shield). */
+  duelKit: { hp: 800, damage: 2, block: 0 },
+  /** The border fort: a Greek garrison behind walls. */
+  fortGarrison: 50,
+  fortToughness: 1.15,
+  fortAllies: 18,
+  /** The sewers: a handful of men in the dark against the Greek watch. */
+  sewerMen: 14,
+  sewerVikings: 8,
+  sewerWatch: 9,
+  sewerGuards: { hp: 0.45, damage: 0.45 },
+  /** The risen: the Greeks' dead, raised again and again while the wizard lives. */
+  risenFirst: 40,
+  risenWave: { every: 8, count: 7 },
+  wizardToughness: 3,
+  /** After the feast: what is left of the three peoples. */
+  survivors: 16,
 } as const;
 
 /** The line at the top of the screen in each story battle. */
@@ -147,6 +165,10 @@ const BATTLE_OBJECTIVES: Partial<Record<ChapterId, string>> = {
   'the-gate': 'Fight your way to Livia',
   'last-patrol': 'Protect the wagons',
   'greek-feast': 'Break the Greek ring',
+  'the-duel': 'Defeat Hrolf the Red',
+  'border-fort': 'Storm the fort: through the gate!',
+  sewers: 'Fight your way through the sewers',
+  'the-risen': 'Kill the wizard: the dead fall with him',
 };
 
 function at(point: MapPoint): ArmySetup['spawn'] {
@@ -219,6 +241,9 @@ export const STORY_LOOKS = {
   lucius: 'lucius',
   marcusMongol: 'marcusMongol',
   sigurd: 'sigurd',
+  hrolfDuel: 'hrolfDuel',
+  wizard: 'wizard',
+  risen: 'risen',
   masked: 'masked',
   maskedChief: 'maskedChief',
 } as const;
@@ -338,7 +363,7 @@ export const SON_NAMES = { marcus: 'Marcus', lucius: 'Lucius' } as const;
  * Where Cassian fights on foot: before the Emperor gives him a horse, in the dark forest where
  * everyone dismounted for the ambush, and at the night camp.
  */
-const ON_FOOT: readonly ChapterId[] = ['forest-road', 'burning-village', 'dark-forest', 'night-raid', 'the-gate', 'last-patrol'];
+const ON_FOOT: readonly ChapterId[] = ['forest-road', 'burning-village', 'dark-forest', 'night-raid', 'the-gate', 'last-patrol', 'the-duel'];
 
 function cassianName(chapter: ChapterId): string {
   if (isAtOrAfter(chapter, 'new-life')) return CASSIAN_NAMES.old;
@@ -493,6 +518,20 @@ function buildBattle(chapter: ChapterId, save: CampaignSave): CampaignBattle | n
       return brothersBattle(save, base);
     case 'greek-feast':
       return greekFeast(save, base);
+    case 'the-duel': {
+      // The battle is over; the legion stands in a ring of shields; Cassian and Hrolf, alone.
+      const me = cassian(save, chapter, DUEL_POINTS.cassian, [], false);
+      // Like an arena fighter: one man, no army, fighting for himself.
+      const hrolf = army({ name: 'Hrolf the Red', team: 1, faction: 'viking', soldiers: 1, spawn: DUEL_POINTS.hrolf, style: 'charge', startOrder: 'attack', looks: { soldier: STORY_LOOKS.hrolfDuel } });
+      hrolf.kit = STORY_BATTLE.duelKit;
+      return { ...base, onLoss: 'retry', settings: { ...settings('fortress', [me.setup, hrolf], 3), arena: true }, legionNames: [] };
+    }
+    case 'border-fort':
+      return borderFort(save, base);
+    case 'sewers':
+      return sewerFight(save, base);
+    case 'the-risen':
+      return theRisen(save, base);
     default:
       return null;
   }
@@ -611,6 +650,69 @@ function greekFeast(save: CampaignSave, base: Omit<CampaignBattle, 'settings' | 
     ? { 1: SON_NAMES.lucius, 2: 'Sigurd', 3: 'Felix', 4: 'The Strategos' }
     : { 1: 'Toghan', 2: 'Sigurd', 3: 'Felix', 4: 'The Strategos' };
   return { ...base, time: 'night', onLoss: 'retryOrLeave', settings: settings('city', armies), legionNames: [], commanders, warlordArmy: 4 };
+}
+
+/**
+ * The son the player leads at the end, with his own men: Lucius with a legion, Marcus with his
+ * Mongol riders (on foot where horses cannot go).
+ */
+function sonsArmy(save: CampaignSave, spawn: MapPoint, soldiers: number, onFoot = false): ArmySetup {
+  if (save.choices.son === 'marcus') {
+    const marcus = army({ name: SON_NAMES.marcus, team: 0, bot: false, faction: 'bandit', soldiers, spawn, mounted: !onFoot, commander: true, color: PEOPLE_COLORS.mongol, looks: { commander: STORY_LOOKS.marcusMongol, soldier: STORY_LOOKS.mongol } });
+    if (onFoot) marcus.onFoot = true;
+    return marcus;
+  }
+  const lucius = army({ name: SON_NAMES.lucius, team: 0, bot: false, faction: 'roman', soldiers, spawn, commander: true, looks: { commander: STORY_LOOKS.lucius } });
+  if (onFoot) lucius.onFoot = true;
+  return lucius;
+}
+
+/** The other two peoples at the son's side: Hrolf's sons' Vikings and the East (or Rome, for Marcus). */
+function allies(save: CampaignSave, spawns: readonly [MapPoint, MapPoint], soldiers: number): ArmySetup[] {
+  const vikings = army({ name: 'Vikings', team: 0, faction: 'viking', soldiers, spawn: spawns[0], commander: true, style: 'charge', looks: { commander: STORY_LOOKS.sigurd } });
+  const other =
+    save.choices.son === 'marcus'
+      ? army({ name: SON_NAMES.lucius, team: 0, faction: 'roman', soldiers, spawn: spawns[1], commander: true, style: 'steady', looks: { commander: STORY_LOOKS.lucius } })
+      : army({ name: 'Mongols', team: 0, faction: 'bandit', soldiers, spawn: spawns[1], mounted: true, commander: true, style: 'flank', color: PEOPLE_COLORS.mongol, looks: { commander: STORY_LOOKS.khan, soldier: STORY_LOOKS.mongol } });
+  return [vikings, other];
+}
+
+const greekLooks = (): Record<string, string> => ({ soldier: STORY_LOOKS.hoplite, commander: STORY_LOOKS.strategos });
+
+function borderFort(save: CampaignSave, base: Omit<CampaignBattle, 'settings' | 'legionNames'>): CampaignBattle {
+  const me = sonsArmy(save, FORT_POINTS.attack, STORY_BATTLE.fortAllies + 6);
+  const garrison = army({ name: 'Greeks', team: 1, faction: 'roman', soldiers: STORY_BATTLE.fortGarrison, spawn: FORT_POINTS.garrison, commander: true, style: 'steady', color: PEOPLE_COLORS.greek, looks: greekLooks() });
+  garrison.defends = true;
+  garrison.toughness = Array<number>(STORY_BATTLE.fortGarrison).fill(STORY_BATTLE.fortToughness);
+  const armies = [me, ...allies(save, [FORT_POINTS.attackNorth, FORT_POINTS.attackSouth], STORY_BATTLE.fortAllies), garrison];
+  return { ...base, onLoss: 'retryOrLeave', settings: settings('castle', armies), legionNames: [], commanders: { 1: 'Sigurd', 2: save.choices.son === 'marcus' ? SON_NAMES.lucius : 'Toghan', 3: 'The fort captain' } };
+}
+
+function sewerFight(save: CampaignSave, base: Omit<CampaignBattle, 'settings' | 'legionNames'>): CampaignBattle {
+  const me = sonsArmy(save, SEWER_POINTS.entry, STORY_BATTLE.sewerMen, true);
+  const vikings = army({ name: 'Vikings', team: 0, faction: 'viking', soldiers: STORY_BATTLE.sewerVikings, spawn: { ...SEWER_POINTS.entry, x: SEWER_POINTS.entry.x - 3 }, style: 'charge' });
+  const watch = (spawn: MapPoint): ArmySetup =>
+    army({ name: 'The watch', team: 1, faction: 'roman', soldiers: STORY_BATTLE.sewerWatch, spawn, style: 'rush', horde: STORY_BATTLE.sewerGuards, color: PEOPLE_COLORS.greek, looks: greekLooks() });
+  const armies = [me, vikings, watch(SEWER_POINTS.guardsNear), watch(SEWER_POINTS.guardsMiddle), watch(SEWER_POINTS.guardsFar)];
+  return { ...base, time: 'night', settings: settings('sewers', armies, 0), legionNames: [] };
+}
+
+function theRisen(save: CampaignSave, base: Omit<CampaignBattle, 'settings' | 'legionNames'>): CampaignBattle {
+  const me = sonsArmy(save, CAPITAL_POINTS.feastSouth, STORY_BATTLE.survivors + 4);
+  const dead = army({
+    name: 'The Risen',
+    team: 1,
+    faction: 'zombie',
+    soldiers: STORY_BATTLE.risenFirst,
+    spawn: CAPITAL_POINTS.feast,
+    commander: true,
+    commanderToughness: STORY_BATTLE.wizardToughness,
+    style: 'charge',
+    reinforce: STORY_BATTLE.risenWave,
+    looks: { commander: STORY_LOOKS.wizard, soldier: STORY_LOOKS.risen },
+  });
+  const armies = [me, ...allies(save, [CAPITAL_POINTS.feastEast, CAPITAL_POINTS.feastWest], STORY_BATTLE.survivors), dead];
+  return { ...base, goal: { kind: 'warlord' }, time: 'night', onLoss: 'retryOrLeave', settings: settings('city', armies), legionNames: [], commanders: { 3: 'The Wizard' }, warlordArmy: 3 };
 }
 
 /** How a battle went for the story, read from the finished (or abandoned) match. */

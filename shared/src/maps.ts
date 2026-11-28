@@ -2,7 +2,7 @@ import { ARENA_MAP } from './campaign/arena.ts';
 /** The battlefields offered for battles. Each has its own terrain shape, its own obstacles and its own way of starting. */
 export const MAP_IDS = ['meadow', 'castle', 'city', 'north'] as const;
 /** Places only the story goes to; never offered (or picked at random) for a battle. */
-export const CAMPAIGN_MAP_IDS = ['forest', 'village', 'river', 'fortress', 'arena', 'steppe'] as const;
+export const CAMPAIGN_MAP_IDS = ['forest', 'village', 'river', 'fortress', 'arena', 'steppe', 'sewers'] as const;
 export type MapId = (typeof MAP_IDS)[number] | (typeof CAMPAIGN_MAP_IDS)[number];
 export const ALL_MAP_IDS: readonly MapId[] = [...MAP_IDS, ...CAMPAIGN_MAP_IDS];
 
@@ -352,6 +352,64 @@ export function inRiver(river: River, x: number, z: number): boolean {
   return Math.abs(x - river.x) < river.halfWidth && Math.abs(z) >= river.bridgeHalf;
 }
 
+/**
+ * The sewers under the Greek city: long tunnels six paces wide between brick walls, joined by
+ * narrow cross-passages, all closed in. No room for formations, no light but the torches.
+ */
+export const SEWERS = {
+  halfLength: 46,
+  halfWidth: 15,
+  /** The tunnel walls run along these lines (z), with gaps for the cross-passages. */
+  walls: [-9, -3, 3, 9] as const,
+  gap: 4,
+  height: 4.5,
+} as const;
+
+function sewers(): Structure[] {
+  const { halfLength: L, halfWidth: W, height } = SEWERS;
+  const out: Structure[] = [
+    wall(0, W, L * 2 + 1, 0, height, 1),
+    wall(0, -W, L * 2 + 1, 0, height, 1),
+    wall(-L, 0, W * 2, Math.PI / 2, height, 1),
+    wall(L, 0, W * 2, Math.PI / 2, height, 1),
+  ];
+  SEWERS.walls.forEach((z, row) => {
+    // Gaps at different places on each wall, so the way through winds.
+    const gaps = row % 2 === 0 ? [-30, -4, 22] : [-17, 9, 34];
+    let from = -L;
+    for (const gap of gaps) {
+      const to = gap - SEWERS.gap / 2;
+      out.push(wall((from + to) / 2, z, to - from, 0, height, 1));
+      from = gap + SEWERS.gap / 2;
+    }
+    out.push(wall((from + L) / 2, z, L - from, 0, height, 1));
+  });
+  return out;
+}
+
+export const SEWER_POINTS = {
+  entry: { x: -40, z: 0, yaw: Math.PI / 2 },
+  guardsNear: { x: -10, z: 6, yaw: -Math.PI / 2 },
+  guardsMiddle: { x: 12, z: -6, yaw: -Math.PI / 2 },
+  guardsFar: { x: 38, z: 0, yaw: -Math.PI / 2 },
+} satisfies Record<string, MapPoint>;
+
+/** The Greek border fort (the castle map): the three peoples outside the moat, the Greeks inside. */
+export const FORT_POINTS = {
+  attack: { x: 4, z: 0, yaw: Math.PI / 2 },
+  attackNorth: { x: 6, z: 18, yaw: Math.PI / 2 },
+  attackSouth: { x: 6, z: -18, yaw: Math.PI / 2 },
+  garrison: { x: 50, z: 0, yaw: -Math.PI / 2 },
+  gatehouse: { x: 44, z: 0, yaw: -Math.PI / 2 },
+} satisfies Record<string, MapPoint>;
+
+/** The duel with Hrolf, in a ring of shields on the frozen field. */
+export const DUEL_POINTS = {
+  center: { x: -30, z: 0, yaw: 0 },
+  cassian: { x: -24, z: 0, yaw: -Math.PI / 2 },
+  hrolf: { x: -36, z: 0, yaw: Math.PI / 2 },
+} satisfies Record<string, MapPoint>;
+
 /** The northern fortress: the castle under snow, where the horde is broken. */
 export const FORTRESS_POINTS = {
   legion: { x: -8, z: 0, yaw: WEST },
@@ -509,6 +567,19 @@ export const MAPS: Record<MapId, MapDefinition> = {
     structures: city(),
   },
   arena: { id: 'arena', ...ARENA_MAP },
+  sewers: {
+    id: 'sewers',
+    name: 'The Sewers',
+    layout: 'open',
+    hills: { amplitude: 0, frequencyX: 0.05, frequencyZ: 0.05 },
+    ripples: { amplitude: 0, frequencyX: 0.1, frequencyZ: 0.1 },
+    flatRadius: 110,
+    points: SEWER_POINTS,
+    inside: [],
+    scenery: [],
+    sceneryCount: 0,
+    structures: sewers(),
+  },
   steppe: {
     id: 'steppe',
     name: 'The Open Field',

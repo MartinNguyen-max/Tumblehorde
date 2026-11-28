@@ -85,7 +85,7 @@ describe('books', () => {
     expect(chapterLabel('forest-road')).toBe('Book II · Chapter 1');
     expect(bookOf('last-battle').number).toBe(2);
     expect(bookOf('feast').number).toBe(3);
-    expect(chapterInBook('the-end')).toBe(5);
+    expect(chapterInBook('the-end')).toBe(8);
     expect(opensBook('golden-city')).toBe(true);
     expect(opensBook('bridge')).toBe(false);
     // Every chapter is in exactly one book, numbered from 1 (0 for the prologue).
