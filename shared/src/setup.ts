@@ -112,6 +112,7 @@ function createArmy(
     soldier.hp = soldier.maxHp;
     soldierIds.push(soldier.id);
     soldiers.push(soldier);
+    if (kind === 'rider' && setup?.horseArchers) soldier.weapon = 'bow';
     if (kind === 'rider') {
       const horse = addUnit(state, (id) =>
         createUnit(id, 'horse', armyId, groundPos(settings, slot.x, slot.z), spawn.yaw, faction),

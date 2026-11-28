@@ -109,7 +109,7 @@ describe('the story battles', () => {
     expect(forest.settings.prepareTime).toBe(0);
   });
 
-  it('the Mongols ride: every one on a horse, with a saber; a second band comes round the flank', () => {
+  it('the Mongols ride: every one on a horse, bow in hand; a second band comes round the flank', () => {
     const battle = campaignBattle('open-field', saveAt('open-field'))!;
     const state = createMatch(battle.settings);
     const mongols = state.armies.filter((a) => a.name === 'Mongols');
@@ -118,11 +118,26 @@ describe('the story battles', () => {
       for (const soldier of livingSoldiers(state, army)) {
         expect(soldier.kind).toBe('rider');
         expect(soldier.mountId).not.toBeNull();
-        expect(soldier.weapon).toBe('sword');
+        expect(soldier.weapon).toBe('bow');
       }
     }
     expect(battle.settings.armies.find((a) => a.name === 'Mongols' && a.arriveAt)?.arriveAt).toBe(STORY_BATTLE.mongolFlankAt);
     expect(battle.settings.armies.some((a) => a.name === 'Hrolf')).toBe(false);
+  });
+
+  it('the Mongols are horse archers: they ride round shooting, then charge with sabers', () => {
+    const battle = campaignBattle('open-field', saveAt('open-field'))!;
+    const state = createMatch(battle.settings);
+    const mongols = state.armies.find((a) => a.name === 'Mongols')!;
+    expect(livingSoldiers(state, mongols)[0]!.weapon).toBe('bow');
+    let shots = 0;
+    for (let t = 0; t < (battle.settings.prepareTime ?? 0) + STORY_BATTLE.mongolArchery - 1; t += DT) {
+      stepMatch(state, new Map(), DT);
+      shots = Math.max(shots, state.arrows.length);
+    }
+    expect(shots).toBeGreaterThan(0);
+    run(state, 3);
+    expect(livingSoldiers(state, mongols).every((u) => u.weapon === 'sword')).toBe(true);
   });
 
   it('Hrolf rides with Cassian against the Mongols, but only if he was spared', () => {

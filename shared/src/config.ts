@@ -356,6 +356,17 @@ export const ARCHER = {
 
 export const RIDER = {
   hp: 180,
+  /** Horse archers (the Mongols): shots from the saddle while they ride round the enemy. */
+  bow: {
+    damage: 18,
+    range: 30,
+    cooldown: 2.0,
+    drawTime: 0.45,
+    knockback: { strength: 2, stun: 0.2 },
+  } satisfies RangedStats,
+  /** How far from their target horse archers circle, and how hard they hold that distance. */
+  skirmishDistance: 20,
+  skirmishPull: 0.6,
   /** Speed on foot after the horse is lost. */
   speed: 5,
   mountedMelee: {

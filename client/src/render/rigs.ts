@@ -240,8 +240,12 @@ export function createPersonRig(scene: Scene, parts: PartFactory, kind: UnitKind
 }
 
 /** A boxy war horse in barding: cloth in the army's color, a gold chest plate and face plate. */
-export function createHorseRig(scene: Scene, parts: PartFactory, palette: ArmyPalette, id: number): HorseRig {
-  const hide = id % 2 === 0 ? COLORS.horseLight : COLORS.horseDark;
+/** Steppe horses for the story's riders (the Mongols): the plain horses of the scenes, no barding. */
+const PLAIN_HORSE = { hides: ['#6B4A32', '#4A3424', '#8A6A48'], cloth: '#8A3A2E', saddle: '#6E4528' } as const;
+
+/** A war horse; `plain` is a steppe horse with a cloth and saddle, as the riders in the scenes have. */
+export function createHorseRig(scene: Scene, parts: PartFactory, palette: ArmyPalette, id: number, plain = false): HorseRig {
+  const hide = plain ? (PLAIN_HORSE.hides[id % PLAIN_HORSE.hides.length] ?? COLORS.horseDark) : id % 2 === 0 ? COLORS.horseLight : COLORS.horseDark;
   const root = new TransformNode('horse', scene);
   const body = childNode('horse-body', root);
   body.scaling.setAll(HORSE_SCALE);
@@ -250,16 +254,24 @@ export function createHorseRig(scene: Scene, parts: PartFactory, palette: ArmyPa
   neck.rotation.x = 0.5;
   parts.part('box', COLORS.mane, body, [0.16, 0.9, 0.3], [0, 2.1, 0.66], GLOSS).rotation.x = 0.5;
   parts.part('box', COLORS.mane, body, [0.16, 0.85, 0.16], [0, 1.4, -1.1], GLOSS).rotation.x = 0.5;
-  // Caparison over the back, trimmed in gold, with a saddle and a gold chest plate.
-  parts.part('box', palette.body, body, [1.0, 0.62, 1.62], [0, 1.36, -0.1], GLOSS);
-  parts.part('box', COLORS.gold, body, [1.02, 0.07, 1.64], [0, 1.06, -0.1], METAL);
-  parts.part('box', ROMAN.leather, body, [0.62, 0.14, 0.72], [0, 1.88, -0.1], GLOSS);
-  parts.part('box', COLORS.gold, body, [0.8, 0.6, 0.12], [0, 1.4, 1.04], METAL);
+  if (plain) {
+    // A saddle cloth and a saddle, nothing more.
+    parts.part('box', PLAIN_HORSE.cloth, body, [0.96, 0.5, 1.0], [0, 1.6, -0.1], GLOSS);
+    parts.part('box', PLAIN_HORSE.saddle, body, [0.66, 0.16, 0.7], [0, 1.9, -0.1], GLOSS);
+  } else {
+    // Caparison over the back, trimmed in gold, with a saddle and a gold chest plate.
+    parts.part('box', palette.body, body, [1.0, 0.62, 1.62], [0, 1.36, -0.1], GLOSS);
+    parts.part('box', COLORS.gold, body, [1.02, 0.07, 1.64], [0, 1.06, -0.1], METAL);
+    parts.part('box', ROMAN.leather, body, [0.62, 0.14, 0.72], [0, 1.88, -0.1], GLOSS);
+    parts.part('box', COLORS.gold, body, [0.8, 0.6, 0.12], [0, 1.4, 1.04], METAL);
+  }
   const head = childNode('horse-head', body, 0, 2.3, 1.2);
   parts.part('box', hide, head, [0.46, 0.46, 0.86], [0, 0, 0.26], GLOSS);
   parts.part('box', COLORS.mane, head, [0.42, 0.3, 0.12], [0, -0.08, 0.7], GLOSS);
-  parts.part('box', COLORS.gold, head, [0.3, 0.06, 0.6], [0, 0.25, 0.3], METAL);
-  parts.part('box', palette.body, head, [0.1, 0.34, 0.16], [0, 0.42, 0.04], GLOSS);
+  if (!plain) {
+    parts.part('box', COLORS.gold, head, [0.3, 0.06, 0.6], [0, 0.25, 0.3], METAL);
+    parts.part('box', palette.body, head, [0.1, 0.34, 0.16], [0, 0.42, 0.04], GLOSS);
+  }
   for (const side of [-1, 1]) {
     parts.part('box', hide, head, [0.1, 0.22, 0.1], [side * 0.15, 0.32, -0.04], GLOSS);
     parts.part('box', COLORS.eyeWhite, head, [0.04, 0.12, 0.12], [side * 0.24, 0.08, 0.22], NO_SHADOW_GLOSS);
@@ -272,7 +284,7 @@ export function createHorseRig(scene: Scene, parts: PartFactory, palette: ArmyPa
     parts.part('box', COLORS.boot, leg, [0.3, 0.14, 0.32], [0, -0.92, 0], GLOSS);
     legs.push(leg);
   }
-  parts.bake(root, `horse:${hide}:${palette.body}`, new Set());
+  parts.bake(root, `horse:${hide}:${plain ? 'plain' : palette.body}`, new Set());
   return { type: 'horse', scale: HORSE_SCALE, root, body, head, legs, walkPhase: Math.random() * 6, hitAge: HIT_REACTION_TIME };
 }
 

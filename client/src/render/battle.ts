@@ -71,7 +71,7 @@ export class BattleRenderer {
     const palette = this.palette(view, unit.armyId);
     const rig =
       unit.kind === 'horse'
-        ? createHorseRig(this.world.scene, this.world.parts, palette, unit.id)
+        ? createHorseRig(this.world.scene, this.world.parts, palette, unit.id, view.armies[unit.armyId]?.looks.soldier !== undefined)
         : createPersonRig(this.world.scene, this.world.parts, unit.kind, palette, view.armies[unit.armyId]?.faction ?? 'roman', unit.id, this.storyName(view, unit));
     this.rigs.set(unit.id, rig);
     return rig;

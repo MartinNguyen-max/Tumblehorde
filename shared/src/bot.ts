@@ -318,6 +318,11 @@ function planArmy(state: MatchState, army: Army, dt: number, leaderless: boolean
     return null;
   }
   const distance = distanceXZ(own, enemy.center);
+  // Horse archers put their bows away and charge when the skirmish is over.
+  const archery = state.settings.armies[army.id]?.horseArchers;
+  if (archery !== undefined && state.time >= prepareTime(state) + archery) {
+    for (const soldier of livingSoldiers(state, army)) if (soldier.weapon === 'bow') setWeapon(soldier, 'sword');
+  }
   // The dead never fall back, and neither does a rushing horde (but even they wait for the signal).
   const fearless = army.faction === 'zombie' || army.bot.style === 'rush';
   const beaten = fearless && state.time >= prepareTime(state) ? 'engage' : chooseStance(state, army, distance, livingSoldiers(state, army).length, enemy.soldiers);

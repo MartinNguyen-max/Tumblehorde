@@ -257,6 +257,8 @@ export interface ArmySetup {
   onFoot?: boolean;
   /** Every soldier rides (the Mongols): riders on horses instead of swordsmen. */
   mounted?: boolean;
+  /** Horse archers: for this many seconds after the form-up they ride round the enemy shooting, then charge with sabers. */
+  horseArchers?: number;
   /** Story battles: each soldier's hit points, times this (veterans are tougher); missing means 1. */
   toughness?: readonly number[];
   /**

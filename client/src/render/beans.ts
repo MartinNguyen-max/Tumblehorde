@@ -38,7 +38,7 @@ function addSpear(parts: PartFactory, grip: TransformNode): TransformNode {
   return spear;
 }
 
-function addBow(parts: PartFactory, arm: TransformNode): TransformNode {
+export function addBow(parts: PartFactory, arm: TransformNode): TransformNode {
   const bow = childNode('bow', arm, 0, -0.48, 0.05);
   parts.part('capsule', COLORS.wood, bow, [0.07, 0.3, 0.07], [0, 0, 0], GLOSS).rotation.x = Math.PI / 2;
   parts.part('capsule', COLORS.wood, bow, [0.06, 0.6, 0.06], [0, 0.1, 0.38], GLOSS).rotation.x = 1.2;

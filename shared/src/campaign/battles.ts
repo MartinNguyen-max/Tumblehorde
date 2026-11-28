@@ -98,6 +98,8 @@ export const STORY_BATTLE = {
   mongolRiders: 28,
   mongolFlank: 14,
   mongolFlankAt: 35,
+  /** Seconds the Mongols ride round the legion shooting before they charge. */
+  mongolArchery: 30,
   riderHorde: { hp: 0.38, damage: 0.32 },
   khanToughness: 2.5,
   /** Hrolf's best men, if he was spared. */
@@ -159,6 +161,8 @@ interface Side {
   horde?: { hp: number; damage: number };
   /** All soldiers ride (the Mongols). */
   mounted?: boolean;
+  /** Seconds of riding round and shooting before the charge (see `ArmySetup.horseArchers`). */
+  horseArchers?: number;
   /** A people's color other than the faction's (the Mongols, the Greeks). */
   color?: string;
   startOrder?: Order;
@@ -240,6 +244,7 @@ function army(side: Side): ArmySetup {
     color: side.color ?? STORY_COLORS[side.faction],
   };
   if (side.mounted) setup.mounted = true;
+  if (side.horseArchers) setup.horseArchers = side.horseArchers;
   if (side.looks) setup.looks = side.looks;
   if (side.commander) setup.commander = true;
   if (side.heroes) setup.heroes = side.heroes;
@@ -436,7 +441,7 @@ function buildBattle(chapter: ChapterId, save: CampaignSave): CampaignBattle | n
         sides.push(army({ name: 'Galba', team: 0, faction: 'roman', soldiers: STORY_BATTLE.hrolfBand, spawn: STEPPE_POINTS.vikings, commander: true, style: 'steady', looks: { commander: STORY_LOOKS.galba } }));
       }
       const riders = (name: string, soldiers: number, spawn: MapPoint, extra: Partial<Side> = {}): ArmySetup =>
-        army({ name, team: 1, faction: 'bandit', soldiers, spawn, mounted: true, style: 'flank', horde: STORY_BATTLE.riderHorde, color: PEOPLE_COLORS.mongol, looks: { soldier: STORY_LOOKS.mongol, commander: STORY_LOOKS.khan }, ...extra });
+        army({ name, team: 1, faction: 'bandit', soldiers, spawn, mounted: true, horseArchers: STORY_BATTLE.mongolArchery, style: 'rush', horde: STORY_BATTLE.riderHorde, color: PEOPLE_COLORS.mongol, looks: { soldier: STORY_LOOKS.mongol, commander: STORY_LOOKS.khan }, ...extra });
       const khanArmy = sides.length;
       commanders[khanArmy] = 'Jorgai the Hawk';
       sides.push(riders('Mongols', STORY_BATTLE.mongolRiders, STEPPE_POINTS.riders, { commander: true, commanderToughness: STORY_BATTLE.khanToughness }));

@@ -1,4 +1,4 @@
-import { AI, ARCHER, DUEL, FORMATION, HORSE, NAV, PERCEPTION } from './config.ts';
+import { AI, ARCHER, DUEL, FORMATION, HORSE, NAV, PERCEPTION, RIDER } from './config.ts';
 import { betterTarget, defendAgainst, duelIntent, pickTarget, planBash, revengeTarget, tickDuel } from './duel.ts';
 import { dirToYaw, distanceXZ, normalizeXZ, wrapAngle, yawToDir, type Vec2 } from './math.ts';
 import { feastSlots, staggerIntent } from './banquet.ts';
@@ -112,11 +112,16 @@ export function findMeleeThreat(state: MatchState, unit: Unit): Unit | null {
   return null;
 }
 
+/** Someone who shoots: an archer, or a rider with a bow. */
+function isShooter(unit: Unit): boolean {
+  return unit.kind === 'archer' || (unit.kind === 'rider' && unit.weapon === 'bow');
+}
+
 function nearestEnemyArcher(state: MatchState, unit: Unit): Unit | null {
   let best: Unit | null = null;
   let bestDistance: number = AI.shieldWallArcherRadius;
   for (const other of state.units) {
-    if (other.kind !== 'archer' || !other.alive || !areEnemies(state, unit, other)) continue;
+    if (!isShooter(other) || !other.alive || !areEnemies(state, unit, other)) continue;
     const d = distanceXZ(unit.pos, other.pos);
     if (d < bestDistance) {
       best = other;
@@ -229,6 +234,24 @@ function riderChargeIntent(unit: Unit, target: Unit): void {
   setMove(unit.intent, point.x - unit.pos.x, point.z - unit.pos.z);
   faceTowards(unit, target.pos);
   unit.intent.attack = d < stats.range + bodyRadius(target) && isFacing(unit, target.pos);
+}
+
+/**
+ * A horse archer rides round the target at bow range, never straight at it, and shoots when the
+ * bow is ready: sideways along the circle, pulled back out if too close, in if too far.
+ */
+function horseArcherIntent(unit: Unit, target: Unit): void {
+  const dx = unit.pos.x - target.pos.x;
+  const dz = unit.pos.z - target.pos.z;
+  const d = Math.hypot(dx, dz) || 1;
+  const out = { x: dx / d, z: dz / d };
+  // Each rider circles his own way round, so the band spreads out.
+  const turn = unit.id % 2 === 0 ? 1 : -1;
+  const tangent = { x: -out.z * turn, z: out.x * turn };
+  const pull = ((RIDER.skirmishDistance - d) / RIDER.skirmishDistance) * RIDER.skirmishPull * 4;
+  setMove(unit.intent, tangent.x + out.x * pull, tangent.z + out.z * pull);
+  faceTowards(unit, target.pos);
+  unit.intent.attack = d < RIDER.bow.range;
 }
 
 function archerIntent(state: MatchState, unit: Unit, target: Unit, order: GroupOrder): void {
@@ -371,6 +394,7 @@ export function soldierIntent(state: MatchState, unit: Unit, order: GroupOrder, 
     return;
   }
   if (unit.kind === 'archer') archerIntent(state, unit, validTarget, order);
+  else if (isMounted(unit) && unit.weapon === 'bow') horseArcherIntent(unit, validTarget);
   else if (isMounted(unit)) riderChargeIntent(unit, validTarget);
   else if (!duelIntent(state, unit, validTarget, order.order === 'attack')) walkTowards(state, unit, validTarget.pos);
 }

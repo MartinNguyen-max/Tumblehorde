@@ -3,6 +3,7 @@ import { type ActorLook, clothOf } from '../cinematic/actor.ts';
 import { CLOTH, HAIR, SKIN } from '../cinematic/config.ts';
 import { type ArmyPalette, ROMAN } from '../visualConfig.ts';
 import { addFace, addSpear, addSword, FACE_Z, HEAD, HEAD_HEIGHT, HIP_HEIGHT, type PersonBody, SHOULDER_HEIGHT, type ShieldPose } from './legionary.ts';
+import { addBow } from './beans.ts';
 import { childNode, type PartFactory, type PartOptions } from './parts.ts';
 
 /**
@@ -246,7 +247,10 @@ export function buildFromLook(parts: PartFactory, body: TransformNode, look: Act
     armR,
     shield,
     shieldPose: pose,
-    weapons: { sword: look.outfit === 'mongol' ? addSaber(parts, grip) : addSword(parts, grip), spear: addSpear(parts, grip) },
+    weapons:
+      look.outfit === 'mongol'
+        ? { sword: addSaber(parts, grip), spear: addSpear(parts, grip), bow: addBow(parts, armL) }
+        : { sword: addSword(parts, grip), spear: addSpear(parts, grip) },
     sheathed: null,
     sideArm: 'sword',
     cup: null,

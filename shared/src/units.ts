@@ -52,7 +52,7 @@ const FACTION_CARRIED: Record<Faction, Partial<Record<UnitKind, readonly Weapon[
   // Spear for marching and the shield wall, the axe comes out to attack.
   viking: { commander: VIKING_COMMANDER_WEAPONS, swordsman: ['spear', 'axe'] },
   // Raiders on horseback (the Mongols) swing curved sabers, not lances.
-  bandit: { swordsman: ['sword'], rider: ['sword'] },
+  bandit: { swordsman: ['sword'], rider: ['sword', 'bow'] },
   zombie: { swordsman: ['claw'], commander: ['claw'] },
 };
 
@@ -184,6 +184,7 @@ export function meleeStatsFor(unit: Unit): MeleeStats | null {
 export function rangedStatsFor(unit: Unit): RangedStats | null {
   if (unit.kind === 'archer') return ARCHER.ranged;
   if (unit.kind === 'commander' && unit.weapon === 'bow') return COMMANDER.bow;
+  if (unit.kind === 'rider' && unit.weapon === 'bow') return RIDER.bow;
   return null;
 }
 
