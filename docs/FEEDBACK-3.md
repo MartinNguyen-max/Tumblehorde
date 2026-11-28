@@ -12,7 +12,7 @@ Work list; items are ticked as they land.
 ## Mongols
 - [x] On horseback in battle they look exactly like in the scenes (plain horses, same riders)
 - [x] Horse archers: they ride round you shooting arrows before they charge; strong
-- [ ] The fall of the capital: the last Romans being cut down; what happened to Livia a little clearer in words (never shown)
+- [x] The fall of the capital: the last Romans being cut down; what happened to Livia a little clearer in words (never shown)
 
 ## Scenes
 - [ ] The wizard's graveyard: much richer, not flat and plain

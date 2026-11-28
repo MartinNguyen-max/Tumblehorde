@@ -207,6 +207,8 @@ export const capitalFalls: Cutscene = {
       return sack;
     });
     const livia = cast(stage, 'livia', 'Livia').place(-17, 10, -Math.PI / 2).setMood('afraid');
+    const last = Array.from({ length: 3 }, (_, i) => cast(stage, 'legionary', `Last ${i}`).place(-1.5 + i * 1.5, -9, Math.PI).setPose('kneel', true));
+    for (const man of last) man.root.setEnabled(false);
 
     return [
       {
@@ -286,6 +288,24 @@ export const capitalFalls: Cutscene = {
         narrate: 'It was not enough. Nothing would have been enough. But they did not run.',
       },
       {
+        duration: 5,
+        sound: 'clash',
+        shot: { from: [3.5, 1.6, -2], at: [0, 1.0, -8.5], fov: FOV.normal },
+        run: () => {
+          // The last three, wounded, on their knees with their swords down.
+          for (const man of last) man.root.setEnabled(true);
+          last.forEach((man) => man.setPose('kneel').setMood('afraid'));
+          for (const [i, r] of riders.slice(8, 11).entries()) r.horse.runTo(-1.5 + i * 1.5, -7.2, 3);
+        },
+        during: (_s, p) => {
+          riders.slice(8, 11).forEach((r) => r.rider.setPose(p > 0.4 ? 'punch' : 'raiseSword'));
+          last.forEach((man, i) => {
+            if (p > 0.5 + i * 0.12) man.setPose('lie');
+          });
+        },
+        narrate: 'The last of them threw down their swords and knelt. The riders cut them down anyway, one after another.',
+      },
+      {
         duration: 4,
         shot: { from: [-16, 2, -14], at: [-11, 1.2, -9], fov: FOV.normal },
         run: () => {
@@ -343,7 +363,7 @@ export const capitalFalls: Cutscene = {
       },
       {
         duration: 6,
-        narrate: 'What happened behind Livia\'s door is hers to tell, not mine. I will only say this: the Mongols held the city for forty days.',
+        narrate: 'That night they broke down Livia\'s door. What soldiers do to women in a fallen city, they did to her. The rest is hers to tell, not mine. The Mongols held the city for forty days.',
       },
     ];
   },
@@ -655,7 +675,7 @@ export const liviaFound: Cutscene = {
       {
         music: 'sorrow',
         shot: () => portrait(livia, { angle: -0.2, distance: 1.8 }),
-        say: { who: 'Livia', text: 'They came through the door on the first night. Three of them. They hurt me, Cassian. For a long time.', mood: 'crying' },
+        say: { who: 'Livia', text: 'They broke the door on the first night. Three of them. They held me down, Cassian, and they took turns, and they laughed.', mood: 'crying' },
       },
       {
         shot: () => portrait(livia, { angle: -0.1, distance: 1.7, push: 0.2 }),
