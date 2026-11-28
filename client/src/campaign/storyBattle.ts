@@ -30,6 +30,7 @@ const TORCHES: Partial<Record<CampaignBattle['chapter'], readonly { x: number; z
   ],
   'dark-forest': [{ x: 10, z: 4.5 }, { x: 18, z: -4.5 }, { x: 26, z: 4.5 }],
   'the-gate': [{ x: 33, z: -58 }, { x: 39, z: -52 }, { x: 33, z: -44 }, { x: 39, z: -38 }],
+  'greek-feast': [{ x: -12, z: -12 }, { x: 12, z: -12 }, { x: -12, z: 12 }, { x: 12, z: 12 }, { x: 0, z: -15 }, { x: 0, z: 15 }],
 };
 
 function clock(seconds: number): string {

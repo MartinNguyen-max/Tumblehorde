@@ -19,6 +19,7 @@ export const EFFECT = {
   acceptJob: 'acceptJob',
   nextFight: 'nextFight',
   workout: 'workout',
+  caughtSpy: 'caughtSpy',
   buy: (item: ShopItem) => `buy:${item}`,
 } as const;
 
@@ -90,7 +91,31 @@ function trainer(save: CampaignSave, chapter: ChapterId): Dialogue {
 }
 
 /** The talk for a story character, or null for small talk. */
+/** The stranger hiding behind the stalls: an olive seller who knows nothing about olives. */
+function spyTalk(save: CampaignSave): Dialogue {
+  const me = save.choices.son === 'marcus' ? 'Marcus' : 'Lucius';
+  return {
+    start: 'meet',
+    nodes: {
+      meet: {
+        lines: [
+          { speaker: 'Stranger', text: 'Oh! Caesar. I was... admiring this wall. Fine wall. Very Roman.', mood: 'afraid' },
+          { speaker: me, text: 'Your sandals are Greek. Your accent is Greek. What are you doing behind the stalls?', mood: 'neutral' },
+          { speaker: 'Stranger', text: 'I sell olives! Olives. The round green ones. Or black. They are... various colors.', mood: 'afraid' },
+        ],
+        options: [
+          { text: 'Guards! Seize him!', next: 'caught', effect: EFFECT.caughtSpy },
+          { text: 'Then sell me one.', next: 'olive' },
+        ],
+      },
+      olive: { lines: [{ speaker: 'Stranger', text: 'I... have just sold the last one. What bad luck. Good day, Caesar!', mood: 'afraid' }] },
+      caught: { lines: [{ speaker: me, text: 'Nobody sells olives with empty hands. Let us find out who you really are.', mood: 'angry' }] },
+    },
+  };
+}
+
 export function storyDialogue(id: string, save: CampaignSave, chapter: ChapterId): Dialogue | null {
+  if (id === 'spy') return spyTalk(save);
   if (id === 'varro') return chapter === 'capital' ? VARRO_JOB : varroShop(save);
   if (id === 'trainer') return trainer(save, chapter);
   return null;

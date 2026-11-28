@@ -382,7 +382,7 @@ export const patrolRoad: Cutscene = {
     const men = Array.from({ length: 8 }, (_, i) => cast(stage, 'legionary', `Legionary ${i}`).place(i % 2 === 0 ? -1.4 : 1.4, 1 + i * 1.3, Math.PI));
     const greeks = Array.from({ length: 12 }, (_, i) => {
       const side = i % 2 === 0 ? -1 : 1;
-      return cast(stage, i === 0 ? 'strategos' : 'hoplite', i === 0 ? 'Strategos' : `Greek ${i}`).place(side * (6 + (i % 3)), -4 + Math.floor(i / 2) * 2, side > 0 ? -Math.PI / 2 : Math.PI / 2).setPose('raiseSword');
+      return cast(stage, i === 0 ? 'maskedChief' : 'masked', i === 0 ? 'Chief' : `Bandit ${i}`).place(side * (6 + (i % 3)), -4 + Math.floor(i / 2) * 2, side > 0 ? -Math.PI / 2 : Math.PI / 2).setPose('raiseSword');
     });
     for (const g of greeks) g.root.setEnabled(false);
 
@@ -408,7 +408,7 @@ export const patrolRoad: Cutscene = {
       {
         duration: 3,
         sound: 'horn',
-        tags: [{ who: 'Strategos', text: 'Greeks' }],
+        tags: [{ who: 'Chief', text: 'Bandits' }],
         shot: { from: [0, 6, -9], at: [0, 0.5, 2], fov: FOV.wide },
         run: () => {
           for (const g of greeks) {
@@ -416,7 +416,7 @@ export const patrolRoad: Cutscene = {
             g.walkTo(g.root.position.x * 0.4, g.root.position.z, 4.5);
           }
         },
-        narrate: 'Greek raiders. They had followed the grain from the coast. Bronze shields, in the trees, on both sides.',
+        narrate: 'Bandits, we thought. Masks and rags, on both sides of the road. More of them than any bandits we had ever seen.',
       },
       {
         duration: 3,
@@ -439,7 +439,7 @@ export const cassianFalls: Cutscene = {
     stage.ground('#3E5A30', 160, 'forest');
     roadForest(stage);
     wagon(stage, 0, 6);
-    for (let i = 0; i < 6; i++) cast(stage, 'hoplite', `Fallen Greek ${i}`).place(-4 + (i % 3) * 3.5, -3 + Math.floor(i / 3) * 6, i).setPose('lie', true).eyesClosed = true;
+    for (let i = 0; i < 6; i++) cast(stage, 'masked', `Fallen bandit ${i}`).place(-4 + (i % 3) * 3.5, -3 + Math.floor(i / 3) * 6, i).setPose('lie', true).eyesClosed = true;
     const cassian = cast(stage, 'cassianGrey', 'Cassian').place(0, 0, Math.PI / 2).setPose('lie', true).setMood('sad', true);
     cassian.setWounded(true);
     const felix = cast(stage, 'felixOld', 'Felix').place(1.2, 0.3, -Math.PI / 2).setPose('kneel', true).setMood('crying', true);
@@ -455,7 +455,7 @@ export const cassianFalls: Cutscene = {
         fade: { from: 1, to: 0, time: 2 },
         music: 'sorrow',
         shot: { from: [4, 3, 6], at: [0, 0.6, 0], to: [3, 2, 4.5], fov: FOV.normal },
-        narrate: 'Felix and Rufus rode all night when they heard. The Greeks were gone by the time they came. The grain was still there. So was he.',
+        narrate: 'Felix and Rufus rode all night when they heard. The bandits were gone by the time they came. The grain was still there. So was he.',
       },
       {
         shot: () => portrait(rufus, { angle: 0.4 }),
@@ -1188,8 +1188,8 @@ export const brothersEnd: Cutscene = {
   },
 };
 
-export const theEnd: Cutscene = {
-  id: 'the-end',
+export const spring: Cutscene = {
+  id: 'spring',
   create(stage: Stage, story: StoryContext): Beat[] {
     stage.light('goldenMorning');
     stage.ground('#6E9A48', 120, 'hills');
@@ -1202,6 +1202,9 @@ export const theEnd: Cutscene = {
     const lucius = cast(stage, 'lucius', 'Lucius', { helmet: false }).place(-1.6, 4.4, Math.PI);
     const marcus = cast(stage, 'marcusMongol', 'Marcus', { helmet: false }).place(1.6, 4.4, Math.PI);
     marcus.root.setEnabled(marcusLives());
+    // With Marcus gone, Lucius rode to the Mongols alone and made peace; their chief comes every spring too.
+    const toghan = cast(stage, 'khan', 'Toghan', { helmet: false }).place(3.2, 5.4, Math.PI * 1.1);
+    toghan.root.setEnabled(!marcusLives());
     const cross = upright(woodenCross(stage.world.parts, stage.root, 1.3));
     cross.position.set(-1.2, 0.9, -1.0);
     const ribbon = stage.box('#4A7AC8', [0.4, 0.04, 0.06], [-1.2, 1.1, -0.92], 0, { castShadow: false });
@@ -1226,6 +1229,13 @@ export const theEnd: Cutscene = {
         duration: 5,
         shot: { from: [2.6, 1.2, 1.6], at: [1.2, 0.5, -0.6], fov: FOV.normal },
         narrate: 'Beside his father. Where he always should have been.',
+      },
+      {
+        when: () => !marcusLives(),
+        duration: 6,
+        shot: () => portrait(toghan, { angle: 0.4, distance: 2.6 }),
+        run: () => toghan.lookAt(lucius.headPosition()).setMood('warm'),
+        narrate: 'After the battle Lucius rode to the Mongol camp alone, with his brother\'s sword across his saddle. He laid it at their feet. They knelt to him that day, and they have ridden with Rome ever since.',
       },
       {
         shot: () => portrait(lucius, { angle: -0.3 }),

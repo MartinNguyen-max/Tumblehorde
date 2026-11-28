@@ -103,6 +103,8 @@ export interface HouseLook {
   shop?: boolean;
   /** A red banner on the front (the square's grand houses). */
   banner?: boolean;
+  /** Other colors than the capital's (the Greeks' white walls and blue shutters). */
+  palette?: { plaster: string; shutter: string; roof: string };
 }
 
 function gableRoof(b: CityBuilder, g: TransformNode, w: number, d: number, h: number, color: string): void {
@@ -176,8 +178,8 @@ function shopFront(b: CityBuilder, g: TransformNode, w: number, z: number, seed:
 /** A whole townhouse, its front facing the group's +z. */
 export function townhouse(b: CityBuilder, g: TransformNode, look: HouseLook): void {
   const { width: w, depth: d, height: h, seed } = look;
-  const plaster = pick(CITY.plasters, vary(seed, 1));
-  const shutter = pick(CITY.shutters, vary(seed, 8));
+  const plaster = look.palette?.plaster ?? pick(CITY.plasters, vary(seed, 1));
+  const shutter = look.palette?.shutter ?? pick(CITY.shutters, vary(seed, 8));
   const front = d / 2 + 0.02;
   b.box(g, plaster, [w, h, d], [0, h / 2, 0], { castShadow: true });
   b.box(g, CITY.plinth, [w + 0.06, CITY.plinthHeight, d + 0.06], [0, CITY.plinthHeight / 2, 0]);
@@ -204,11 +206,21 @@ export function townhouse(b: CityBuilder, g: TransformNode, look: HouseLook): vo
     b.box(g, CITY.gold, [0.5, 0.5, 0.06], [0, h - 1.9, front + 0.14]);
   }
   if (vary(seed, 13) < 0.3) flatRoof(b, g, w, d, h, seed);
-  else gableRoof(b, g, w, d, h, vary(seed, 14) < 0.5 ? CITY.roof : CITY.roofLight);
+  else gableRoof(b, g, w, d, h, look.palette?.roof ?? (vary(seed, 14) < 0.5 ? CITY.roof : CITY.roofLight));
 }
 
 /** A row of houses along a line, fronts facing `yaw`. `from` and `to` are distances along the row. */
-export function houseRow(b: CityBuilder, x0: number, z0: number, x1: number, z1: number, yaw: number, depth: number, seed: number, options: { shops?: number; banners?: boolean; minHeight?: number } = {}): void {
+export function houseRow(
+  b: CityBuilder,
+  x0: number,
+  z0: number,
+  x1: number,
+  z1: number,
+  yaw: number,
+  depth: number,
+  seed: number,
+  options: { shops?: number; banners?: boolean; minHeight?: number; palette?: HouseLook['palette'] } = {},
+): void {
   const length = Math.hypot(x1 - x0, z1 - z0);
   const dir = { x: (x1 - x0) / length, z: (z1 - z0) / length };
   // Into the block, away from the street.
@@ -228,6 +240,7 @@ export function houseRow(b: CityBuilder, x0: number, z0: number, x1: number, z1:
       seed: seed * 31 + i,
       shop: vary(seed + i, 23) < (options.shops ?? 0.3),
       banner: options.banners === true && i % 2 === 1,
+      palette: options.palette,
     });
     at += w;
     i++;

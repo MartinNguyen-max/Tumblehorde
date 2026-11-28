@@ -67,6 +67,10 @@ export const CAST = {
   luciusBare: { look: { outfit: 'commander', color: LEGION_RED, cape: LEGION_RED, hair: HAIR.brown, hairStyle: 'short', beard: 'none' }, voice: { pitch: 190, rate: 0.11 } },
   liviaMother: { look: { outfit: 'healer', color: '#6A4A7A', hair: HAIR.black, hairStyle: 'long', skin: SKIN.light }, voice: { pitch: 245, rate: 0.12 } },
   wizard: { look: { outfit: 'wizard', hair: HAIR.white, hairStyle: 'long', beard: 'long', beardColor: HAIR.white, skin: '#B8B4A8', age: 'old' }, voice: { pitch: 85, rate: 0.17 } },
+  masked: { look: { outfit: 'bandit', hair: HAIR.black, beard: 'short', beardColor: HAIR.black, skin: SKIN.tan }, voice: { pitch: 140, rate: 0.12 } },
+  maskedChief: { look: { outfit: 'bandit', color: '#3A3A2E', hair: HAIR.grey, beard: 'long', beardColor: HAIR.grey, skin: SKIN.tan, scar: true }, voice: { pitch: 115, rate: 0.14 } },
+  sigurd: { look: { outfit: 'viking', hair: '#D8B860', hairStyle: 'braids', beard: 'short', beardColor: '#D8B860', skin: SKIN.pale }, voice: { pitch: 135, rate: 0.12 } },
+  spy: { look: { outfit: 'wizard', hair: HAIR.black, hairStyle: 'short', beard: 'short', beardColor: HAIR.black, skin: SKIN.tan }, voice: { pitch: 160, rate: 0.1 } },
   messenger: { look: { outfit: 'legion', color: LEGION_RED, hair: HAIR.brown, hairStyle: 'short', beard: 'stubble', beardColor: HAIR.brown }, voice: { pitch: 170, rate: 0.1 } },
 } as const satisfies Record<string, Role>;
 

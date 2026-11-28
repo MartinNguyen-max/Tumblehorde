@@ -36,7 +36,7 @@ import {
 import { type TransformNode, Vector3 } from '../render/babylon.ts';
 import { CAMERA } from '../visualConfig.ts';
 import type { InputState } from '../input/input.ts';
-import type { Actor } from '../cinematic/actor.ts';
+import type { Actor, PoseName } from '../cinematic/actor.ts';
 import type { CinematicOverlay } from '../cinematic/overlay.ts';
 import type { CinematicSound } from '../cinematic/script.ts';
 import { Stage } from '../cinematic/stage.ts';
@@ -74,7 +74,10 @@ const PUNCH_TIME = 0.32;
 /** How long a line of talk is voiced: by its length, up to a few seconds. */
 const TALK_VOICE = { maxSeconds: 3, charsPerSecond: 14 } as const;
 const NPC_TURN_RATE = 8;
-const PLAYER_NAME = 'Cassian';
+/** Who the player is in the city unless told otherwise. */
+const DEFAULT_PLAYER_NAME = 'Cassian';
+/** How fast busy townsfolk change between the two poses of what they are doing (per second). */
+const ACTIVITY_RATE = 1.6;
 /** Idle townsfolk turn their heads to the player when this close. */
 const NOTICE_DISTANCE = 6;
 
@@ -103,6 +106,8 @@ export interface FreeRoamDeps {
   renames?: Readonly<Record<string, string>>;
   /** Who to go to next (a name as shown, or a spot id), for the arrow and the map; null for nobody. */
   guide?: () => string | null;
+  /** Who the player walks the city as (Cassian, or one of his sons at the end). */
+  playerName?: string;
 }
 
 /** How close the player must be to a spot to use it. */
@@ -118,8 +123,8 @@ interface WorkoutRun {
   onDone: (done: boolean) => void;
 }
 
-function smallTalk(npc: Npc, rng: RandomSource): Dialogue {
-  const lines = SMALL_TALK[npc.role];
+function smallTalk(npc: Npc, rng: RandomSource, own?: readonly string[]): Dialogue {
+  const lines = own ?? SMALL_TALK[npc.role];
   const text = lines[Math.floor(nextRandom(rng) * lines.length)] ?? '...';
   return { start: 'line', nodes: { line: { lines: [{ speaker: npc.name, text }] } } };
 }
@@ -317,7 +322,7 @@ export class FreeRoam {
   }
 
   private openTalk(npc: Npc): void {
-    const dialogue = (npc.dialogue ? this.deps.dialogueFor(npc.dialogue) : null) ?? smallTalk(npc, this.rng);
+    const dialogue = (npc.dialogue ? this.deps.dialogueFor(npc.dialogue) : null) ?? smallTalk(npc, this.rng, this.set.people[npc.id]?.lines);
     startTalk(npc, this.walker.pos);
     // A talk started mid-jump lands at once; the walker only falls while walking.
     delete this.walker.air;
@@ -366,7 +371,7 @@ export class FreeRoam {
     const talk = this.talk;
     if (!talk) return;
     const seconds = Math.min(TALK_VOICE.maxSeconds, line.text.length / TALK_VOICE.charsPerSecond);
-    if (line.speaker === PLAYER_NAME) {
+    if (line.speaker === (this.deps.playerName ?? DEFAULT_PLAYER_NAME)) {
       this.deps.sound?.speak(this.voice, line.mood ?? 'neutral', seconds);
       return;
     }
@@ -401,13 +406,32 @@ export class FreeRoam {
       delta = Math.atan2(Math.sin(delta), Math.cos(delta));
       const yaw = actor.yaw + delta * Math.min(1, NPC_TURN_RATE * dt);
       actor.drive(npc.pos.x, npc.pos.z, yaw, speed);
-      actor.setPose(npc.mode === 'out' ? 'lie' : npc.mode === 'flee' ? 'cower' : 'stand');
+      actor.setPose(npc.mode === 'out' ? 'lie' : npc.mode === 'flee' ? 'cower' : this.activityPose(i, npc.mode));
       actor.eyesClosed = npc.mode === 'out';
       if (npc.mode === 'flee') actor.setMood('afraid');
       else if (npc.mode !== 'talk' && actor.mood === 'afraid') actor.setMood('neutral');
       const near = Math.hypot(npc.pos.x - this.walker.pos.x, npc.pos.z - this.walker.pos.z) < NOTICE_DISTANCE;
       actor.lookAt(npc.mode === 'talk' || (npc.mode === 'idle' && near) ? this.player.headPosition() : null);
     });
+  }
+
+  /** The pose of someone busy (sparring, drinking...) at this moment; plain standing for everyone else. */
+  private activityPose(index: number, mode: Npc['mode']): PoseName {
+    const activity = this.set.people[index]?.activity;
+    if (!activity || mode === 'talk') return 'stand';
+    const beat = Math.floor(this.time * ACTIVITY_RATE + index * 0.37) % 2 === 0;
+    switch (activity) {
+      case 'spar':
+        return beat ? 'raiseSword' : 'punch';
+      case 'drink':
+        return beat ? 'offer' : 'cheer';
+      case 'cheer':
+        return beat ? 'cheer' : 'wave';
+      case 'dance':
+        return beat ? 'wave' : 'cheer';
+      case 'sleep':
+        return 'lie';
+    }
   }
 
   /** Behind the shoulder while walking; a two-shot from the side while talking. */

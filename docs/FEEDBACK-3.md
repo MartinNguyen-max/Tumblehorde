@@ -18,9 +18,9 @@ Work list; items are ticked as they land.
 - [x] The wizard's graveyard: much richer, not flat and plain
 
 ## The new ending
-- [ ] The last patrol's killers look like bandits (they were Greeks in disguise)
-- [ ] After the end: walk the capital as the chosen son: a bigger statue, crowds, soldiers training and patrolling, drunks, children, Vikings and Mongols visiting (Marcus with his Mongols if alive); if Lucius won, he made peace with the Mongols
-- [ ] A Greek spy hidden near the market, marked with the yellow arrow; everyone questions him; he confesses: Greeks killed Cassian (dressed as bandits) and paid for the ambush where Varro died
-- [ ] All three peoples march on the Greeks: a huge, detailed Greek city; in through the sewers at night; up a ladder; the Greeks drunk at a feast
-- [ ] The hardest battle: the Greeks in a tight ring in the middle, all three peoples round them
-- [ ] Home to the capital with the Greeks in chains: the end
+- [x] The last patrol's killers look like bandits (they were Greeks in disguise)
+- [x] After the end: walk the capital as the chosen son: a bigger statue, crowds, soldiers training and patrolling, drunks, children, Vikings and Mongols visiting (Marcus with his Mongols if alive); if Lucius won, he made peace with the Mongols
+- [x] A Greek spy hidden near the market, marked with the yellow arrow; everyone questions him; he confesses: Greeks killed Cassian (dressed as bandits) and paid for the ambush where Varro died
+- [x] All three peoples march on the Greeks: a huge, detailed Greek city; in through the sewers at night; up a ladder; the Greeks drunk at a feast
+- [x] The hardest battle: the Greeks in a tight ring in the middle, all three peoples round them
+- [x] Home to the capital with the Greeks in chains: the end

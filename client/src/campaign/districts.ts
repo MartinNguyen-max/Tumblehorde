@@ -1,5 +1,6 @@
 import type { District, Footprint, NpcRole, NpcSpec } from '@tumblehorde/shared';
 import type { ActorLook } from '../cinematic/actor.ts';
+import { CAST } from '../cinematic/cast.ts';
 import { CLOTH, HAIR, SKIN } from '../cinematic/config.ts';
 import type { LightName } from '../cinematic/light.ts';
 import { bench, house, SET_COLORS } from '../cinematic/sets.ts';
@@ -13,9 +14,15 @@ import type { VoiceSpec } from '../cinematic/script.ts';
  * done (a workout).
  */
 
+/** What someone is busy with when not walking or talking: sparring, drinking, cheering, dancing, sleeping it off. */
+export type Activity = 'spar' | 'drink' | 'cheer' | 'dance' | 'sleep';
+
 export interface Townsperson extends NpcSpec {
   look: ActorLook;
   voice: VoiceSpec;
+  activity?: Activity;
+  /** Their own small talk instead of their role's. */
+  lines?: readonly string[];
 }
 
 /** A place where E does something other than talking. */
@@ -367,3 +374,81 @@ export const CAPITAL: DistrictSet = {
     b.freeze();
   },
 };
+
+/** A person from the cast, as a townsperson of the festive city. */
+function castPerson(role: keyof typeof CAST, name: string, x: number, z: number, extra: Partial<Townsperson> = {}, look: Partial<ActorLook> = {}): Townsperson {
+  const r = CAST[role];
+  return { role: 'citizen', name, home: { x, z }, look: { ...r.look, ...look }, voice: r.voice, ...extra };
+}
+
+/** The spy's hiding place: the north-west corner of the square, behind the market stalls. */
+export const SPY_SPOT = { x: -22.6, z: -16.6 } as const;
+export const SPY_NAME = 'Stranger';
+
+const VIKING_LINES = ['Skål! To the Romans! Hah, never thought I would say that.', 'Your wine is weak. I have had nine. Nine!', 'My father burned this city once. Now I drink in it. Strange world.'];
+const MONGOL_LINES = ['Good horses here. Fat. Lazy. Like the Romans. Hah!', 'We rode a thousand miles to drink with you. Pour.', 'Your bread is soft. Everything here is soft.'];
+const DRUNK_LINES = ['Hic. I love you. I love everybody.', 'Which one of you is the real emperor? There are two of you.', 'I am not drunk. The ground is moving.'];
+const HAPPY_LINES = ['What a time to be alive!', 'They say there has never been an empire like ours.', 'Peace! Real peace! My children have never seen a war.'];
+
+/** The capital after the war: crowded, happy, full of soldiers, and full of visitors. */
+export function festiveCapital(son: 'marcus' | 'lucius'): DistrictSet {
+  const extras: Townsperson[] = [
+    { ...castPerson('liviaOld', 'Livia', -11, 13, { stationary: true, yaw: Math.PI }), lines: ['Look at them all. He would have liked this. He would have pretended not to, and liked it.'] },
+    { ...castPerson('felixOld', 'Felix', -3, 5, {}), lines: ['Rufus has told that joke to every Viking in the city. Twice.'] },
+    { ...castPerson('rufusOld', 'Rufus', 3, 5, { activity: 'drink' }), lines: ['Why did the Mongol bring a ladder to the feast? ... I forget. Hehehe!'] },
+    // Soldiers training in the yard, in pairs.
+    ...[0, 1, 2, 3, 4, 5].map((i) => ({ ...castPerson('legionary', 'Legionary', 13 + (i % 3) * 3, 8 + Math.floor(i / 3) * 3.4, { stationary: true, yaw: Math.floor(i / 3) === 0 ? 0 : Math.PI, activity: 'spar' as const, role: 'guard' as const }) })),
+    // Vikings at a table by the column, Mongols with their horses by the market.
+    ...[0, 1, 2, 3, 4, 5].map((i) => ({ ...castPerson(i === 0 ? 'sigurd' : 'viking', i === 0 ? 'Sigurd' : 'Viking', 16 + (i % 3) * 1.4, -11 + Math.floor(i / 3) * 2.6, { stationary: i % 2 === 0, activity: i % 2 === 0 ? ('drink' as const) : ('cheer' as const), lines: VIKING_LINES }, i === 0 ? {} : { helmet: i % 3 !== 0 }) })),
+    ...[0, 1, 2, 3, 4].map((i) => ({ ...castPerson('mongol', 'Mongol', -18 + (i % 3) * 1.4, -1.5 + Math.floor(i / 3) * 1.6, { activity: i % 2 === 0 ? ('cheer' as const) : undefined, lines: MONGOL_LINES }, { helmet: i % 2 === 0 }) })),
+    // The drunk, one of them asleep by the fountain.
+    ...[0, 1, 2, 3].map((i) => ({ ...wanderer('reveller', 'Reveller', 30 + i, -2 + i * 1.6, 22 + i * 4), activity: 'drink' as const, lines: DRUNK_LINES })),
+    { ...wanderer('reveller', 'Reveller', 40, 3.4, 1.4), stationary: true, activity: 'sleep', lines: ['Zzz... five more minutes, mother... zzz'] },
+    // More children, more happy citizens, more patrols.
+    ...[0, 1, 2, 3, 4, 5].map((i) => ({ ...wanderer('child', 'Child', 50 + i, -10 + i * 4, i % 2 === 0 ? 8 : -8), activity: i % 3 === 0 ? ('dance' as const) : undefined })),
+    ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => ({ ...wanderer('citizen', 'Citizen', 60 + i, -18 + i * 5, i % 2 === 0 ? 12 : -12), lines: HAPPY_LINES, activity: i % 4 === 0 ? ('dance' as const) : undefined })),
+    ...[0, 1, 2].map((i) => guard('Legionary', 9 + i, { x: -4 + i * 1.2, z: -14 }, [{ x: -20 + i * 1.2, z: -14 }, { x: 20 + i * 1.2, z: -14 }])),
+    // Hidden in the corner behind the stalls, pretending to look at the wall.
+    { ...castPerson('spy', SPY_NAME, SPY_SPOT.x, SPY_SPOT.z, { stationary: true, yaw: -Math.PI * 0.75, dialogue: 'spy' }) },
+  ];
+  // Whichever brother the player is not walks the city too: Lucius with his guard, or the Mongol chief who swore to him.
+  if (son === 'marcus') extras.push({ ...castPerson('luciusBare', 'Lucius', 4, 11, {}), lines: ['Brother. Two emperors, one city. Try not to break anything.'] });
+  else extras.push({ ...castPerson('khan', 'Toghan', -16, 0, { stationary: true, yaw: Math.PI / 2 }, { helmet: false }), lines: ['Your brother was a hard man to follow, Caesar. You are easier. Do not tell anyone I said so.'] });
+  return {
+    ...CAPITAL,
+    light: 'goldenMorning',
+    people: [...PEOPLE, ...extras],
+    build(stage: Stage): void {
+      CAPITAL.build(stage);
+      stage.weather('petals');
+      festiveDecor(stage);
+    },
+  };
+}
+
+/** A giant Cassian in stone beside Varro, tables of food and wine, and the visitors' horses. */
+function festiveDecor(stage: Stage): void {
+  const stone = '#BAB6AC';
+  const plinth = stage.group('plinth', -12, 0, 10);
+  stage.world.parts.part('box', stone, plinth, [4.4, 2.2, 4.4], [0, 1.1, 0]);
+  stage.world.parts.part('box', '#9A968C', plinth, [4.8, 0.3, 4.8], [0, 2.3, 0]);
+  const statue = stage.actor('Cassian in stone', { outfit: 'commander', skin: stone, hair: stone, beard: 'short', beardColor: stone, color: stone, cape: stone, helmet: true });
+  statue.place(-12, 10, Math.PI).setPose('raiseSword', true);
+  statue.root.scaling.setAll(3.4);
+  statue.root.position.y = 2.45;
+  const varro = stage.actor('Varro in stone', { outfit: 'smith', skin: stone, hair: stone, beard: 'short', beardColor: stone, color: stone });
+  varro.place(-14, -6, Math.PI / 2).setPose('fist', true);
+  varro.root.scaling.setAll(2.2);
+  varro.root.position.y = 1.2;
+  stage.box(stone, [3, 1.2, 3], [-14, 0.6, -6]);
+  // The Vikings' table, with barrels.
+  stage.box('#6A4A2A', [4.2, 0.9, 1.4], [17.4, 0.45, -9.7]);
+  for (let i = 0; i < 4; i++) stage.shape('cylinder', '#7A5A32', [0.4, 0.9, 0.4], [19.8, 0.45, -12 + i * 1.1]);
+  // Mongol horses tethered by the market.
+  for (const [x, z, yaw] of [[-21, 1.5, 0.4], [-21.5, -2.6, -0.3]] as const) stage.horse().place(x, z, yaw);
+  // Garlands across the square.
+  for (let row = 0; row < 3; row++) {
+    stage.box('#5E3E22', [48, 0.05, 0.05], [0, 6, -10 + row * 10], 0, { castShadow: false });
+    for (let i = 0; i < 16; i++) stage.box(['#C8423A', '#E3B52B', '#3C7BD0', '#6AA84F'][(i + row) % 4] ?? '#C8423A', [0.5, 0.6, 0.05], [-22 + i * 3, 5.6, -10 + row * 10], 0, { castShadow: false });
+  }
+}

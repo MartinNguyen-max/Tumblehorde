@@ -27,7 +27,11 @@ export const SCENES_BEFORE: Partial<Record<ChapterId, readonly string[]>> = {
   'new-life': ['rebuilding', 'two-boys'],
   'last-patrol': ['patrol-road'],
   'two-sons': ['mourning', 'the-crowning', 'marcus-path', 'lucius-path'],
-  'the-end': ['the-end'],
+  spring: ['spring'],
+  'the-spy': ['the-spy'],
+  'into-greece': ['into-greece', 'the-sewers'],
+  'greek-feast': ['greek-feast-surround'],
+  'the-end': ['home-in-chains'],
 };
 
 export const SCENES_AFTER: Partial<Record<ChapterId, readonly string[]>> = {
