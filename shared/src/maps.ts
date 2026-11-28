@@ -238,6 +238,12 @@ export const CAPITAL_POINTS = {
   forumEast: { x: 12, z: 2, yaw: Math.PI },
   /** Inside the broken walls, on the open avenues, a short charge from the forum. */
   southGate: { x: 0, z: -34, yaw: 0 },
+  /** The Greek feast (the city map standing in for their capital): the Greeks in the middle, the three peoples all round. */
+  feast: { x: 0, z: 1, yaw: Math.PI },
+  feastSouth: { x: 0, z: -30, yaw: 0 },
+  feastWest: { x: -28, z: 0, yaw: Math.PI / 2 },
+  feastEast: { x: 28, z: 0, yaw: -Math.PI / 2 },
+  feastNorth: { x: 0, z: 30, yaw: Math.PI },
   eastGate: { x: 34, z: 0, yaw: -Math.PI / 2 },
 } satisfies Record<string, MapPoint>;
 

@@ -145,7 +145,8 @@ export interface ArmyStats {
  * - flank: hold a pincer, send the wings round behind the enemy, then charge;
  * - rush: the story's raiders and bandits: everyone runs at the enemy at once, no formation.
  */
-export type BotStyle = 'steady' | 'charge' | 'phalanx' | 'patient' | 'flank' | 'rush';
+/** `ring`: a tight shield ring that stands its ground and never breaks or charges (the Greeks at their feast). */
+export type BotStyle = 'steady' | 'charge' | 'phalanx' | 'patient' | 'flank' | 'rush' | 'ring';
 
 export interface BotBrain {
   style: BotStyle;

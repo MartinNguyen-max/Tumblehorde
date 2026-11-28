@@ -57,6 +57,8 @@ export function styledStance(state: MatchState, army: Army, stance: BotStance, d
     case 'rush':
       // Raiders do not march in step or wait: they all run at the enemy at once.
       return 'engage';
+    case 'ring':
+      return 'wait';
   }
 }
 
@@ -155,6 +157,7 @@ function pushForward(state: MatchState, army: Army, enemyCenter: Vec2, distance:
  */
 export function botFormation(army: Army): Formation {
   if (army.faction === 'zombie' || army.bot.style === 'rush') return 'swarm';
+  if (army.bot.style === 'ring') return 'circle';
   if (army.faction !== 'viking') return FORMATION.defaultFormation;
   if (army.bot.style === 'charge') return 'boar';
   return army.bot.style === 'patient' ? 'swarm' : 'double';
@@ -324,13 +327,14 @@ function planArmy(state: MatchState, army: Army, dt: number, leaderless: boolean
     for (const soldier of livingSoldiers(state, army)) if (soldier.weapon === 'bow') setWeapon(soldier, 'sword');
   }
   // The dead never fall back, and neither does a rushing horde (but even they wait for the signal).
-  const fearless = army.faction === 'zombie' || army.bot.style === 'rush';
-  const beaten = fearless && state.time >= prepareTime(state) ? 'engage' : chooseStance(state, army, distance, livingSoldiers(state, army).length, enemy.soldiers);
+  const fearless = army.faction === 'zombie' || army.bot.style === 'rush' || army.bot.style === 'ring';
+  const holdsRing = army.bot.style === 'ring' && state.time >= prepareTime(state);
+  const beaten = holdsRing ? 'wait' : fearless && state.time >= prepareTime(state) ? 'engage' : chooseStance(state, army, distance, livingSoldiers(state, army).length, enemy.soldiers);
   army.bot.regroupTimer = beaten === 'regroup' ? army.bot.regroupTimer + dt : army.bot.regroupTimer;
   // Nobody falls back forever: after a while it is a last stand.
   const plain = beaten === 'regroup' && army.bot.regroupTimer > BOT.maxRegroup ? 'engage' : beaten;
   // Nobody waits forever either: a stand-off that drags on ends in a charge.
-  if (army.isBot && army.bot.style !== 'charge' && stalemate(state, army)) army.bot.style = 'charge';
+  if (army.isBot && army.bot.style !== 'charge' && army.bot.style !== 'ring' && stalemate(state, army)) army.bot.style = 'charge';
   army.bot.standoffTimer = plain === 'standoff' ? army.bot.standoffTimer + dt : plain === 'march' ? 0 : army.bot.standoffTimer;
   // A beaten army that falls back may come back with a different idea.
   const regrouping = plain === 'regroup';

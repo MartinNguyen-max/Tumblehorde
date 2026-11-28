@@ -31,6 +31,11 @@ export type ChapterId =
   | 'last-patrol'
   | 'two-sons'
   | 'brothers'
+  | 'spring'
+  | 'golden-city'
+  | 'the-spy'
+  | 'into-greece'
+  | 'greek-feast'
   | 'the-end';
 
 export interface Chapter {
@@ -70,7 +75,12 @@ export const CHAPTERS: readonly Chapter[] = [
   { id: 'last-patrol', number: 22, title: 'The Last Patrol', kind: 'battle', optional: false, loadingLine: 'An old soldier, a cart of grain, a quiet road.' },
   { id: 'two-sons', number: 23, title: 'Two Sons', kind: 'cutscene', optional: false, loadingLine: 'One crown. Two brothers.' },
   { id: 'brothers', number: 24, title: 'Brothers', kind: 'battle', optional: false, loadingLine: 'The dead march with the elder.' },
-  { id: 'the-end', number: 25, title: 'The End', kind: 'cutscene', optional: false, loadingLine: 'Dawn.' },
+  { id: 'spring', number: 25, title: 'Spring', kind: 'cutscene', optional: false, loadingLine: 'Every spring, a new ribbon.' },
+  { id: 'golden-city', number: 26, title: 'The Golden City', kind: 'freeRoam', optional: false, loadingLine: 'Peace. Wine. Music. And one man who does not belong.' },
+  { id: 'the-spy', number: 27, title: 'The Spy', kind: 'cutscene', optional: false, loadingLine: 'He will not say where he comes from. Yet.' },
+  { id: 'into-greece', number: 28, title: 'Into Greece', kind: 'cutscene', optional: false, loadingLine: 'Three peoples, one road, and the sewers of a city of marble.' },
+  { id: 'greek-feast', number: 29, title: 'The Feast of the Greeks', kind: 'battle', optional: false, loadingLine: 'They are drunk. They are many. They will not break.' },
+  { id: 'the-end', number: 30, title: 'The End', kind: 'cutscene', optional: false, loadingLine: 'Home.' },
 ];
 
 export function chapterById(id: ChapterId): Chapter {

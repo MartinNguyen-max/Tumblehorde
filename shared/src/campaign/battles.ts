@@ -125,6 +125,13 @@ export const STORY_BATTLE = {
   theDead: 34,
   deadWave: { every: 10, count: 6 },
   deadWithMarcus: 26,
+  /** The Greek feast: the hardest fight there is. Strong, many, and in a ring that will not break. */
+  greeks: 72,
+  greekToughness: 1.4,
+  strategosToughness: 2.5,
+  alliedLegion: 24,
+  alliedVikings: 22,
+  alliedRiders: 18,
 } as const;
 
 /** The line at the top of the screen in each story battle. */
@@ -139,6 +146,7 @@ const BATTLE_OBJECTIVES: Partial<Record<ChapterId, string>> = {
   'open-field': 'Break the Mongol riders',
   'the-gate': 'Fight your way to Livia',
   'last-patrol': 'Protect the wagons',
+  'greek-feast': 'Break the Greek ring',
 };
 
 function at(point: MapPoint): ArmySetup['spawn'] {
@@ -210,6 +218,9 @@ export const STORY_LOOKS = {
   strategos: 'strategos',
   lucius: 'lucius',
   marcusMongol: 'marcusMongol',
+  sigurd: 'sigurd',
+  masked: 'masked',
+  maskedChief: 'maskedChief',
 } as const;
 
 /** Cassian as he looks in `chapter`: silver armor from the smith, the legion's red from the Emperor on, old at the end. */
@@ -458,19 +469,22 @@ function buildBattle(chapter: ChapterId, save: CampaignSave): CampaignBattle | n
       // Years later: an old legate, a few men and the grain wagons, and the Greeks in the trees.
       const old = cassian(save, chapter, FOREST_POINTS.column, [], false);
       const me: ArmySetup = { ...old.setup, soldiers: STORY_BATTLE.patrolMen, commanderToughness: STORY_BATTLE.oldLegateToughness };
+      // Greeks, but nobody can tell: they come in bandit rags and masks.
       const greeks = (spawn: MapPoint, extra: Partial<Side> = {}): ArmySetup =>
-        army({ name: 'Greeks', team: 1, faction: 'roman', soldiers: STORY_BATTLE.greeksPerSide, spawn, style: 'rush', horde: STORY_BATTLE.weakling, color: PEOPLE_COLORS.greek, reinforce: STORY_BATTLE.greekWave, looks: { soldier: STORY_LOOKS.hoplite, commander: STORY_LOOKS.strategos }, ...extra });
+        army({ name: 'Bandits', team: 1, faction: 'roman', soldiers: STORY_BATTLE.greeksPerSide, spawn, style: 'rush', horde: STORY_BATTLE.weakling, color: STORY_COLORS.bandit, reinforce: STORY_BATTLE.greekWave, looks: { soldier: STORY_LOOKS.masked, commander: STORY_LOOKS.maskedChief }, ...extra });
       return {
         ...base,
         goal: { kind: 'lastStand' },
         onLoss: 'continue',
         settings: settings('forest', [me, greeks(FOREST_POINTS.ambushNorth, { commander: true }), greeks(FOREST_POINTS.ambushSouth)], STORY_BATTLE.ambushWarning),
         legionNames: [],
-        commanders: { 1: 'The Strategos' },
+        commanders: { 1: 'The bandit chief' },
       };
     }
     case 'brothers':
       return brothersBattle(save, base);
+    case 'greek-feast':
+      return greekFeast(save, base);
     default:
       return null;
   }
@@ -543,6 +557,52 @@ function brothersBattle(save: CampaignSave, base: Omit<CampaignBattle, 'settings
     commanders,
     warlordArmy: playMarcus ? 2 : 3,
   };
+}
+
+/**
+ * The last battle of all: the three peoples round the Greeks' feast. The player leads the son they
+ * chose; the other armies (the Romans of Felix and Rufus, Hrolf's sons' Vikings, the Mongols) are bots.
+ */
+function greekFeast(save: CampaignSave, base: Omit<CampaignBattle, 'settings' | 'legionNames'>): CampaignBattle {
+  const playMarcus = save.choices.son === 'marcus';
+  const greekLooks = { soldier: STORY_LOOKS.hoplite, commander: STORY_LOOKS.strategos };
+  const greeks = army({
+    name: 'Greeks',
+    team: 1,
+    faction: 'roman',
+    soldiers: STORY_BATTLE.greeks,
+    spawn: CAPITAL_POINTS.feast,
+    commander: true,
+    commanderToughness: STORY_BATTLE.strategosToughness,
+    style: 'ring',
+    startFormation: 'circle',
+    color: PEOPLE_COLORS.greek,
+    looks: greekLooks,
+  });
+  greeks.toughness = Array<number>(STORY_BATTLE.greeks).fill(STORY_BATTLE.greekToughness);
+  const marcus = army({
+    name: SON_NAMES.marcus,
+    team: 0,
+    bot: !playMarcus,
+    faction: 'bandit',
+    soldiers: STORY_BATTLE.alliedRiders,
+    spawn: CAPITAL_POINTS.feastWest,
+    mounted: true,
+    commander: true,
+    style: 'flank',
+    color: PEOPLE_COLORS.mongol,
+    looks: { commander: STORY_LOOKS.marcusMongol, soldier: STORY_LOOKS.mongol },
+  });
+  const lucius = army({ name: SON_NAMES.lucius, team: 0, bot: playMarcus, faction: 'roman', soldiers: STORY_BATTLE.alliedLegion, spawn: CAPITAL_POINTS.feastSouth, commander: true, style: 'steady', looks: { commander: STORY_LOOKS.lucius } });
+  // With Marcus dead, his riders follow Lucius under their own chief.
+  const mongols = army({ name: 'Mongols', team: 0, faction: 'bandit', soldiers: STORY_BATTLE.alliedRiders, spawn: CAPITAL_POINTS.feastWest, mounted: true, commander: true, style: 'flank', color: PEOPLE_COLORS.mongol, looks: { commander: STORY_LOOKS.khan, soldier: STORY_LOOKS.mongol } });
+  const vikings = army({ name: 'Vikings', team: 0, faction: 'viking', soldiers: STORY_BATTLE.alliedVikings, spawn: CAPITAL_POINTS.feastEast, commander: true, style: 'charge', looks: { commander: STORY_LOOKS.sigurd } });
+  const felix = army({ name: 'Felix', team: 0, faction: 'roman', soldiers: STORY_BATTLE.oldFriendsArmy, spawn: CAPITAL_POINTS.feastNorth, commander: true, style: 'steady', looks: { commander: STORY_LOOKS.felixOld } });
+  const armies = playMarcus ? [marcus, lucius, vikings, felix, greeks] : [lucius, mongols, vikings, felix, greeks];
+  const commanders: Record<number, string> = playMarcus
+    ? { 1: SON_NAMES.lucius, 2: 'Sigurd', 3: 'Felix', 4: 'The Strategos' }
+    : { 1: 'Toghan', 2: 'Sigurd', 3: 'Felix', 4: 'The Strategos' };
+  return { ...base, time: 'night', onLoss: 'retryOrLeave', settings: settings('city', armies), legionNames: [], commanders, warlordArmy: 4 };
 }
 
 /** How a battle went for the story, read from the finished (or abandoned) match. */
