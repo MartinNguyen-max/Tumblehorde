@@ -126,6 +126,7 @@ export const STORY_BATTLE = {
   theDead: 34,
   deadWave: { every: 10, count: 6 },
   deadWithMarcus: 26,
+  marcusToughness: 1.6,
   /** The Greek feast: the hardest fight there is. Strong, many, and in a ring that will not break. */
   greeks: 72,
   greekToughness: 1.4,
@@ -592,6 +593,9 @@ function brothersBattle(save: CampaignSave, base: Omit<CampaignBattle, 'settings
     color: PEOPLE_COLORS.mongol,
     looks: { commander: STORY_LOOKS.marcusMongol, soldier: STORY_LOOKS.mongol },
   });
+  // Played by the bots, Marcus would ride into the legion and fall in the first charge: he is the
+  // hardest man in the battle, so the fight lasts.
+  if (!playMarcus) marcus.commanderToughness = STORY_BATTLE.marcusToughness;
   // Against Lucius the dead keep coming until Marcus falls; on Marcus's side they are a fixed host, so his
   // brother's legion still has a fighting chance.
   const dead = army({
