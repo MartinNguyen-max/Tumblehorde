@@ -1,5 +1,5 @@
 import { findMeleeThreat, meleeIntent, nearestEnemy } from './ai.ts';
-import { AI, BOT, COMMANDER, FORMATION, MATCH } from './config.ts';
+import { AI, BOT, FORMATION, MATCH } from './config.ts';
 import { dirToYaw, distanceXZ, normalizeXZ, type Vec2 } from './math.ts';
 import { advanceArmy, armyCenter, centroid, holdAt, issueOrder, livingSoldiers, splitArmy } from './orders.ts';
 import { fogOfWar } from './perception.ts';
