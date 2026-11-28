@@ -260,6 +260,8 @@ export interface ArmySetup {
   mounted?: boolean;
   /** Horse archers: for this many seconds after the form-up they ride round the enemy shooting, then charge with sabers. */
   horseArchers?: number;
+  /** An ally under the player's command (the siege): it takes the player's orders and formation instead of its own. */
+  followsPlayer?: boolean;
   /** Story battles: each soldier's hit points, times this (veterans are tougher); missing means 1. */
   toughness?: readonly number[];
   /**

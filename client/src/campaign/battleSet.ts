@@ -1,6 +1,6 @@
 import { Color3, Color4, Mesh, MeshBuilder, type Scene, StandardMaterial, TransformNode } from '../render/babylon.ts';
-import { CASTLE, type MapId, mapStructures, terrainHeightAt, type TimeOfDay } from '@tumblehorde/shared';
-import { Crowd, type Seat } from '../render/crowd.ts';
+import { CASTLE, type MapId, mapStructures, terrainHeightAt, type TimeOfDay, type UnitView } from '@tumblehorde/shared';
+import { animatePerson, createPersonRig, type PersonRig, startCheer } from '../render/rigs.ts';
 import { FIRE, LIGHTING, MAP_THEMES, TIME_OF_DAY } from '../visualConfig.ts';
 import type { World } from '../render/world.ts';
 
@@ -10,14 +10,28 @@ import type { World } from '../render/world.ts';
  */
 /** The story's set pieces in battle: the duel's ring of legionaries, the siege's ladders and ram. */
 const SET_DECOR = {
-  ringScale: 1.6,
-  ringColors: ['#B8322A', '#A82A22', '#C8423A'],
+  legion: { body: '#B8322A', trim: '#E0B040', name: 'legion' },
+  /** Unit ids for the ring's rigs, far above any real unit's, so their looks vary but never clash. */
+  ringFirstId: 5000,
+  ringRowGap: 1.3,
+  ringSpacing: 1.05,
+  cheerRate: 0.9,
+  cheerThreshold: 0.92,
   wood: '#8A5A32',
   darkWood: '#5E3E22',
   log: '#6A4A2A',
   hide: '#8A6A48',
   iron: '#3A3A3E',
 } as const;
+
+/** A soldier standing still in the ring: shield up in the front row, spear on the shoulder behind. */
+function standingView(x: number, y: number, z: number, yaw: number, shieldUp: boolean): UnitView {
+  return {
+    id: 0, kind: 'swordsman', armyId: 0, x, y, z, yaw, vx: 0, vy: 0, vz: 0, hp: 1, maxHp: 1, alive: true, onGround: true,
+    shieldUp, stunTimer: 0, action: 'none', actionTimer: 0, invulnerable: false, mountId: null, riderId: null,
+    respawnTimer: 0, group: 0, weapon: 'spear', drunk: false, crouching: false, hero: null,
+  };
+}
 
 export class BattleSet {
   private readonly root: TransformNode;
@@ -27,7 +41,7 @@ export class BattleSet {
   private readonly world: World;
   private time = 0;
 
-  private crowd: Crowd | null = null;
+  private readonly watchers: { rig: PersonRig; x: number; y: number; z: number; yaw: number; front: boolean; phase: number }[] = [];
 
   /**
    * `burning`: every house, or only those within `radius` of a spot (a whole city alight would be too much).
@@ -53,24 +67,30 @@ export class BattleSet {
     if (options.siege) this.addSiege(map);
   }
 
-  /** Legionaries shoulder to shoulder round the duel, cheering, two rows deep. */
+  /** Cassian's own legionaries shoulder to shoulder round the duel, shields up, cheering him on. */
   private addRing(map: MapId, ring: { x: number; z: number; radius: number }): void {
-    const scale = SET_DECOR.ringScale;
-    const seats: Seat[] = [];
+    let id = SET_DECOR.ringFirstId;
     for (let row = 0; row < 2; row++) {
-      const r = ring.radius + row * 1.4;
-      const count = Math.floor((2 * Math.PI * r) / 1.1);
+      const r = ring.radius + row * SET_DECOR.ringRowGap;
+      const count = Math.floor((2 * Math.PI * r) / SET_DECOR.ringSpacing);
       for (let i = 0; i < count; i++) {
-        const a = (i / count) * Math.PI * 2 + row * 0.2;
+        const a = (i / count) * Math.PI * 2 + row * 0.15;
         const x = ring.x + Math.sin(a) * r;
         const z = ring.z + Math.cos(a) * r;
-        seats.push({ x: x / scale, y: terrainHeightAt(map, x, z) / scale, z: z / scale, yaw: a + Math.PI });
+        const rig = createPersonRig(this.world.scene, this.world.parts, 'swordsman', SET_DECOR.legion, 'roman', id++, 'legionary');
+        rig.root.parent = this.root;
+        this.watchers.push({ rig, x, y: terrainHeightAt(map, x, z), z, yaw: a + Math.PI, front: row === 0, phase: i * 0.7 });
       }
     }
-    const holder = new TransformNode('duel-ring', this.world.scene);
-    holder.parent = this.root;
-    holder.scaling.setAll(scale);
-    this.crowd = new Crowd(this.world.parts, holder, seats, SET_DECOR.ringColors);
+  }
+
+  /** The ring cheers in waves; the front row keeps its shields up. */
+  private animateWatchers(dt: number): void {
+    for (const w of this.watchers) {
+      const view = standingView(w.x, w.y, w.z, w.yaw, w.front);
+      if (w.rig.cheerAge === null && Math.sin(this.time * SET_DECOR.cheerRate + w.phase) > SET_DECOR.cheerThreshold) startCheer(w.rig, 0, 0);
+      animatePerson(w.rig, view, { dt, now: this.time, mounted: false, feasting: false, displayYaw: w.yaw });
+    }
   }
 
   /** Ladders against the castle's west wall, and a covered ram rolled up to the gate. */
@@ -166,7 +186,7 @@ export class BattleSet {
 
   update(dt: number): void {
     this.time += dt;
-    this.crowd?.update(this.time);
+    this.animateWatchers(dt);
     for (const s of this.smoke) {
       s.age = (s.age + dt) % FIRE.smokeLife;
       const t = s.age / FIRE.smokeLife;

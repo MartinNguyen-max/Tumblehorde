@@ -400,7 +400,7 @@ export const FORT_POINTS = {
   attackNorth: { x: 6, z: 18, yaw: Math.PI / 2 },
   attackSouth: { x: 6, z: -18, yaw: Math.PI / 2 },
   garrison: { x: 50, z: 0, yaw: -Math.PI / 2 },
-  gatehouse: { x: 44, z: 0, yaw: -Math.PI / 2 },
+  gatehouse: { x: 46, z: 0, yaw: -Math.PI / 2 },
 } satisfies Record<string, MapPoint>;
 
 /** The duel with Hrolf, in a ring of shields on the frozen field. */

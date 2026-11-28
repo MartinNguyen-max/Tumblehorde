@@ -631,6 +631,9 @@ export const AI = {
 } as const;
 
 export const BOT = {
+  /** Allies under the player's command check his orders this often (s), and keep this far to his side when following. */
+  followPlayerInterval: 0.5,
+  followPlayerOffset: 4,
   orderInterval: 5,
   thinkInterval: 0.25,
   /** Beyond this distance between army centers the bot marches as one block. */

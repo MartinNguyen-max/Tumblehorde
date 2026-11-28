@@ -178,7 +178,7 @@ export const capitalFalls: Cutscene = {
       mountedRider(stage, i === 0 ? 'khan' : 'mongol', i === 0 ? 'Jorgai' : `Rider ${i}`, -2 + (i % 4) * 1.4, 54 + Math.floor(i / 4) * 3, Math.PI),
     );
     const defenders = Array.from({ length: ATTACK.defenders }, (_, i) =>
-      cast(stage, 'legionary', `Defender ${i}`).place(-4 + (i % 5) * 2, -6 - Math.floor(i / 5) * 1.6, 0).setPose('raiseSword').setMood('afraid'),
+      cast(stage, 'legionary', `Defender ${i}`).place(-4 + (i % 5) * 2, -10 - Math.floor(i / 5) * 1.6, 0).setPose('raiseSword').setMood('afraid'),
     );
     const people = Array.from({ length: ATTACK.people }, (_, i) =>
       cast(stage, 'villager', `Citizen ${i}`, { color: ['#8A7A5A', '#6A8A9A', '#9A6A5A'][i % 3], age: i % 4 === 0 ? 'child' : 'adult' })
@@ -218,7 +218,7 @@ export const capitalFalls: Cutscene = {
       for (let i = 0; i < 3; i++) stage.world.parts.part('box', '#3A3A3E', hinge, [2.8, 0.12, 0.34], [-side * 1.4, 1 + i * 1.6, 0], { metal: true });
       return { hinge, side };
     });
-    const last = Array.from({ length: 3 }, (_, i) => cast(stage, 'legionary', `Last ${i}`).place(-1.5 + i * 1.5, -9, Math.PI).setPose('kneel', true));
+    const last = Array.from({ length: 3 }, (_, i) => cast(stage, 'legionary', `Last ${i}`).place(-1.5 + i * 1.5, -13.4, Math.PI).setPose('kneel', true));
     for (const man of last) man.root.setEnabled(false);
 
     return [
@@ -247,8 +247,10 @@ export const capitalFalls: Cutscene = {
         shot: { from: [0, 8, 30], at: [0, 1.5, 46], fov: FOV.wide },
         run: () => {
           for (const d of doors) d.hinge.rotation.y = -d.side * 1.6;
-          for (const [i, r] of riders.entries()) r.horse.runTo(-2 + (i % 4) * 1.4, 38 - Math.floor(i / 4) * 2, 10);
+          // They crash into the shield line at the gateway and stop there: steel on steel.
+          for (const [i, r] of riders.entries()) r.horse.runTo(-2 + (i % 4) * 1.4, 47.4 + Math.floor(i / 4) * 2.6, 8);
           for (const g of gateGuard) g.setPose('punch').setMood('shout');
+          for (const r of riders.slice(0, 4)) r.rider.setPose('raiseSword');
         },
         narrate: 'On the third blow the gate gave way, and the riders came through it at a gallop.',
       },
@@ -258,9 +260,13 @@ export const capitalFalls: Cutscene = {
         shot: { from: [0.6, 5, 33], at: [0, 1.2, 43], fov: FOV.normal },
         run: () => captain.setPose('punch').setMood('shout'),
         during: (_s, p) => {
+          riders.slice(0, 4).forEach((r, i) => r.rider.setPose(Math.sin(p * 30 + i) > 0 ? 'punch' : 'raiseSword'));
+          // The front rank falls first; each rank the riders cut down, they push one rank further in.
           gateGuard.forEach((g, i) => {
             if (p > 0.08 + i * 0.06) g.setPose('lie').setMood('afraid');
           });
+          const ranksDown = Math.floor(Math.max(0, p - 0.08) / 0.24);
+          riders.forEach((r, i) => r.horse.runTo(-2 + (i % 4) * 1.4, 47.4 - ranksDown * 1.4 + Math.floor(i / 4) * 2.6, 3));
           if (p > 0.85) captain.setPose('lie');
         },
         narrate: 'The gate guard held for as long as it takes to say a prayer. Then the street was full of horses.',
@@ -302,9 +308,9 @@ export const capitalFalls: Cutscene = {
       {
         duration: 5,
         sound: 'fire',
-        shot: { from: [-10, 3.5, -12], at: [0, 1.4, 6], to: [-8, 4, -10], fov: FOV.wide },
+        shot: { from: [-10, 3.5, -17], at: [0, 1.4, 2], to: [-8, 4, -15], fov: FOV.wide },
         run: () => {
-          for (const [i, r] of riders.entries()) r.horse.runTo(-3 + (i % 4) * 2, -3.5 - Math.floor(i / 4) * 1.2, 7);
+          for (const [i, r] of riders.entries()) r.horse.runTo(-5 + (i % 6) * 2, -7.6 + Math.floor(i / 6) * 2.2, 7);
           for (const d of defenders) d.setPose('raiseSword').setMood('shout');
         },
         narrate: 'The city guard stood in the square. Old men and boys, a hundred against thousands.',
@@ -312,7 +318,7 @@ export const capitalFalls: Cutscene = {
       {
         duration: 4,
         sound: 'clash',
-        shot: { from: [8, 2.4, -6], at: [0, 1.2, -4], fov: FOV.normal },
+        shot: { from: [8, 2.4, -10], at: [0, 1.2, -8.6], fov: FOV.normal },
         run: () => {
           for (const d of defenders) d.setPose('punch').setMood('shout');
           riders[6]!.horse.falling = true;
@@ -325,7 +331,7 @@ export const capitalFalls: Cutscene = {
       {
         duration: 4,
         sound: 'clash',
-        shot: { from: [-7, 2.2, -10], at: [0, 1.2, -5], fov: FOV.normal },
+        shot: { from: [-7, 2.2, -15], at: [0, 1.2, -9.4], fov: FOV.normal },
         during: (_s, p) => {
           defenders.forEach((d, i) => {
             if (p > 0.1 + i * 0.06) d.setPose('lie').setMood('afraid');
@@ -336,12 +342,12 @@ export const capitalFalls: Cutscene = {
       {
         duration: 5,
         sound: 'clash',
-        shot: { from: [3.5, 1.6, -2], at: [0, 1.0, -8.5], fov: FOV.normal },
+        shot: { from: [3.5, 1.6, -7.6], at: [0, 1.0, -12.8], fov: FOV.normal },
         run: () => {
           // The last three, wounded, on their knees with their swords down.
           for (const man of last) man.root.setEnabled(true);
           last.forEach((man) => man.setPose('kneel').setMood('afraid'));
-          for (const [i, r] of riders.slice(8, 11).entries()) r.horse.runTo(-1.5 + i * 1.5, -7.2, 3);
+          for (const [i, r] of riders.slice(8, 11).entries()) r.horse.runTo(-1.5 + i * 1.5, -11.4, 2);
         },
         during: (_s, p) => {
           riders.slice(8, 11).forEach((r) => r.rider.setPose(p > 0.4 ? 'punch' : 'raiseSword'));
@@ -392,7 +398,7 @@ export const capitalFalls: Cutscene = {
           for (const b of bodies) b.root.setEnabled(true);
           for (const d of defenders) d.setPose('lie');
           for (const sack of sacks) sack.setEnabled(true);
-          for (const [i, r] of riders.entries()) if (i > 0 && i < 6) r.horse.runTo(-6 + i * 2.5, 8, 2);
+          for (const [i, r] of riders.entries()) if (i > 0 && i < 6) r.horse.runTo(-14 + i * 1.8, 7, 2);
           livia.root.setEnabled(false);
         },
         during: (_s, p) => {

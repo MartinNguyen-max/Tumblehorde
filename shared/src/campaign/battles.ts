@@ -136,8 +136,10 @@ export const STORY_BATTLE = {
   /** Two axes: he hits much harder, and blocks nothing (no shield). */
   duelKit: { hp: 800, damage: 2, block: 0 },
   /** The border fort: a Greek garrison behind walls. */
-  fortGarrison: 50,
-  fortToughness: 1.15,
+  fortGarrison: 44,
+  /** Of them, the ones holding the gateway. */
+  fortGate: 24,
+  fortToughness: 1.1,
   fortAllies: 18,
   /** The sewers: a handful of men in the dark against the Greek watch. */
   sewerMen: 14,
@@ -668,24 +670,32 @@ function sonsArmy(save: CampaignSave, spawn: MapPoint, soldiers: number, onFoot 
 }
 
 /** The other two peoples at the son's side: Hrolf's sons' Vikings and the East (or Rome, for Marcus). */
-function allies(save: CampaignSave, spawns: readonly [MapPoint, MapPoint], soldiers: number): ArmySetup[] {
+function allies(save: CampaignSave, spawns: readonly [MapPoint, MapPoint], soldiers: number, onFoot = false): ArmySetup[] {
   const vikings = army({ name: 'Vikings', team: 0, faction: 'viking', soldiers, spawn: spawns[0], commander: true, style: 'charge', looks: { commander: STORY_LOOKS.sigurd } });
   const other =
     save.choices.son === 'marcus'
       ? army({ name: SON_NAMES.lucius, team: 0, faction: 'roman', soldiers, spawn: spawns[1], commander: true, style: 'steady', looks: { commander: STORY_LOOKS.lucius } })
-      : army({ name: 'Mongols', team: 0, faction: 'bandit', soldiers, spawn: spawns[1], mounted: true, commander: true, style: 'flank', color: PEOPLE_COLORS.mongol, looks: { commander: STORY_LOOKS.khan, soldier: STORY_LOOKS.mongol } });
+      : army({ name: 'Mongols', team: 0, faction: 'bandit', soldiers, spawn: spawns[1], mounted: !onFoot, commander: true, style: 'flank', color: PEOPLE_COLORS.mongol, looks: { commander: STORY_LOOKS.khan, soldier: STORY_LOOKS.mongol } });
+  if (onFoot) for (const a of [vikings, other]) a.onFoot = true;
   return [vikings, other];
 }
 
 const greekLooks = (): Record<string, string> => ({ soldier: STORY_LOOKS.hoplite, commander: STORY_LOOKS.strategos });
 
 function borderFort(save: CampaignSave, base: Omit<CampaignBattle, 'settings' | 'legionNames'>): CampaignBattle {
-  const me = sonsArmy(save, FORT_POINTS.attack, STORY_BATTLE.fortAllies + 6);
-  const garrison = army({ name: 'Greeks', team: 1, faction: 'roman', soldiers: STORY_BATTLE.fortGarrison, spawn: FORT_POINTS.garrison, commander: true, style: 'steady', color: PEOPLE_COLORS.greek, looks: greekLooks() });
-  garrison.defends = true;
-  garrison.toughness = Array<number>(STORY_BATTLE.fortGarrison).fill(STORY_BATTLE.fortToughness);
-  const armies = [me, ...allies(save, [FORT_POINTS.attackNorth, FORT_POINTS.attackSouth], STORY_BATTLE.fortAllies), garrison];
-  return { ...base, onLoss: 'retryOrLeave', settings: settings('castle', armies), legionNames: [], commanders: { 1: 'Sigurd', 2: save.choices.son === 'marcus' ? SON_NAMES.lucius : 'Toghan', 3: 'The fort captain' } };
+  // Everyone on foot, everyone at the gate: the player gives the orders for all three peoples.
+  const me = sonsArmy(save, FORT_POINTS.attack, STORY_BATTLE.fortAllies + 6, true);
+  me.startOrder = 'attack';
+  me.startFormation = 'wedge';
+  const friends = allies(save, [FORT_POINTS.attackNorth, FORT_POINTS.attackSouth], STORY_BATTLE.fortAllies, true);
+  for (const f of friends) f.followsPlayer = true;
+  // The Greeks hold the gateway in a line of shields; the rest wait in the yard behind them.
+  // Just inside the gate, so the fight is in the breach and the yard, not against the wall.
+  const gate = army({ name: 'Greeks', team: 1, faction: 'roman', soldiers: STORY_BATTLE.fortGate, spawn: FORT_POINTS.gatehouse, commander: true, style: 'patient', startFormation: 'line', color: PEOPLE_COLORS.greek, looks: greekLooks() });
+  gate.toughness = Array<number>(STORY_BATTLE.fortGate).fill(STORY_BATTLE.fortToughness);
+  const yard = army({ name: 'Greeks', team: 1, faction: 'roman', soldiers: STORY_BATTLE.fortGarrison - STORY_BATTLE.fortGate, spawn: FORT_POINTS.garrison, style: 'patient', color: PEOPLE_COLORS.greek, looks: greekLooks() });
+  const armies = [me, ...friends, gate, yard];
+  return { ...base, onLoss: 'retryOrLeave', settings: settings('castle', armies, 4), legionNames: [], commanders: { 1: 'Sigurd', 2: save.choices.son === 'marcus' ? SON_NAMES.lucius : 'Toghan', 3: 'The fort captain' } };
 }
 
 function sewerFight(save: CampaignSave, base: Omit<CampaignBattle, 'settings' | 'legionNames'>): CampaignBattle {

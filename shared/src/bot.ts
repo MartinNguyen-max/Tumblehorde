@@ -356,9 +356,43 @@ export function runLeaderlessArmy(state: MatchState, army: Army, dt: number): vo
   planArmy(state, army, dt, true);
 }
 
+/**
+ * An ally under the player's command: the same orders and formation as the player's army. On
+ * Follow, its commander keeps up with the player; on Attack he goes for the nearest enemy.
+ */
+function followThePlayer(state: MatchState, army: Army, commander: Unit | null, dt: number): void {
+  const leader = state.armies[0];
+  const chief = getUnit(state, leader?.commanderId ?? null);
+  if (!leader) return;
+  army.bot.orderTimer -= dt;
+  if (army.bot.orderTimer > 0) return;
+  army.bot.orderTimer = BOT.followPlayerInterval;
+  const wanted = leader.groupOrders[0]?.order ?? 'hold';
+  army.formation = leader.formation;
+  const order: Order = !commander && wanted === 'follow' ? 'hold' : wanted;
+  for (let group = 0; group < army.groupCount; group++) {
+    if (army.groupOrders[group]?.order !== order) issueOrder(state, army, order, group, !commander);
+  }
+  if (!commander) return;
+  if (wanted === 'follow' && chief) {
+    const side = army.id % 2 === 0 ? 1 : -1;
+    commander.ai.chargePoint = { x: chief.pos.x + side * BOT.followPlayerOffset, z: chief.pos.z - BOT.followPlayerOffset };
+  } else if (wanted === 'attack') {
+    const enemy = nearestEnemy(state, commander, Infinity);
+    commander.ai.chargePoint = enemy ? { x: enemy.pos.x, z: enemy.pos.z } : null;
+  } else {
+    commander.ai.chargePoint = null;
+  }
+}
+
 /** The bot army: gives orders at most every few seconds; a bot commander stays behind its lines and fights. */
 export function runBotArmy(state: MatchState, army: Army, dt: number): void {
   const commander = getUnit(state, army.commanderId);
+  if (state.settings.armies[army.id]?.followsPlayer) {
+    followThePlayer(state, army, commander?.alive ? commander : null, dt);
+    if (commander?.alive) botCommanderIntent(state, commander);
+    return;
+  }
   if (!commander?.alive) {
     runLeaderlessArmy(state, army, dt);
     return;

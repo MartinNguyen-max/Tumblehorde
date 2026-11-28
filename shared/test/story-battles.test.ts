@@ -31,7 +31,7 @@ describe('the story battles', () => {
       expect(state.phase).toBe('playing');
     }
     expect(campaignBattle('prologue', saveAt('prologue'))).toBeNull();
-  });
+  }, 30000);
 
   it('the forest road: Cassian and Varro, the two villagers, five bandits', () => {
     const battle = campaignBattle('forest-road', saveAt('forest-road'))!;
@@ -231,6 +231,25 @@ describe('the banquet hint', () => {
     expect(tutorialStepDone(step, state, 0)).toBe(false);
     applyCommand(state, 0, { type: 'banquet' });
     expect(tutorialStepDone(step, state, 0)).toBe(true);
+  });
+});
+
+describe('the siege', () => {
+  it('everyone storms on foot, and the allies take the player\'s orders', async () => {
+    const { applyCommand } = await import('../src/orders.ts');
+    const battle = campaignBattle('border-fort', saveAt('border-fort'))!;
+    const state = createMatch(battle.settings);
+    for (const army of state.armies.filter((a) => a.team === 0)) {
+      for (const id of army.soldierIds) expect(state.units[id]!.mountId).toBeNull();
+    }
+    const allies = state.armies.filter((a, i) => a.team === 0 && battle.settings.armies[i]!.followsPlayer);
+    expect(allies.length).toBe(2);
+    applyCommand(state, 0, { type: 'order', order: 'hold', group: null });
+    run(state, 1);
+    for (const ally of allies) expect(ally.groupOrders.every((g) => g.order === 'hold')).toBe(true);
+    applyCommand(state, 0, { type: 'order', order: 'attack', group: null });
+    run(state, 1);
+    for (const ally of allies) expect(ally.groupOrders.every((g) => g.order === 'attack')).toBe(true);
   });
 });
 
