@@ -318,9 +318,9 @@ function planArmy(state: MatchState, army: Army, dt: number, leaderless: boolean
     return null;
   }
   const distance = distanceXZ(own, enemy.center);
-  // The dead never fall back, and neither does a rushing horde.
+  // The dead never fall back, and neither does a rushing horde (but even they wait for the signal).
   const fearless = army.faction === 'zombie' || army.bot.style === 'rush';
-  const beaten = fearless ? 'engage' : chooseStance(state, army, distance, livingSoldiers(state, army).length, enemy.soldiers);
+  const beaten = fearless && state.time >= prepareTime(state) ? 'engage' : chooseStance(state, army, distance, livingSoldiers(state, army).length, enemy.soldiers);
   army.bot.regroupTimer = beaten === 'regroup' ? army.bot.regroupTimer + dt : army.bot.regroupTimer;
   // Nobody falls back forever: after a while it is a last stand.
   const plain = beaten === 'regroup' && army.bot.regroupTimer > BOT.maxRegroup ? 'engage' : beaten;

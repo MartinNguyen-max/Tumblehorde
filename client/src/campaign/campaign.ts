@@ -79,7 +79,8 @@ export interface StoryBattleOutcome {
 
 type Phase =
   | { kind: 'idle' }
-  | { kind: 'loading'; chapter: Chapter; timer: number }
+  /** `until`: the wall-clock time (ms) the card comes down; slow frames must not stretch it. */
+  | { kind: 'loading'; chapter: Chapter; until: number }
   | { kind: 'cutscene'; scenes: readonly Cutscene[]; index: number; then: () => void }
   | { kind: 'roam'; chapter: Chapter; roam: FreeRoam }
   | { kind: 'battle'; chapter: Chapter; story?: StoryBattle }
@@ -152,11 +153,16 @@ export class Campaign {
     const chapter = chapterById(id);
     this.overlay.showLoading(chapter, this.fallenNote);
     this.fallenNote = null;
-    this.phase = { kind: 'loading', chapter, timer: LOADING_TIME };
+    this.phase = { kind: 'loading', chapter, until: performance.now() + LOADING_TIME * 1000 };
   }
 
   private startChapter(chapter: Chapter): void {
+    // The card stays up while the chapter is built, so a slow build shows the card, not a frozen frame.
+    this.buildChapter(chapter);
     this.overlay.showLoading(null);
+  }
+
+  private buildChapter(chapter: Chapter): void {
     const scenes = scenesOf(SCENES_BEFORE[chapter.id]);
     const district = CHAPTER_DISTRICTS[chapter.id];
     const fight = arenaFight(chapter.id);
@@ -387,8 +393,9 @@ export class Campaign {
     this.overlay.choiceKeysEnabled = !this.pause.open;
     if (this.pause.open) return;
     if (phase.kind === 'loading') {
-      phase.timer -= dt;
-      if (phase.timer <= 0) this.startChapter(phase.chapter);
+      // Space or a click brings the card down at once.
+      const skip = this.deps.input.isHeld('Space') || this.deps.input.mouseLeft;
+      if (skip || performance.now() >= phase.until) this.startChapter(phase.chapter);
       return;
     }
     if (phase.kind === 'cutscene') this.player.update(dt, this.deps.input.isHeld('Space'));

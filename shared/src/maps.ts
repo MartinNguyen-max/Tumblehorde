@@ -221,7 +221,7 @@ export const NORTH_POINTS = {
 /** The open field on the way back south: the legion and Hrolf's Vikings against the Mongol riders. */
 export const STEPPE_POINTS = {
   legion: { x: 0, z: -60, yaw: 0 },
-  vikings: { x: -32, z: -56, yaw: 0 },
+  vikings: { x: -12, z: -60, yaw: 0 },
   riders: { x: 0, z: 72, yaw: Math.PI },
   flank: { x: 82, z: -8, yaw: -Math.PI / 2 },
 } satisfies Record<string, MapPoint>;

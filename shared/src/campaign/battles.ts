@@ -28,6 +28,8 @@ export interface TutorialStep {
   /** The HUD command the arrow points at. */
   points: 'follow' | 'hold' | 'attack' | 'rally' | null;
   done: { order: Order } | { formation: Formation } | { seconds: number };
+  /** The enemy holds back until the player has done it: some things must be learned before the charge. */
+  waits?: boolean;
 }
 
 export interface CampaignBattle {
@@ -74,7 +76,10 @@ export const STORY_BATTLE = {
   bridgeSecondWave: 45,
   bridgeHold: 150,
   ambushSide: 32,
-  outpost: 60,
+  outpost: 70,
+  /** The north's own warriors, at home on the ice: tougher than the raiders of the south. */
+  northmen: { hp: 0.5, damage: 0.5 },
+  nightRaiders: { hp: 0.38, damage: 0.36 },
   nightRaidFirst: 32,
   nightRaidSecond: 32,
   nightRaidHold: 150,
@@ -86,7 +91,9 @@ export const STORY_BATTLE = {
   /** A veteran legionary's hit points, times this. */
   veteranToughness: 1.2,
   /** Seconds between the ambush scene and the charge: time to read the hint and form a ring. */
-  ambushWarning: 12,
+  ambushWarning: 6,
+  /** Seconds the enemy is held back at a time while a waiting hint is up. */
+  hintHold: 1,
   /** The Mongols: riders, fewer than the Vikings but tougher than raiders on foot, and a second band on the flank. */
   mongolRiders: 28,
   mongolFlank: 14,
@@ -266,9 +273,20 @@ const TUTORIALS: Partial<Record<ChapterId, readonly TutorialStep[]>> = {
     { text: 'Your men are all over the place. Keep 2 held down and pick Two lines.', points: 'hold', done: { formation: 'double' } },
     { text: 'Hold the bridge. Your men thrust their spears over their shields; R throws a volley.', points: null, done: { seconds: 9 } },
   ],
-  'dark-forest': [{ text: 'Ambush! They are all around you. Keep 2 held down and pick Circle around me.', points: 'hold', done: { formation: 'circle' } }],
+  'dark-forest': [
+    { text: 'Ambush! They are all around you. Keep 2 held down and pick Circle around me. They will not wait long!', points: 'hold', done: { formation: 'circle' }, waits: true },
+  ],
   'last-battle': [{ text: 'Press 6 for a rally speech: your legion fights with courage.', points: 'rally', done: { seconds: 10 } }],
 };
+
+/**
+ * While a hint that `waits` is not yet done, the enemy keeps forming up instead of charging: the
+ * battle's form-up time is pushed on, a moment at a time.
+ */
+export function holdForHint(state: MatchState, step: TutorialStep): void {
+  if (!step.waits) return;
+  state.settings.prepareTime = Math.max(state.settings.prepareTime ?? 0, state.time + STORY_BATTLE.hintHold);
+}
 
 /** True once the player has done what a hint asks (or it has been up long enough). */
 export function tutorialStepDone(step: TutorialStep, state: MatchState, shownFor: number): boolean {
@@ -370,13 +388,13 @@ function buildBattle(chapter: ChapterId, save: CampaignSave): CampaignBattle | n
     }
     case 'outpost': {
       const me = cassian(save, chapter, NORTH_POINTS.outpostApproach, heroes, true);
-      const outpost = raiders('The Outpost', 'viking', STORY_BATTLE.outpost, NORTH_POINTS.outpost);
+      const outpost = raiders('The Outpost', 'viking', STORY_BATTLE.outpost, NORTH_POINTS.outpost, { horde: STORY_BATTLE.northmen });
       return { ...base, settings: settings('north', [me.setup, outpost]), legionNames: me.legionNames };
     }
     case 'night-raid': {
       const me = cassian(save, chapter, NORTH_POINTS.camp, heroes, true);
-      const first = raiders('Raiders', 'viking', STORY_BATTLE.nightRaidFirst, NORTH_POINTS.raidNorth);
-      const second = raiders('Raiders', 'viking', STORY_BATTLE.nightRaidSecond, NORTH_POINTS.raidEast);
+      const first = raiders('Raiders', 'viking', STORY_BATTLE.nightRaidFirst, NORTH_POINTS.raidNorth, { horde: STORY_BATTLE.nightRaiders });
+      const second = raiders('Raiders', 'viking', STORY_BATTLE.nightRaidSecond, NORTH_POINTS.raidEast, { horde: STORY_BATTLE.nightRaiders });
       const goal: BattleGoal = { kind: 'hold', seconds: STORY_BATTLE.nightRaidHold, label: 'dawn in' };
       return { ...base, goal, time: 'night', settings: settings('north', [me.setup, first, second]), legionNames: me.legionNames };
     }

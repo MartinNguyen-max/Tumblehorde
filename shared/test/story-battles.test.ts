@@ -184,6 +184,27 @@ describe('the story battles', () => {
   });
 });
 
+describe('hints that must be learned', () => {
+  it('in the ambush the Vikings hold back until the ring is formed', async () => {
+    const { holdForHint, tutorialStepDone } = await import('../src/campaign/battles.ts');
+    const { applyCommand } = await import('../src/orders.ts');
+    const battle = campaignBattle('dark-forest', saveAt('dark-forest'))!;
+    const state = createMatch(battle.settings);
+    const step = battle.tutorial[0]!;
+    expect(step.waits).toBe(true);
+    const vikings = state.armies[1]!;
+    const start = { ...state.units[vikings.soldierIds[0]!]!.pos };
+    for (let t = 0; t < 30; t += DT) {
+      holdForHint(state, step);
+      stepMatch(state, new Map(), DT);
+    }
+    const now = state.units[vikings.soldierIds[0]!]!.pos;
+    expect(Math.hypot(now.x - start.x, now.z - start.z)).toBeLessThan(8);
+    applyCommand(state, 0, { type: 'formation', formation: 'circle' });
+    expect(tutorialStepDone(step, state, 0)).toBe(true);
+  });
+});
+
 describe('the story maps', () => {
   it('every place a story battle starts an army is open, dry ground', async () => {
     const { CAMPAIGN_MAP_IDS, MAPS } = await import('../src/maps.ts');

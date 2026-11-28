@@ -1,4 +1,4 @@
-import { type MatchState, type TutorialStep, tutorialStepDone } from '@tumblehorde/shared';
+import { holdForHint, type MatchState, type TutorialStep, tutorialStepDone } from '@tumblehorde/shared';
 
 /** How the battle hints come and go. */
 export const TUTORIAL_HINT = {
@@ -49,6 +49,8 @@ export class TutorialHint {
   update(dt: number, state: MatchState): void {
     const step = this.steps[this.index];
     if (!step) return;
+    // A hint that must be learned holds the enemy back until it is done.
+    if (this.finishing <= 0) holdForHint(state, step);
     if (this.wait > 0) {
       this.wait -= dt;
       if (this.wait <= 0) this.show(step);

@@ -3,11 +3,11 @@
 Work list; items are ticked as they land.
 
 ## Fixes
-- [ ] The "Chapter 2 · The Arena I" card hangs for a long time and cannot be skipped
-- [ ] No sprinting in the city (there is none in battle; the legs did not move)
-- [ ] The ambush waits until the player has held 2 and picked Circle around me
-- [ ] Chapters 14 and 15 (the outpost, the night camp) are harder
-- [ ] At the open field Cassian and the Vikings start close together
+- [x] The "Chapter 2 · The Arena I" card hangs for a long time and cannot be skipped
+- [x] No sprinting in the city (there is none in battle; the legs did not move)
+- [x] The ambush waits until the player has held 2 and picked Circle around me
+- [x] Chapters 14 and 15 (the outpost, the night camp) are harder
+- [x] At the open field Cassian and the Vikings start close together
 
 ## Mongols
 - [ ] On horseback in battle they look exactly like in the scenes (plain horses, same riders)

@@ -245,7 +245,8 @@ export class FreeRoam {
     const sin = Math.sin(this.yaw);
     const cos = Math.cos(this.yaw);
     const move = { x: sin * forward + cos * right, z: cos * forward - sin * right };
-    stepWalker(this.walker, this.set.district, move, input.isHeld('ShiftLeft') || input.isHeld('ShiftRight'), dt);
+    // No sprinting: in town he moves exactly as he does in battle.
+    stepWalker(this.walker, this.set.district, move, false, dt);
 
     const spot = this.nearSpot();
     const partner = spot ? null : talkableNpc(this.npcs, this.walker.pos, this.walker.yaw);
