@@ -335,9 +335,10 @@ export const MAP_THEMES: Record<MapId, MapTheme> = {
     ...BATTLE_THEMES.city,
     sky: '#0E1012',
     fog: '#14181A',
-    hemiSky: '#3A4440',
-    hemiGround: '#141614',
-    sun: '#5A6A60',
+    // Torchlight: warm from above, the floor giving back a little brown.
+    hemiSky: '#C89868',
+    hemiGround: '#3A2C20',
+    sun: '#D08A50',
     ground: { hue: 0.08, saturation: 0.18, lightMin: 0.16, lightMax: 0.2 },
     path: { hue: 0.3, saturation: 0.15, lightMin: 0.18, lightMax: 0.2 },
     stone: '#5A4A3E',

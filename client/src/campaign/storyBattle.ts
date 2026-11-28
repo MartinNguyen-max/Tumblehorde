@@ -77,6 +77,7 @@ export class StoryBattle {
       torches: TORCHES[battle.chapter] ?? [],
       ring: battle.chapter === 'the-duel' ? DUEL_RING : undefined,
       siege: battle.chapter === 'border-fort',
+      sewers: battle.chapter === 'sewers',
     });
     this.hint = new TutorialHint(battle.tutorial);
   }
