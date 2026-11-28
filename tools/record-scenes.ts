@@ -5,8 +5,8 @@
 import { spawn } from 'node:child_process';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { bookOf, CHAPTERS, chapterLabel, type ChapterId } from '../shared/src/campaign/chapters.ts';
-import { SCENES_AFTER, SCENES_BEFORE } from '../client/src/campaign/storyScenes.ts';
+import { bookOf } from '../shared/src/campaign/chapters.ts';
+import { episodeName, takes } from './promo.ts';
 
 const URL = process.env.GAME_URL ?? 'http://localhost:5199/?debug';
 const WIDTH = Number(process.env.WIDTH ?? 1920);
@@ -23,29 +23,6 @@ const startAt = process.argv[3] ?? null;
 /** Stop after this many takes (for trying the recorder out). */
 const MAX = Number(process.env.MAX ?? Infinity);
 mkdirSync(outDir, { recursive: true });
-
-interface Take {
-  id: string;
-  chapter: ChapterId;
-  son: 'lucius' | 'marcus';
-  suffix: string;
-}
-
-/** Every scene in the order the story plays them; the two paths of the sons get one take each. */
-function takes(): Take[] {
-  const list: Take[] = [];
-  for (const chapter of CHAPTERS) {
-    const ids = [...(SCENES_BEFORE[chapter.id] ?? []), ...(chapter.id === 'arena-2' ? ['arena-victory'] : []), ...(SCENES_AFTER[chapter.id] ?? [])];
-    for (const id of ids) {
-      if (id === 'marcus-path') list.push({ id, chapter: chapter.id, son: 'marcus', suffix: '' });
-      else if (id === 'brothers-end') {
-        list.push({ id, chapter: chapter.id, son: 'lucius', suffix: ' (Lucius wins)' });
-        list.push({ id, chapter: chapter.id, son: 'marcus', suffix: ' (Marcus wins)' });
-      } else list.push({ id, chapter: chapter.id, son: 'lucius', suffix: '' });
-    }
-  }
-  return list;
-}
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
@@ -135,7 +112,7 @@ for (const [index, take] of all.entries()) {
   if (index < from) continue;
   if (index - from >= MAX) break;
   const book = bookOf(take.chapter);
-  const name = `E${String(n).padStart(2, '0')} - ${chapterLabel(take.chapter).replace(' · ', ' - ')} - ${CHAPTERS.find((c) => c.id === take.chapter)?.title ?? ''} - ${take.id}${take.suffix}.mp4`;
+  const name = episodeName(take, n);
   console.log(`${name}  (${book.title})`);
   await run(`(() => {
     window.__sceneDone = false;
