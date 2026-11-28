@@ -393,7 +393,7 @@ const HAPPY_LINES = ['What a time to be alive!', 'They say there has never been 
 /** The capital after the war: crowded, happy, full of soldiers, and full of visitors. */
 export function festiveCapital(son: 'marcus' | 'lucius'): DistrictSet {
   const extras: Townsperson[] = [
-    { ...castPerson('liviaOld', 'Livia', -11, 13, { stationary: true, yaw: Math.PI }), lines: ['Look at them all. He would have liked this. He would have pretended not to, and liked it.'] },
+    { ...castPerson('liviaOld', 'Livia', -11, 13, { stationary: true, yaw: Math.PI }), lines: ['Look at them all. He would have liked this. He would have pretended not to, and liked it.', 'Riders in the square again. It is all right. It was a long time ago.'] },
     { ...castPerson('felixOld', 'Felix', -3, 5, {}), lines: ['Rufus has told that joke to every Viking in the city. Twice.'] },
     { ...castPerson('rufusOld', 'Rufus', 3, 5, { activity: 'drink' }), lines: ['Why did the Mongol bring a ladder to the feast? ... I forget. Hehehe!'] },
     // Soldiers training in the yard, in pairs.

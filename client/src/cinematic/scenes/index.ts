@@ -10,7 +10,7 @@ import { prologuePrison, prologueRaid, prologueRoad } from './prologueNight.ts';
 import { liviaEvening } from './livia.ts';
 import { bridgeAfter, bridgeOrders, campNight, dawnRelief, outpostScout } from './north.ts';
 import { ambush, forestRoadWalk } from './roads.ts';
-import { hrolfMirror, letterOne, letterTwo, rallySpeech, varroDeath } from './war.ts';
+import { hrolfMirror, letterOne, letterTwo, rallySpeech, varroDeath, varroMemory } from './war.ts';
 
 /** Every cutscene by id. */
 export const CUTSCENES: Readonly<Record<string, Cutscene>> = Object.fromEntries(
@@ -20,7 +20,7 @@ export const CUTSCENES: Readonly<Record<string, Cutscene>> = Object.fromEntries(
     forgeNight, forestRoadWalk, forestRoadAfter, ambush, campfireNight, rollCall,
     bridgeOrders, bridgeAfter, outpostScout, campNight, dawnRelief,
     villageApproach, villageAfter, emperor, emperorHall, liviaEvening, ruins,
-    varroDeath, letterOne, letterTwo, rallySpeech, hrolfMirror,
+    varroDeath, varroMemory, letterOne, letterTwo, rallySpeech, hrolfMirror,
     victoryFeast, capitalFalls, campSouth, ridersCome, hrolfFarewell, gateArrive, liviaFound,
     rebuilding, twoBoys, patrolRoad, cassianFalls, heaven, mourning, theCrowning, marcusPath, luciusPath, brothersEnd, spring,
     theSpy, intoGreece, theSewers, greekFeastScene, homeInChains,

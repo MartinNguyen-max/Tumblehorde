@@ -17,7 +17,7 @@ export const SCENES_BEFORE: Partial<Record<ChapterId, readonly string[]>> = {
   bridge: ['bridge-orders'],
   'dark-forest': ['ambush'],
   'night-raid': ['camp-night'],
-  varro: ['varro-death', 'roll-call'],
+  varro: ['varro-death', 'varro-memory', 'roll-call'],
   outpost: ['letter-one', 'outpost-scout'],
   'last-battle': ['rally-speech'],
   feast: ['victory-feast', 'capital-falls'],

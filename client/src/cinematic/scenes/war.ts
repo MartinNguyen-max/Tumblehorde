@@ -4,6 +4,7 @@ import type { Beat, Cutscene, StoryContext } from '../script.ts';
 import { FOV, overShoulder, portrait, type Shot } from '../shot.ts';
 import type { Actor } from '../actor.ts';
 import type { Stage } from '../stage.ts';
+import { house } from '../sets.ts';
 import { campfire, forestRing, grave, STORY_COLORS, tents } from '../storySets.ts';
 
 /** The war in the north: Varro's last words, Livia's letters, the speech, and Hrolf. */
@@ -19,8 +20,8 @@ export const varroDeath: Cutscene = {
     const varro = cast(stage, 'varroArmored', 'Varro').place(-0.2, 0.2, Math.PI / 2).setPose('lie', true).setMood('sad', true);
     varro.setWounded(true);
     const cassian = cast(stage, 'cassianHelmet', 'Cassian').place(-0.1, 1.15, Math.PI).setPose('cradle', true).setMood('afraid', true);
-    const felix = cast(stage, 'felix', 'Felix', { outfit: 'legion', color: '#4E7A9A' }).place(2, 2.4, -2.2);
-    const rufus = cast(stage, 'rufus', 'Rufus', { outfit: 'legion', color: '#9A6A3A' }).place(-2.2, 2.6, 2.4);
+    const felix = cast(stage, 'felixLegion', 'Felix').place(2, 2.4, -2.2);
+    const rufus = cast(stage, 'rufusLegion', 'Rufus').place(-2.2, 2.6, 2.4);
     const hammerProp = upright(hammer(stage.world.parts, stage.root));
     hammerProp.setEnabled(false);
 
@@ -106,6 +107,120 @@ export const varroDeath: Cutscene = {
         duration: 4,
         shot: { from: [4, 2.5, 6], at: [0, 1, 0], to: [6, 4, 9], fov: FOV.normal },
         fade: { to: 1, time: 3.5 },
+      },
+    ];
+  },
+};
+
+/** The smiths' street in the capital, twenty years before: Varro's forge and the night he lost his son. */
+function smithsStreet(stage: Stage): void {
+  stage.ground('#8E8474', 90, 'none');
+  for (let i = 0; i < 6; i++) {
+    for (const side of [-1, 1]) house(stage, side * 7, -14 + i * 6.5, 5.6, 6, 5 + (i % 3), side * -Math.PI / 2, ['#E6D3B0', '#E8C49A', '#E3B4A0'][i % 3]);
+  }
+  // Varro's forge, younger: the hearth, the anvil, a cart of tools.
+  stage.box(STORY_COLORS.hearth, [2, 1, 1.4], [-3, 0.5, -1]);
+  stage.fire(-3, -1, 0.5, 1);
+  stage.box('#4A4E54', [0.7, 0.5, 0.35], [-1.6, 0.6, 0.6], 0, { metal: true });
+  stage.box(STORY_COLORS.log, [0.5, 0.35, 0.5], [-1.6, 0.17, 0.6]);
+  for (const [x, z] of [[-4.6, 4], [4.6, -4], [-4.6, -8], [4.6, 8]] as const) stage.fire(x, z, 0.12, 2.6);
+}
+
+export const varroMemory: Cutscene = {
+  id: 'varro-memory',
+  create(stage: Stage): Beat[] {
+    stage.light('dusk');
+    smithsStreet(stage);
+    // Varro twenty years younger: brown hair, and no scar yet.
+    const varro = cast(stage, 'varro', 'Varro', { hair: '#5A3A22', beardColor: '#5A3A22', scar: false }).place(-2.6, 1.6, Math.PI * 0.8);
+    const lucius = cast(stage, 'cassianSmith', 'Lucius', { hair: '#3E2A1A', beard: 'stubble', beardColor: '#3E2A1A', skin: '#C98E66' }).place(-1.2, 1.1, -Math.PI / 2).setPose('carve', true);
+    upright(hammer(stage.world.parts, lucius.grips[0]));
+    const oldWoman = cast(stage, 'villager', 'Old woman', { outfit: 'healer', color: '#6A5A4A', hair: '#9A9690', age: 'old' }).place(3, 6, Math.PI);
+    const drunks = Array.from({ length: 3 }, (_, i) => cast(stage, 'bandit', `Drunk ${i}`, { hair: ['#2A1E18', '#5A3A22', '#8A3A1E'][i] }).place(1 + i * 1.1, 9 + i * 0.6, Math.PI).setMood('happy', true));
+    const cart = stage.group('cart', 1.6, 0, 2.6);
+    stage.world.parts.part('box', STORY_COLORS.log, cart, [1.2, 0.5, 0.8], [0, 0.6, 0]);
+    for (let i = 0; i < 3; i++) stage.world.parts.part('box', '#8A8E94', cart, [0.1, 0.5, 0.06], [-0.3 + i * 0.3, 1.0, 0], { metal: true });
+
+    return [
+      {
+        duration: 6,
+        fade: { from: 1, to: 0, color: 'white', time: 2.5 },
+        music: 'sorrow',
+        shot: { from: [4, 3, -8], at: [-1.6, 1, 1], to: [3, 2.4, -6], fov: FOV.normal },
+        narrate: 'Varro told me the rest one night at the forge, long before. Twenty years before I met him, in the same street.',
+      },
+      {
+        shot: { from: [1.4, 1.9, -2.6], at: [-2.1, 1.4, 1.4], fov: FOV.normal },
+        run: () => varro.setMood('happy').lookAt(lucius.headPosition()),
+        say: { who: 'Varro', text: 'Harder! You hit like a baker, boy!', mood: 'happy' },
+      },
+      {
+        shot: { from: [0.8, 1.7, -1.4], at: [-1.3, 1.4, 1.1], fov: FOV.normal },
+        run: () => lucius.setMood('happy').lookAt(varro.headPosition()),
+        say: { who: 'Lucius', text: 'One day I will make you a sword, father. A better one than yours.', mood: 'happy' },
+      },
+      {
+        duration: 4,
+        sound: 'crowd',
+        shot: { from: [5, 2, 4], at: [2, 1.2, 4], fov: FOV.normal },
+        run: () => {
+          for (const [i, d] of drunks.entries()) d.walkTo(1.4 + i * 0.9, 3.4 + i * 0.4, 1.4);
+          cart.rotation.z = 1.3;
+          oldWoman.setPose('cower').setMood('afraid');
+        },
+        narrate: 'Three men, drunk on festival wine. They knocked over the tool cart, and then they started on an old woman.',
+      },
+      {
+        shot: () => portrait(lucius, { angle: 0.6, distance: 2.4 }),
+        run: () => {
+          for (const d of drunks) d.finishWalk();
+          lucius.place(0.8, 3, 0.8).setPose('point').setMood('angry');
+        },
+        say: { who: 'Lucius', text: 'Leave her be.', mood: 'angry' },
+      },
+      {
+        duration: 2.5,
+        sound: 'heartbeat',
+        shot: () => portrait(varro, { angle: -0.2, distance: 2.0, fov: FOV.extreme }),
+        run: () => {
+          varro.setMood('afraid');
+          drunks[1]?.setPose('punch').setMood('angry');
+        },
+      },
+      {
+        duration: 4,
+        shot: { from: [-1, 1.6, 6], at: [1, 0.6, 3], fov: FOV.normal },
+        run: () => {
+          lucius.setPose('lie').setMood('sad');
+          for (const d of drunks) d.walkTo(d.root.position.x + 2, 14, 4);
+          varro.walkTo(0.4, 2.6, 4);
+        },
+        narrate: 'A knife. Over nothing. Over a spilled cart.',
+      },
+      {
+        shot: { from: [2.4, 1.5, 4.6], at: [0.6, 0.7, 2.7], fov: FOV.normal },
+        run: () => {
+          varro.finishWalk();
+          varro.place(0.3, 2.4, Math.PI * 0.2).setPose('cradle').setMood('crying');
+          lucius.lookAt(varro.headPosition());
+        },
+        say: { who: 'Lucius', text: 'Make the sword anyway, father.', mood: 'sad' },
+      },
+      {
+        duration: 5,
+        shot: { from: [-1.2, 1.5, 4.8], at: [0.4, 1.1, 2.5], fov: FOV.normal },
+        run: () => {
+          lucius.eyesClosed = true;
+          lucius.lookAt(null);
+          varro.setMood('crying');
+        },
+        narrate: 'One of them turned back and cut Varro across the face. He never even felt it. That is where the scar came from.',
+      },
+      {
+        duration: 6,
+        shot: { from: [3, 4, 8], at: [0.4, 0.8, 2.6], to: [4, 7, 12], fov: FOV.normal },
+        narrate: 'Years later, when my second son was born, I knew his name before I held him.',
+        fade: { to: 1, color: 'white', time: 5 },
       },
     ];
   },

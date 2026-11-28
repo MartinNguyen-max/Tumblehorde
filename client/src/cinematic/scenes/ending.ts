@@ -185,10 +185,25 @@ export const rebuilding: Cutscene = {
         narrate: 'In the square, they raised a statue of Varro. Hammer in hand, scowling at the pigeons.',
       },
       {
+        duration: 6,
+        music: 'sorrow',
+        shot: () => portrait(livia, { angle: 0.6, distance: 3.2 }),
+        run: () => {
+          stage.light('night');
+          stage.weather('none');
+          crowd.excitement = 0;
+          cassian.root.setEnabled(false);
+          livia.setPose('clutch').setMood('sad').lookAt(null);
+        },
+        narrate: 'That winter she did not sleep. She stood at the window with her hands on her belly, and said nothing. Neither did I.',
+      },
+      {
         duration: 5,
         music: 'warm',
         shot: () => portrait(livia, { angle: -0.4, distance: 2.4 }),
         run: () => {
+          stage.light('goldenMorning');
+          cassian.root.setEnabled(true);
           stage.weather('none');
           crowd.excitement = 0.2;
           livia.setPose('cradle').setMood('warm');
@@ -255,7 +270,7 @@ export const rebuilding: Cutscene = {
           livia.setMood('happy');
           cassian.setPose('embrace').setMood('warm');
         },
-        narrate: 'Two years later, another boy. We named him Lucius, after the son Varro lost. Brown hair, and his father\'s stubborn chin.',
+        say: { who: 'Cassian', text: 'Lucius. Varro\'s boy had that name. Now it gets to grow old.', mood: 'warm' },
         fade: { to: 1, time: 4 },
       },
     ];
@@ -271,6 +286,7 @@ export const twoBoys: Cutscene = {
     const luciusBoy = cast(stage, 'luciusBoy', 'Lucius').place(13.5, 12, Math.PI * 0.8);
     const bullies = Array.from({ length: 3 }, (_, i) => cast(stage, 'villager', `Boy ${i}`, { age: 'child', color: ['#8A7A5A', '#5A7A9A', '#9A5A4A'][i] }).place(14 + i * 1.2, 7.2, 0).setMood('angry'));
     const cassian = cast(stage, 'cassianGrey', 'Cassian').place(6, 6, Math.PI / 2);
+    const livia = cast(stage, 'livia', 'Livia').place(9, 4, 0.6);
     const marcus = cast(stage, 'marcusRoman', 'Marcus ').place(16, 10, -Math.PI / 2);
     const lucius = cast(stage, 'luciusBare', 'Lucius ').place(13, 13, -Math.PI / 2);
     for (const a of [marcus, lucius]) a.root.setEnabled(false);
@@ -292,6 +308,11 @@ export const twoBoys: Cutscene = {
           marcusBoy.setMood('angry').lookAt(bullies[1]!.headPosition());
         },
         say: { who: 'Boy 1', as: 'A boy', text: 'Go back east, Mongol! Go back to your real father!', mood: 'angry' },
+      },
+      {
+        duration: 3,
+        shot: () => portrait(livia, { angle: 0.3, distance: 2.2 }),
+        run: () => livia.setMood('afraid').setPose('clutch').lookAt(null),
       },
       {
         duration: 2.6,
@@ -1042,7 +1063,7 @@ export const luciusPath: Cutscene = {
         duration: 3,
         shot: () => portrait(felix, { angle: 0.4 }),
         run: () => felix.setPose('fist').setMood('warm'),
-        say: { who: 'Felix', text: 'Our swords are yours. As they were his.', mood: 'warm' },
+        say: { who: 'Felix', text: 'You carry the name of Varro\'s boy, and Cassian\'s blood. Our swords are yours.', mood: 'warm' },
       },
       {
         duration: 4,
@@ -1241,6 +1262,12 @@ export const spring: Cutscene = {
         shot: () => portrait(lucius, { angle: -0.3 }),
         run: () => lucius.setMood('warm').lookAt(livia.headPosition()),
         narrate: 'Lucius brings his children. They ask about the monk who became an emperor. I tell them about the bells first.',
+      },
+      {
+        duration: 5,
+        shot: () => portrait(livia, { angle: 0.5, distance: 2.4, rise: 0.3 }),
+        run: () => livia.setMood('sad'),
+        narrate: 'Some nights I still hear a door breaking. Then my grandchildren laugh in the next room, and it stops.',
       },
       {
         duration: 5,

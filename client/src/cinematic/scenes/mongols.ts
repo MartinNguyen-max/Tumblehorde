@@ -175,7 +175,7 @@ export const capitalFalls: Cutscene = {
     ];
     for (const [x, z, size, y] of fires) stage.fire(x, z, size, y);
     const riders = Array.from({ length: ATTACK.riders }, (_, i) =>
-      mountedRider(stage, i === 0 ? 'khan' : 'mongol', i === 0 ? 'Jorgai' : `Rider ${i}`, -2 + (i % 4) * 1.4, 44 - Math.floor(i / 4) * 3, Math.PI),
+      mountedRider(stage, i === 0 ? 'khan' : 'mongol', i === 0 ? 'Jorgai' : `Rider ${i}`, -2 + (i % 4) * 1.4, 54 + Math.floor(i / 4) * 3, Math.PI),
     );
     const defenders = Array.from({ length: ATTACK.defenders }, (_, i) =>
       cast(stage, 'legionary', `Defender ${i}`).place(-4 + (i % 5) * 2, -6 - Math.floor(i / 5) * 1.6, 0).setPose('raiseSword').setMood('afraid'),
@@ -207,6 +207,17 @@ export const capitalFalls: Cutscene = {
       return sack;
     });
     const livia = cast(stage, 'livia', 'Livia').place(-17, 10, -Math.PI / 2).setMood('afraid');
+    // The gate guard: twelve men in the street behind the south gate, shields to the doors.
+    const gateGuard = Array.from({ length: 12 }, (_, i) =>
+      cast(stage, 'legionary', `Gate guard ${i}`).place(-1.8 + (i % 4) * 1.2, 45.6 - Math.floor(i / 4) * 1.4, 0).setPose('raiseSword', true).setMood('afraid', true),
+    );
+    const captain = cast(stage, 'galba', 'Gate captain', { cape: '#5A5A5A' }).place(0, 41, 0).setPose('raiseSword', true);
+    const doors = [-1, 1].map((side) => {
+      const hinge = stage.group('gate-door', side * 2.9, 0, 47.4);
+      stage.world.parts.part('box', '#5E3E22', hinge, [2.8, 5.6, 0.3], [-side * 1.4, 2.8, 0]);
+      for (let i = 0; i < 3; i++) stage.world.parts.part('box', '#3A3A3E', hinge, [2.8, 0.12, 0.34], [-side * 1.4, 1 + i * 1.6, 0], { metal: true });
+      return { hinge, side };
+    });
     const last = Array.from({ length: 3 }, (_, i) => cast(stage, 'legionary', `Last ${i}`).place(-1.5 + i * 1.5, -9, Math.PI).setPose('kneel', true));
     for (const man of last) man.root.setEnabled(false);
 
@@ -217,15 +228,50 @@ export const capitalFalls: Cutscene = {
         music: 'dread',
         sound: 'horn',
         shot: { from: [0, 26, 40], at: [0, 2, 10], to: [0, 20, 32], fov: FOV.wide },
-        run: () => {
-          for (const [i, r] of riders.entries()) r.horse.runTo(-2 + (i % 4) * 1.4, 18 - Math.floor(i / 4) * 3, 9);
-        },
         narrate: 'Felix\'s cousin was in the city that night. This is what he told me, years later.',
+      },
+      {
+        duration: 5,
+        sound: 'thunder',
+        shot: { from: [0, 4.2, 37], at: [0, 2.4, 47.4], fov: FOV.normal },
+        during: (_s, p) => {
+          // The ram: the doors jump at every blow.
+          const blow = Math.max(0, Math.sin(p * Math.PI * 6));
+          for (const d of doors) d.hinge.rotation.y = -d.side * blow * 0.06;
+        },
+        say: { who: 'Gate captain', as: 'The gate captain', text: 'Shields to the gate! Brace! BRACE! Nobody steps back!', mood: 'shout' },
+      },
+      {
+        duration: 4,
+        sound: 'thunder',
+        shot: { from: [0, 8, 30], at: [0, 1.5, 46], fov: FOV.wide },
+        run: () => {
+          for (const d of doors) d.hinge.rotation.y = -d.side * 1.6;
+          for (const [i, r] of riders.entries()) r.horse.runTo(-2 + (i % 4) * 1.4, 38 - Math.floor(i / 4) * 2, 10);
+          for (const g of gateGuard) g.setPose('punch').setMood('shout');
+        },
+        narrate: 'On the third blow the gate gave way, and the riders came through it at a gallop.',
+      },
+      {
+        duration: 5,
+        sound: 'clash',
+        shot: { from: [0.6, 5, 33], at: [0, 1.2, 43], fov: FOV.normal },
+        run: () => captain.setPose('punch').setMood('shout'),
+        during: (_s, p) => {
+          gateGuard.forEach((g, i) => {
+            if (p > 0.08 + i * 0.06) g.setPose('lie').setMood('afraid');
+          });
+          if (p > 0.85) captain.setPose('lie');
+        },
+        narrate: 'The gate guard held for as long as it takes to say a prayer. Then the street was full of horses.',
       },
       {
         duration: 4,
         sound: 'screams',
         shot: { from: [3, 1.4, 20], at: [0, 2, 36], fov: FOV.wide },
+        run: () => {
+          for (const [i, r] of riders.entries()) r.horse.runTo(-2 + (i % 4) * 1.4, 18 - Math.floor(i / 4) * 3, 9);
+        },
         narrate: 'They came through the south gate like water through a broken dam. Small horses. Curved swords. No end to them.',
       },
       {
@@ -363,7 +409,7 @@ export const capitalFalls: Cutscene = {
       },
       {
         duration: 6,
-        narrate: 'That night they broke down Livia\'s door. What soldiers do to women in a fallen city, they did to her. The rest is hers to tell, not mine. The Mongols held the city for forty days.',
+        narrate: 'That night they broke down Livia\'s door. The rest is hers to tell, not mine. The Mongols held the city for forty days.',
       },
     ];
   },
@@ -650,55 +696,71 @@ export const liviaFound: Cutscene = {
 
     return [
       {
-        duration: 5,
+        duration: 6,
         fade: { from: 1, to: 0, time: 2 },
         music: 'silence',
         sound: 'door',
         shot: { from: [-3, 2, 3.4], at: [3.2, 1, -1.4], fov: FOV.normal },
-        run: () => cassian.walkTo(1.6, -0.6, 1.0),
-        narrate: 'The jars were smashed. The herbs trampled. She was sitting on the cot, very still.',
-      },
-      {
-        duration: 3,
-        shot: () => portrait(livia, { angle: -0.3, distance: 2.0 }),
-        run: () => {
-          cassian.finishWalk();
-          livia.lookAt(cassian.headPosition()).setMood('crying');
-        },
-        say: { who: 'Livia', text: 'You came back.', mood: 'crying' },
-      },
-      {
-        shot: () => portrait(cassian, { angle: 0.4, distance: 1.9 }),
-        run: () => cassian.setPose('kneel').setMood('crying').lookAt(livia.headPosition()),
-        say: { who: 'Cassian', text: 'I am here. I am here now. I should never have gone.', mood: 'crying' },
-      },
-      {
-        music: 'sorrow',
-        shot: () => portrait(livia, { angle: -0.2, distance: 1.8 }),
-        say: { who: 'Livia', text: 'They broke the door on the first night. Three of them. They held me down, Cassian, and they took turns, and they laughed.', mood: 'crying' },
-      },
-      {
-        shot: () => portrait(livia, { angle: -0.1, distance: 1.7, push: 0.2 }),
-        say: { who: 'Livia', text: 'I will not tell you the rest. Not tonight. Maybe not ever. Do not ask me.', mood: 'sad' },
-      },
-      {
-        shot: () => overShoulder(cassian, livia, { side: -1 }),
-        say: { who: 'Cassian', text: 'I will never ask. You are alive. That is all I need to know.', mood: 'sad' },
+        run: () => cassian.walkTo(1.6, -0.6, 0.8),
+        narrate: 'The door hung on one hinge.',
       },
       {
         duration: 4,
+        shot: () => portrait(livia, { angle: -0.3, distance: 2.2 }),
+        run: () => {
+          cassian.finishWalk();
+          livia.trembling = true;
+        },
+      },
+      {
+        duration: 3,
+        shot: () => portrait(livia, { angle: -0.2, distance: 2.0 }),
+        run: () => livia.lookAt(cassian.headPosition()).setMood('crying'),
+        say: { who: 'Livia', text: 'You came back.', mood: 'crying' },
+      },
+      {
+        duration: 3,
+        shot: () => portrait(cassian, { angle: 0.4, distance: 1.9 }),
+        run: () => cassian.setPose('kneel').setMood('crying').lookAt(livia.headPosition()),
+        say: { who: 'Cassian', text: 'I am here.', mood: 'crying' },
+      },
+      {
+        duration: 5,
+        music: 'sorrow',
+        shot: () => portrait(livia, { angle: -0.1, distance: 1.8, push: 0.2 }),
+        run: () => livia.lookAt(null).setMood('sad'),
+      },
+      {
+        duration: 3.5,
+        shot: () => portrait(livia, { angle: -0.15, distance: 1.7 }),
+        say: { who: 'Livia', text: 'Three of them.', mood: 'crying' },
+      },
+      {
+        duration: 4,
+        shot: () => portrait(livia, { angle: -0.1, distance: 1.6 }),
+        run: () => livia.lookAt(cassian.headPosition()),
+        say: { who: 'Livia', text: 'Do not ask me. Not ever.', mood: 'sad' },
+      },
+      {
+        duration: 2.5,
+        shot: () => overShoulder(cassian, livia, { side: -1 }),
+        say: { who: 'Cassian', text: 'Never.', mood: 'sad' },
+      },
+      {
+        duration: 6,
         shot: { from: [1.2, 1.6, 2.2], at: [2.8, 1, -1.4], fov: FOV.normal },
         run: () => {
+          livia.trembling = false;
           livia.setStance('pose').setPose('embrace').setMood('crying');
           cassian.setPose('embrace');
           cassian.place(2.6, -1.0, -Math.PI * 0.75);
         },
-        narrate: 'I held her until the sun came up. Neither of us said another word.',
+        narrate: 'I held her until the sun came up.',
       },
       {
         duration: 5,
         shot: { from: [-2, 2.4, 3], at: [2.8, 1.2, -1.4], to: [-3, 2.8, 4], fov: FOV.normal },
-        narrate: 'Outside, the legion came through the gate, and the city began to breathe again.',
+        narrate: 'She never told me more. She did not have to.',
         fade: { to: 1, time: 4 },
       },
     ];
