@@ -220,6 +220,20 @@ describe('hints that must be learned', () => {
   });
 });
 
+describe('the banquet hint', () => {
+  it('at the open field the hint asks for the banquet and is done once it starts', async () => {
+    const { tutorialStepDone } = await import('../src/campaign/battles.ts');
+    const { applyCommand } = await import('../src/orders.ts');
+    const battle = campaignBattle('open-field', saveAt('open-field'))!;
+    const state = createMatch(battle.settings);
+    const step = battle.tutorial[0]!;
+    expect(step.points).toBe('banquet');
+    expect(tutorialStepDone(step, state, 0)).toBe(false);
+    applyCommand(state, 0, { type: 'banquet' });
+    expect(tutorialStepDone(step, state, 0)).toBe(true);
+  });
+});
+
 describe('the story maps', () => {
   it('every place a story battle starts an army is open, dry ground', async () => {
     const { CAMPAIGN_MAP_IDS, MAPS } = await import('../src/maps.ts');

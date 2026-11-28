@@ -13,6 +13,7 @@ export const TUTORIAL_HINT = {
 function targetOf(step: TutorialStep): HTMLElement | null {
   if (step.points === null) return null;
   if (step.points === 'rally') return document.getElementById('hud-rally');
+  if (step.points === 'banquet') return document.getElementById('hud-banquet');
   return document.querySelector<HTMLElement>(`.cmd[data-order="${step.points}"]`);
 }
 

@@ -26,8 +26,8 @@ export type OnLoss = 'retry' | 'retryOrLeave' | 'continue';
 export interface TutorialStep {
   text: string;
   /** The HUD command the arrow points at. */
-  points: 'follow' | 'hold' | 'attack' | 'rally' | null;
-  done: { order: Order } | { formation: Formation } | { seconds: number };
+  points: 'follow' | 'hold' | 'attack' | 'rally' | 'banquet' | null;
+  done: { order: Order } | { formation: Formation } | { seconds: number } | { banquet: true };
   /** The enemy holds back until the player has done it: some things must be learned before the charge. */
   waits?: boolean;
 }
@@ -293,6 +293,13 @@ const TUTORIALS: Partial<Record<ChapterId, readonly TutorialStep[]>> = {
     { text: 'Ambush! They are all around you. Keep 2 held down and pick Circle around me. They will not wait long!', points: 'hold', done: { formation: 'circle' }, waits: true },
   ],
   'last-battle': [{ text: 'Press 6 for a rally speech: your legion fights with courage.', points: 'rally', done: { seconds: 10 } }],
+  'open-field': [
+    {
+      text: 'Press 5 for the Banquet while they are still far off: your men feast, then fight drunk. They hit harder and shrug off blows.',
+      points: 'banquet',
+      done: { banquet: true },
+    },
+  ],
 };
 
 /**
@@ -309,6 +316,7 @@ export function tutorialStepDone(step: TutorialStep, state: MatchState, shownFor
   const mine = state.armies[0];
   if (!mine) return true;
   if ('seconds' in step.done) return shownFor >= step.done.seconds;
+  if ('banquet' in step.done) return mine.banquet !== 'ready';
   if ('order' in step.done) {
     const wanted = step.done.order;
     return mine.groupOrders.some((g) => g.order === wanted);
