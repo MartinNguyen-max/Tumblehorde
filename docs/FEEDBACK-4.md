@@ -17,4 +17,12 @@ The player's last big round before the game is done. Ticked as it lands.
 
 ## The whole game
 - [ ] Every scene and fight checked: no plain backgrounds, everything aligned, old feedback applied, bots that act sensibly
-- [ ] Videos of every scene in a folder, for promotion
+- [x] Videos of every scene in a folder, for promotion (60 videos recorded on the first PC; not in git)
+- [ ] Screenshots of every fight and city walk between the videos (the player said: not yet)
+
+## Where this stands (for continuing on another PC)
+
+- All code is on `main`. The 60 scene videos were recorded on the first PC into `promo/videos/` (594 MB, git-ignored), so they are **not** in the repository. Copy that folder by hand, or record them again.
+- Record again: `npm run build -w client`, serve it (`cd client && npx vite preview --port 5300`), then `GAME_URL='http://localhost:5300/?debug' npx tsx tools/record-scenes.ts promo/videos [first-scene-id]`. Needs Chrome with a GPU (ANGLE over Vulkan); record from the build, not the dev server, whose hot reload restarts the page when code changes.
+- Screenshots: `npx tsx tools/screenshot-fights.ts promo/candidates` takes a start, a clash and a mid-fight picture per fight (with and without HUD); keep the best one per chapter under the names in `docs/PROMO.md` (`... - fight.png`, `... - walk.png`). Not run yet: the player asked to wait.
+- Still to do: watch every video for mistakes and re-record those scenes; the full QA pass of every scene and fight.
