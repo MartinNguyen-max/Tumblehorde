@@ -59,6 +59,12 @@ async function boot(): Promise<void> {
       enterCampaign();
       campaign.startNew();
     },
+    onJump: (chapter, son) => {
+      enterCampaign();
+      campaign.stop();
+      // Friends spared, so the later chapters have everyone in them.
+      campaign.startAt(chapter, { choices: { eirikSpared: true, hrolfSpared: true, son } });
+    },
     onContinue: () => {
       enterCampaign();
       campaign.continueSaved();

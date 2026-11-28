@@ -999,3 +999,23 @@ kbd {
   z-index: 40;
   pointer-events: none;
 }
+
+/* Testing: start the story at any chapter. */
+.chapter-pick {
+  margin-top: 10px;
+  font-size: 13px;
+  opacity: 0.85;
+}
+.chapter-pick summary {
+  cursor: pointer;
+}
+.chapter-pick .row {
+  margin-top: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chapter-pick select {
+  padding: 6px 8px;
+  border-radius: 8px;
+  font: inherit;
+}

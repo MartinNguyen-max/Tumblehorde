@@ -171,10 +171,11 @@ function buildStoryBody(parts: PartFactory, body: TransformNode, palette: ArmyPa
 }
 
 function buildBody(parts: PartFactory, body: TransformNode, kind: UnitKind, palette: ArmyPalette, faction: Faction, id: number, name: string | null): { built: PersonBody; look: string } {
-  const person = kind === 'swordsman' || kind === 'commander';
-  if (!person) return { built: buildBean(parts, body, kind, palette), look: 'bean' };
+  // A story person (a Mongol rider too) always gets the body the scenes give them.
   const story = name ? buildStoryBody(parts, body, palette, name) : null;
   if (story) return story;
+  const person = kind === 'swordsman' || kind === 'commander';
+  if (!person) return { built: buildBean(parts, body, kind, palette), look: 'bean' };
   if (faction === 'viking') {
     const { look, variant } = vikingLook(id);
     return { built: buildViking(parts, body, palette, kind === 'commander', look), look: `viking-${variant}` };

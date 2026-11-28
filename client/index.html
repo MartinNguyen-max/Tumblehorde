@@ -36,6 +36,17 @@
             <button class="btn primary" id="campaign-continue" hidden>Continue</button>
             <button class="btn" id="campaign-new">New story</button>
           </div>
+          <details class="chapter-pick">
+            <summary>Testing: start at any chapter</summary>
+            <div class="row">
+              <select id="campaign-chapter" aria-label="Chapter"></select>
+              <select id="campaign-son" aria-label="Son to follow">
+                <option value="lucius">as Lucius</option>
+                <option value="marcus">as Marcus</option>
+              </select>
+              <button class="btn" id="campaign-jump">Play</button>
+            </div>
+          </details>
         </section>
 
         <section class="card" aria-labelledby="local-title">

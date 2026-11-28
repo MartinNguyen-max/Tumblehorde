@@ -83,8 +83,8 @@ export const STORY_BATTLE = {
   nightRaidFirst: 32,
   nightRaidSecond: 32,
   nightRaidHold: 150,
-  alliedArmy: 20,
-  horde: 150,
+  alliedArmy: 10,
+  horde: 100,
   /** Hrolf's own warriors are no raiders: the last battle costs the legion dearly. */
   hrolfsHost: { hp: 0.4, damage: 0.4 },
   hrolfToughness: 3,
@@ -95,8 +95,8 @@ export const STORY_BATTLE = {
   /** Seconds the enemy is held back at a time while a waiting hint is up. */
   hintHold: 1,
   /** The Mongols: riders, fewer than the Vikings but tougher than raiders on foot, and a second band on the flank. */
-  mongolRiders: 28,
-  mongolFlank: 14,
+  mongolRiders: 23,
+  mongolFlank: 12,
   mongolFlankAt: 35,
   /** Seconds the Mongols ride round the legion shooting before they charge. */
   mongolArchery: 30,
