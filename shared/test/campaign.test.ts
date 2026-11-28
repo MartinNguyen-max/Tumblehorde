@@ -76,6 +76,23 @@ describe('heroes', () => {
   });
 });
 
+describe('books', () => {
+  it('splits the story into four books, numbering chapters within each', async () => {
+    const { bookOf, chapterInBook, chapterLabel, opensBook, BOOKS } = await import('../src/campaign/chapters.ts');
+    expect(BOOKS).toHaveLength(4);
+    expect(chapterLabel('prologue')).toBe('Book I · Prologue');
+    expect(chapterLabel('capital')).toBe('Book I · Chapter 1');
+    expect(chapterLabel('forest-road')).toBe('Book II · Chapter 1');
+    expect(bookOf('last-battle').number).toBe(2);
+    expect(bookOf('feast').number).toBe(3);
+    expect(chapterInBook('the-end')).toBe(5);
+    expect(opensBook('golden-city')).toBe(true);
+    expect(opensBook('bridge')).toBe(false);
+    // Every chapter is in exactly one book, numbered from 1 (0 for the prologue).
+    for (const c of CHAPTERS) expect(chapterInBook(c.id)).toBeGreaterThanOrEqual(c.id === 'prologue' ? 0 : 1);
+  });
+});
+
 describe('save', () => {
   it('survives a round trip through JSON', () => {
     const save = checkpoint({ ...newSave(1000), gold: 65, strength: 2, workouts: 2 }, 'apprentice', 2000);

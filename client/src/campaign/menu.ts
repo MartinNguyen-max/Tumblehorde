@@ -1,4 +1,4 @@
-import { CHAPTERS, type ChapterId, chapterById, isChapterId, type Son } from '@tumblehorde/shared';
+import { BOOKS, bookLabel, bookOf, CHAPTERS, type ChapterId, chapterById, chapterInBook, chapterLabel, isChapterId, type Son } from '@tumblehorde/shared';
 import { byId } from '../ui/dom.ts';
 import { loadSave } from './storage.ts';
 
@@ -24,11 +24,17 @@ export class CampaignMenu {
       if (loadSave() && !window.confirm('Start the story over? Your saved progress will be lost.')) return;
       actions.onNew();
     });
-    for (const chapter of CHAPTERS) {
-      const option = document.createElement('option');
-      option.value = chapter.id;
-      option.textContent = `${chapter.number}. ${chapter.title}`;
-      this.chapterSelect.append(option);
+    for (const book of BOOKS) {
+      const group = document.createElement('optgroup');
+      group.label = bookLabel(book);
+      for (const chapter of CHAPTERS.filter((c) => bookOf(c.id) === book)) {
+        const option = document.createElement('option');
+        option.value = chapter.id;
+        const n = chapterInBook(chapter.id);
+        option.textContent = n === 0 ? chapter.title : `${n}. ${chapter.title}`;
+        group.append(option);
+      }
+      this.chapterSelect.append(group);
     }
     this.jumpButton.addEventListener('click', () => {
       const id = this.chapterSelect.value;
@@ -48,6 +54,6 @@ export class CampaignMenu {
       return;
     }
     const chapter = chapterById(save.chapter);
-    this.progress.textContent = chapter.number === 0 ? 'Saved at the prologue.' : `Saved at chapter ${chapter.number}: ${chapter.title}.`;
+    this.progress.textContent = `Saved at ${chapterLabel(chapter.id)}: ${chapter.title}.`;
   }
 }

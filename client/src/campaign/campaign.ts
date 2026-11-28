@@ -14,6 +14,7 @@ import {
   type MatchSettings,
   type MatchView,
   newSave,
+  opensBook,
   nextChapter,
   playerKit,
   reinforceAtFortress,
@@ -43,6 +44,8 @@ import { loadSave, writeSave } from './storage.ts';
 
 /** Seconds the loading card with the chapter's line stays up. */
 const LOADING_TIME = 2.6;
+/** The card that opens a new book stays a little longer. */
+const BOOK_CARD_TIME = 4.5;
 /** The chapter that reaches the northern fortress, which fills the legion's ranks. */
 const FORTRESS_CHAPTER: ChapterId = 'night-raid';
 
@@ -153,7 +156,8 @@ export class Campaign {
     const chapter = chapterById(id);
     this.overlay.showLoading(chapter, this.fallenNote);
     this.fallenNote = null;
-    this.phase = { kind: 'loading', chapter, until: performance.now() + LOADING_TIME * 1000 };
+    const seconds = opensBook(chapter.id) ? BOOK_CARD_TIME : LOADING_TIME;
+    this.phase = { kind: 'loading', chapter, until: performance.now() + seconds * 1000 };
   }
 
   private startChapter(chapter: Chapter): void {

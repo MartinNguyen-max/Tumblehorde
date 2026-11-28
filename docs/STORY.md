@@ -44,6 +44,8 @@ Small choices that change lines and who is with you at the end, never the story'
 
 ## Chapters
 
+The story is told in four books, chapters numbered within each: **Book I: The Monk** (Prologue to the Forge), **Book II: The Legion** (the Forest Road to the Last Battle), **Book III: Fire from the East** (the Feast to Spring), **Book IV: The Last Road** (the Golden City to the End). The table keeps one running number for reference.
+
 Numbers are enemies vs friends. "Heroes" are Cassian, Varro, Felix, Rufus (and Eirik if spared);
 heroes other than Cassian are knocked out instead of dying, until the story says otherwise.
 

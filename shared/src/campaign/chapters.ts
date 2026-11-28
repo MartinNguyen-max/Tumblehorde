@@ -83,6 +83,56 @@ export const CHAPTERS: readonly Chapter[] = [
   { id: 'the-end', number: 30, title: 'The End', kind: 'cutscene', optional: false, loadingLine: 'Home.' },
 ];
 
+/**
+ * The story is told in four books; a book starts at its `first` chapter and runs to the next
+ * book's. Chapters are numbered within their book (a book's prologue counts as 0).
+ */
+export interface Book {
+  number: number;
+  title: string;
+  first: ChapterId;
+}
+
+export const BOOKS: readonly Book[] = [
+  { number: 1, title: 'The Monk', first: 'prologue' },
+  { number: 2, title: 'The Legion', first: 'forest-road' },
+  { number: 3, title: 'Fire from the East', first: 'feast' },
+  { number: 4, title: 'The Last Road', first: 'golden-city' },
+];
+
+const ROMAN_NUMERALS = ['', 'I', 'II', 'III', 'IV', 'V'] as const;
+
+export function bookOf(id: ChapterId): Book {
+  const n = chapterById(id).number;
+  let found = BOOKS[0] as Book;
+  for (const book of BOOKS) if (n >= chapterById(book.first).number) found = book;
+  return found;
+}
+
+/** The chapter's number within its book: the first chapter of the first book (the prologue) is 0. */
+export function chapterInBook(id: ChapterId): number {
+  const book = bookOf(id);
+  const offset = book.number === 1 ? 0 : 1;
+  return chapterById(id).number - chapterById(book.first).number + offset;
+}
+
+/** True for the first chapter of a book, where the book's title is shown. */
+export function opensBook(id: ChapterId): boolean {
+  return BOOKS.some((b) => b.first === id);
+}
+
+/** "Book II · Chapter 3", or "Book I · Prologue". */
+export function chapterLabel(id: ChapterId): string {
+  const book = bookOf(id);
+  const n = chapterInBook(id);
+  return `Book ${ROMAN_NUMERALS[book.number] ?? book.number} · ${n === 0 ? 'Prologue' : `Chapter ${n}`}`;
+}
+
+/** "Book II: The Legion". */
+export function bookLabel(book: Book): string {
+  return `Book ${ROMAN_NUMERALS[book.number] ?? book.number}: ${book.title}`;
+}
+
 export function chapterById(id: ChapterId): Chapter {
   const chapter = CHAPTERS.find((c) => c.id === id);
   if (!chapter) throw new Error(`unknown chapter ${id}`);

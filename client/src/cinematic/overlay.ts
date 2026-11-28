@@ -1,5 +1,5 @@
 import './cinematic.css';
-import type { Chapter } from '@tumblehorde/shared';
+import { bookLabel, bookOf, type Chapter, chapterInBook, chapterLabel, opensBook } from '@tumblehorde/shared';
 import { SCREEN } from './config.ts';
 
 /**
@@ -217,7 +217,11 @@ export class CinematicOverlay {
       return;
     }
     this.loading.replaceChildren();
-    el('div', 'num', this.loading).textContent = chapter.number === 0 ? 'The story of Cassian' : `Chapter ${chapter.number}`;
+    // A new book opens with its own title over the chapter.
+    const opening = opensBook(chapter.id);
+    if (opening) el('div', 'book', this.loading).textContent = bookLabel(bookOf(chapter.id));
+    const n = chapterInBook(chapter.id);
+    el('div', 'num', this.loading).textContent = opening ? (n === 0 ? 'Prologue' : `Chapter ${n}`) : chapterLabel(chapter.id);
     el('h2', '', this.loading).textContent = chapter.title;
     el('p', '', this.loading).textContent = chapter.loadingLine;
     if (note) el('p', 'note', this.loading).textContent = note;
