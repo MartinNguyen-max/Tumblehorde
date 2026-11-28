@@ -2,7 +2,8 @@ import type { Cutscene } from '../script.ts';
 import { arenaTunnel, arenaVictory, arenaWon } from './arena.ts';
 import { campfireNight, forestRoadAfter, forgeNight, rollCall } from './companions.ts';
 import { brothersEnd, cassianFalls, heaven, luciusPath, marcusPath, mourning, patrolRoad, rebuilding, spring, theCrowning, twoBoys } from './ending.ts';
-import { fortSiege, greekFeastScene, homeInChains, intoGreece, theSewers, theSpy, wizardReturns } from './greece.ts';
+import { fortSiege, greekFeastScene, intoGreece, theSewers, theSpy, wizardReturns } from './greece.ts';
+import { homecoming, shipCouncil, theFlight, wizardFalls } from './sea.ts';
 import { campSouth, capitalFalls, gateArrive, hrolfFarewell, liviaFound, ridersCome, victoryFeast } from './mongols.ts';
 import { emperor, emperorHall, ruins, villageAfter, villageApproach } from './legion.ts';
 import { prologueMorning } from './prologue.ts';
@@ -23,6 +24,7 @@ export const CUTSCENES: Readonly<Record<string, Cutscene>> = Object.fromEntries(
     varroDeath, varroMemory, letterOne, letterTwo, rallySpeech, hrolfAlone, hrolfMirror,
     victoryFeast, capitalFalls, campSouth, ridersCome, hrolfFarewell, gateArrive, liviaFound,
     rebuilding, twoBoys, patrolRoad, cassianFalls, heaven, mourning, theCrowning, marcusPath, luciusPath, brothersEnd, spring,
-    theSpy, fortSiege, intoGreece, theSewers, greekFeastScene, wizardReturns, homeInChains,
+    theSpy, fortSiege, intoGreece, theSewers, greekFeastScene, wizardReturns,
+    theFlight, shipCouncil, wizardFalls, homecoming,
   ].map((scene) => [scene.id, scene]),
 );

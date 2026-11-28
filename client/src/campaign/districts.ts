@@ -417,7 +417,7 @@ export function festiveCapital(son: 'marcus' | 'lucius'): DistrictSet {
   return {
     ...CAPITAL,
     light: 'goldenMorning',
-    people: [...PEOPLE, ...extras],
+    people: [...LATER_PEOPLE, ...extras],
     build(stage: Stage): void {
       CAPITAL.build(stage);
       stage.weather('petals');
@@ -426,14 +426,136 @@ export function festiveCapital(son: 'marcus' | 'lucius'): DistrictSet {
   };
 }
 
-/** A giant Cassian in stone beside Varro, tables of food and wine, and the visitors' horses. */
-function festiveDecor(stage: Stage): void {
+/** Years on, Varro and his old friend the trainer are long gone: only their statues are left. */
+const LATER_PEOPLE = PEOPLE.filter((p) => p.name !== 'Varro' && p.name !== 'Old Gaius');
+
+/** Where the laughing Rufus stands in stone, across the square from Cassian. */
+export const RUFUS_STATUE = { x: 6, z: 12 } as const;
+const PLINTH = 4.4;
+const STONE_PILE = { x: -19, z: 15 } as const;
+
+const WARY_LINES = [
+  'Do the dead really walk? My boy will not sleep without a candle.',
+  'They say the wizard is dead. They said that the last time too.',
+  'My husband went south. He did not come back. I carry stones now. It helps.',
+  'Higher walls, more guards. Good. Let them come and see.',
+];
+const MASON_LINES = [
+  'Higher, they said. So higher it is.',
+  'Every stone on the new wall has a name scratched on it. One for every man who did not come home.',
+  'The Vikings are strong, but they lay stones like they are throwing them at someone.',
+];
+const WATCH_LINES = ['Double watch on every wall, day and night. Orders of the emperor.', 'Nothing comes out of the sea tonight. Nothing.'];
+
+/**
+ * The capital after the war in Greece: fewer people, and every one of them building. A second wall
+ * behind the old one, towers with ballistae, scaffolding, a crane, and Rufus laughing in stone.
+ * The story is over; this is where the player can walk for as long as they like.
+ */
+export function fortifiedCapital(son: 'marcus' | 'lucius'): DistrictSet {
+  const extras: Townsperson[] = [
+    { ...castPerson('felixOld', 'Felix', RUFUS_STATUE.x - 2.6, RUFUS_STATUE.z + 3, { stationary: true, yaw: Math.PI * 0.8 }), lines: ['Every morning I come and tell him the news. He never laughs. First time in fifty years.', 'Why did the Mongol bring a ladder to the feast? ... I am still working on the end. He said to make up a good one.'] },
+    { ...castPerson('liviaOld', 'Livia', -11, 13, { stationary: true, yaw: Math.PI }), lines: ['They build the walls higher. Walls did not stop the riders, once. People did. They are building those too.', 'Go on, walk. The city is yours now. All of it. Even the crooked bits.'] },
+    { ...castPerson('sigurd', 'Sigurd', 1.5, 40, { stationary: true, yaw: Math.PI }), lines: ['I laid forty stones today! Thirty of them are still standing.', 'My father burned this city. I am building its walls. The gods are laughing somewhere.'] },
+    // Masons hard at work by the stone pile, and the watch doubled.
+    ...[0, 1, 2, 3].map((i) => ({ ...wanderer('citizen', 'Mason', 70 + i, STONE_PILE.x - 3 + i * 1.6, STONE_PILE.z - 2.6), stationary: true, yaw: 0, activity: 'spar' as const, lines: MASON_LINES })),
+    ...[0, 1, 2, 3, 4, 5].map((i) => ({ ...wanderer('citizen', 'Citizen', 80 + i, -18 + i * 6, i % 2 === 0 ? 12 : -12), lines: WARY_LINES })),
+    ...[0, 1, 2, 3].map((i) => ({ ...wanderer('child', 'Child', 90 + i, -6 + i * 4, i % 2 === 0 ? 6 : -6), lines: ['I am going to be a soldier and stand on the big wall!', 'Felix says Rufus was the funniest man in the world. I do not get his joke.'] })),
+    ...[0, 1, 2].map((i) => ({ ...guard('Legionary', 20 + i, { x: -6 + i * 1.2, z: 15 }, [{ x: -20 + i * 1.2, z: 15 }, { x: 20 + i * 1.2, z: 15 }]), lines: WATCH_LINES })),
+    ...[0, 1].map((i) => ({ ...guard('Legionary', 24 + i, { x: -1.8 + i * 3.6, z: -E + 9 }, undefined, 0), lines: WATCH_LINES })),
+  ];
+  if (son === 'marcus') extras.push({ ...castPerson('luciusBare', 'Lucius', 2, 7, {}), lines: ['Two emperors, one city, one wall. I like it better this way.'] });
+  else extras.push({ ...castPerson('khan', 'Toghan', -16, 0, { stationary: true, yaw: Math.PI / 2 }, { helmet: false }), lines: ['Riders on a wall. My grandfather would laugh at me. Then he would help.'] });
+  return {
+    ...CAPITAL,
+    district: {
+      halfSize: E,
+      footprints: [
+        ...FOOTPRINTS,
+        { x: RUFUS_STATUE.x, z: RUFUS_STATUE.z, width: PLINTH, depth: PLINTH, yaw: 0 },
+        { x: STATUE_SPOT.x, z: STATUE_SPOT.z, width: PLINTH, depth: PLINTH, yaw: 0 },
+        { x: STONE_PILE.x, z: STONE_PILE.z, width: 5, depth: 2.4, yaw: 0 },
+      ],
+    },
+    light: 'city',
+    people: [...LATER_PEOPLE, ...extras],
+    build(stage: Stage): void {
+      CAPITAL.build(stage);
+      fortifiedDecor(stage);
+    },
+  };
+}
+
+/** Rufus in stone, laughing, with a cup raised: the city's newest statue. */
+function rufusStatue(stage: Stage): void {
   const stone = '#BAB6AC';
-  const plinth = stage.group('plinth', -12, 0, 10);
-  stage.world.parts.part('box', stone, plinth, [4.4, 2.2, 4.4], [0, 1.1, 0]);
-  stage.world.parts.part('box', '#9A968C', plinth, [4.8, 0.3, 4.8], [0, 2.3, 0]);
+  stage.box(stone, [PLINTH, 2.2, PLINTH], [RUFUS_STATUE.x, 1.1, RUFUS_STATUE.z]);
+  stage.box('#9A968C', [PLINTH + 0.4, 0.3, PLINTH + 0.4], [RUFUS_STATUE.x, 2.3, RUFUS_STATUE.z]);
+  const look = CAST.rufusOld.look;
+  const rufus = stage.actor('Rufus in stone', { ...look, skin: stone, hair: stone, beardColor: stone, color: stone, cape: stone });
+  rufus.place(RUFUS_STATUE.x, RUFUS_STATUE.z, Math.PI).setPose('cheer', true).setMood('happy', true);
+  rufus.root.scaling.setAll(3);
+  rufus.root.position.y = 2.45;
+}
+
+/** The new walls and everything still being built round them. */
+export function fortifiedDecor(stage: Stage): void {
+  statues(stage);
+  rufusStatue(stage);
+  const parts = stage.world.parts;
+  const stone = SET_COLORS.stone;
+  const wood = '#7A5A36';
+  // The second wall, higher than the old one, behind the north gate, with a gatehouse of its own.
+  const wallZ = E + 6;
+  for (const side of [-1, 1]) {
+    stage.box(stone, [54, 16, 3], [side * 33, 8, wallZ]);
+    for (let i = 0; i < 18; i++) stage.box(stone, [1.4, 1.2, 3.2], [side * (7 + i * 3), 16.6, wallZ]);
+    for (const x of [12, 36]) {
+      stage.box(stone, [6, 22, 6], [side * x, 11, wallZ]);
+      // A ballista on every tower.
+      const b = stage.group('ballista', side * x, 22, wallZ);
+      parts.part('box', wood, b, [0.6, 0.6, 3], [0, 0.6, 0]);
+      parts.part('box', wood, b, [4, 0.25, 0.3], [0, 1, 1.2]);
+      parts.part('box', '#3A3A3E', b, [0.12, 0.12, 2.6], [0, 1.05, 0.2], { metal: true });
+      // A banner on a pole.
+      stage.box('#4A3A2A', [0.16, 5, 0.16], [side * x + 2, 24.5, wallZ - 2]);
+      stage.box('#B8322A', [0.1, 2.4, 1.8], [side * x + 2, 26, wallZ - 1.1], 0, { castShadow: false });
+      stage.box('#E0B040', [0.11, 0.4, 1.8], [side * x + 2, 25, wallZ - 1.1], 0, { castShadow: false });
+    }
+  }
+  stage.box(stone, [12, 20, 4], [0, 14, wallZ]);
+  stage.box('#2A2420', [5, 8, 4.2], [0, 4, wallZ]);
+  // Scaffolding all along the unfinished stretch, with ladders, and planks across it.
+  for (let x = 7; x <= 27; x += 4) {
+    for (const dz of [-1.8, -3.4]) stage.box(wood, [0.18, 18, 0.18], [x, 9, wallZ + dz]);
+  }
+  for (const y of [5, 10, 15]) stage.box(wood, [21, 0.15, 1.8], [17, y, wallZ - 2.6]);
+  for (let i = 0; i < 6; i++) stage.box(wood, [1, 0.08, 0.08], [27.5, 0.6 + i * 0.6, wallZ - 3.4 - i * 0.05]);
+  // A crane lifting a block over the wall.
+  const crane = stage.group('crane', -22, 0, wallZ + 5);
+  parts.part('box', wood, crane, [0.6, 22, 0.6], [0, 11, 0]);
+  parts.part('box', wood, crane, [0.4, 0.4, 14], [0, 21.5, -5]).rotation.x = 0.12;
+  parts.part('box', '#2E2216', crane, [0.05, 6, 0.05], [0, 18, -11]);
+  parts.part('box', stone, crane, [1.4, 1, 1.4], [0, 14.6, -11]);
+  // Stones waiting by the square, braziers lit at the corners for the night watch.
+  for (let i = 0; i < 6; i++) stage.box(stone, [1.4, 0.8, 1.1], [STONE_PILE.x - 1.6 + (i % 3) * 1.6, 0.4 + Math.floor(i / 3) * 0.8, STONE_PILE.z]);
+  for (const [x, z] of [[-22, -16], [22, -16], [-22, 16], [22, 16]] as const) {
+    stage.box('#3A3A3E', [0.3, 1.6, 0.3], [x, 0.8, z], 0, { metal: true });
+    stage.fire(x, z, 0.5, 1.6);
+  }
+}
+
+/** Where Cassian stands in stone in the square, raised after the brothers' war. */
+const STATUE_SPOT = { x: -12, z: 10 } as const;
+
+/** A giant Cassian in stone, and Varro beside him with his fist raised. */
+function statues(stage: Stage): void {
+  const stone = '#BAB6AC';
+  const plinth = stage.group('plinth', STATUE_SPOT.x, 0, STATUE_SPOT.z);
+  stage.world.parts.part('box', stone, plinth, [PLINTH, 2.2, PLINTH], [0, 1.1, 0]);
+  stage.world.parts.part('box', '#9A968C', plinth, [PLINTH + 0.4, 0.3, PLINTH + 0.4], [0, 2.3, 0]);
   const statue = stage.actor('Cassian in stone', { outfit: 'commander', skin: stone, hair: stone, beard: 'short', beardColor: stone, color: stone, cape: stone, helmet: true });
-  statue.place(-12, 10, Math.PI).setPose('raiseSword', true);
+  statue.place(STATUE_SPOT.x, STATUE_SPOT.z, Math.PI).setPose('raiseSword', true);
   statue.root.scaling.setAll(3.4);
   statue.root.position.y = 2.45;
   const varro = stage.actor('Varro in stone', { outfit: 'smith', skin: stone, hair: stone, beard: 'short', beardColor: stone, color: stone });
@@ -441,6 +563,11 @@ function festiveDecor(stage: Stage): void {
   varro.root.scaling.setAll(2.2);
   varro.root.position.y = 1.2;
   stage.box(stone, [3, 1.2, 3], [-14, 0.6, -6]);
+}
+
+/** Tables of food and wine, and the visitors' horses, round the statues. */
+function festiveDecor(stage: Stage): void {
+  statues(stage);
   // The Vikings' table, with barrels.
   stage.box('#6A4A2A', [4.2, 0.9, 1.4], [17.4, 0.45, -9.7]);
   for (let i = 0; i < 4; i++) stage.shape('cylinder', '#7A5A32', [0.4, 0.9, 0.4], [19.8, 0.45, -12 + i * 1.1]);

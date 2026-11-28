@@ -37,7 +37,7 @@ import { SCENES_AFTER, SCENES_BEFORE } from './storyScenes.ts';
 import { StoryBattle } from './storyBattle.ts';
 import type { LocalSession } from '../game/session.ts';
 import { boughtItem, EFFECT, storyDialogue } from './dialogues.ts';
-import { CAPITAL, type DistrictSet, festiveCapital, SPY_NAME } from './districts.ts';
+import { CAPITAL, type DistrictSet, festiveCapital, fortifiedCapital, SPY_NAME } from './districts.ts';
 import { FreeRoam } from './freeRoam.ts';
 import { CampaignPause } from './pause.ts';
 import { loadSave, writeSave } from './storage.ts';
@@ -53,6 +53,14 @@ const FORTRESS_CHAPTER: ChapterId = 'night-raid';
 const SMITH_UNNAMED = 'Blacksmith';
 
 /** Where each free-roam chapter is walked. */
+/** The status line in the city after the story has ended. */
+const STORY_OVER = 'The story is over · walk the city as long as you like';
+
+/** The city in the sons' time: the player walks it as the son they chose. */
+function isSonsCity(id: ChapterId): boolean {
+  return id === 'golden-city' || id === 'new-capital';
+}
+
 const CHAPTER_DISTRICTS: Partial<Record<ChapterId, DistrictSet>> = {
   capital: CAPITAL,
   apprentice: CAPITAL,
@@ -168,7 +176,8 @@ export class Campaign {
 
   private buildChapter(chapter: Chapter): void {
     const scenes = scenesOf(SCENES_BEFORE[chapter.id]);
-    const district = chapter.id === 'golden-city' ? festiveCapital(this.save?.choices.son ?? 'lucius') : CHAPTER_DISTRICTS[chapter.id];
+    const son = this.save?.choices.son ?? 'lucius';
+    const district = chapter.id === 'golden-city' ? festiveCapital(son) : chapter.id === 'new-capital' ? fortifiedCapital(son) : CHAPTER_DISTRICTS[chapter.id];
     const fight = arenaFight(chapter.id);
     if (chapter.kind === 'cutscene' && scenes.length > 0) {
       this.playScenes(scenes, () => this.finishChapter(chapter.id));
@@ -303,10 +312,10 @@ export class Campaign {
       onEffect: (effect) => this.roamEffect(chapter, effect),
       dialogueFor: (id) => (this.save ? storyDialogue(id, this.save, chapter.id) : null),
       spotActive: (id) => id === EFFECT.workout && chapter.id === 'apprentice' && this.save !== null && canWorkOut(this.save),
-      status: () => (this.save && chapter.id !== 'golden-city' ? `${this.save.gold} gold · strength ${this.save.strength}` : null),
+      status: () => (chapter.id === 'new-capital' ? STORY_OVER : this.save && chapter.id !== 'golden-city' ? `${this.save.gold} gold · strength ${this.save.strength}` : null),
       renames: chapter.id === 'capital' ? { Varro: SMITH_UNNAMED } : {},
-      guide: () => (chapter.id === 'capital' ? SMITH_UNNAMED : chapter.id === 'golden-city' ? SPY_NAME : 'Varro'),
-      playerName: chapter.id === 'golden-city' ? (this.save?.choices.son === 'marcus' ? 'Marcus' : 'Lucius') : undefined,
+      guide: () => (chapter.id === 'capital' ? SMITH_UNNAMED : chapter.id === 'golden-city' ? SPY_NAME : chapter.id === 'new-capital' ? 'Felix' : 'Varro'),
+      playerName: isSonsCity(chapter.id) ? (this.save?.choices.son === 'marcus' ? 'Marcus' : 'Lucius') : undefined,
     }, district, look);
     this.phase = { kind: 'roam', chapter, roam };
   }
@@ -339,7 +348,7 @@ export class Campaign {
   /** Cassian in the city (a cast role): a freed prisoner's rags, the smith's apprentice, then in his silver armor. */
   private roamLook(chapter: Chapter): string {
     if (chapter.id === 'capital') return 'cassianPrisoner';
-    if (chapter.id === 'golden-city') return this.save?.choices.son === 'marcus' ? 'marcusMongol' : 'lucius';
+    if (isSonsCity(chapter.id)) return this.save?.choices.son === 'marcus' ? 'marcusMongol' : 'lucius';
     return this.save?.gear.armor ? 'cassianTraveller' : 'cassianSmith';
   }
 

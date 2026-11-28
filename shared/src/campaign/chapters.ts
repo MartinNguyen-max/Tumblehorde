@@ -40,7 +40,9 @@ export type ChapterId =
   | 'sewers'
   | 'greek-feast'
   | 'the-risen'
-  | 'the-end';
+  | 'the-ship'
+  | 'the-end'
+  | 'new-capital';
 
 export interface Chapter {
   id: ChapterId;
@@ -88,7 +90,9 @@ export const CHAPTERS: readonly Chapter[] = [
   { id: 'sewers', number: 31, title: 'The Sewers', kind: 'battle', optional: false, loadingLine: 'Dark, narrow, and full of Greeks.' },
   { id: 'greek-feast', number: 32, title: 'The Feast of the Greeks', kind: 'battle', optional: false, loadingLine: 'They are drunk. They are many. They will not break.' },
   { id: 'the-risen', number: 33, title: 'The Risen', kind: 'battle', optional: false, loadingLine: 'The dead do not stay down while he lives.' },
-  { id: 'the-end', number: 34, title: 'The End', kind: 'cutscene', optional: false, loadingLine: 'Home.' },
+  { id: 'the-ship', number: 34, title: 'The Ship', kind: 'battle', optional: false, loadingLine: 'Two against one, on a deck slick with the sea.' },
+  { id: 'the-end', number: 35, title: 'Homecoming', kind: 'cutscene', optional: false, loadingLine: 'Fewer came home than left.' },
+  { id: 'new-capital', number: 36, title: 'The New Capital', kind: 'freeRoam', optional: false, loadingLine: 'The walls are higher now. Walk them as long as you like.' },
 ];
 
 /**

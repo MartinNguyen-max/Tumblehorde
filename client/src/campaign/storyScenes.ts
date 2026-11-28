@@ -33,11 +33,13 @@ export const SCENES_BEFORE: Partial<Record<ChapterId, readonly string[]>> = {
   'into-greece': ['into-greece'],
   sewers: ['the-sewers'],
   'the-risen': ['wizard-returns'],
+  'the-ship': ['the-flight', 'ship-council'],
   'greek-feast': ['greek-feast-surround'],
-  'the-end': ['home-in-chains'],
+  'the-end': ['homecoming'],
 };
 
 export const SCENES_AFTER: Partial<Record<ChapterId, readonly string[]>> = {
+  'the-ship': ['wizard-falls'],
   'arena-1': ['arena-won'],
   'forest-road': ['forest-road-after'],
   'burning-village': ['village-after'],

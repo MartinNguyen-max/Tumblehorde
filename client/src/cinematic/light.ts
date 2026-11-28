@@ -17,7 +17,7 @@ export interface LightPreset {
   sunDirection: readonly [number, number, number];
 }
 
-export type LightName = 'goldenMorning' | 'day' | 'city' | 'dusk' | 'night' | 'fireNight' | 'rain' | 'prison' | 'snow' | 'white' | 'interior';
+export type LightName = 'goldenMorning' | 'day' | 'city' | 'dusk' | 'night' | 'fireNight' | 'rain' | 'prison' | 'snow' | 'white' | 'interior' | 'deadLight' | 'grey';
 
 export const LIGHTS: Record<LightName, LightPreset> = {
   goldenMorning: {
@@ -49,6 +49,18 @@ export const LIGHTS: Record<LightName, LightPreset> = {
     sky: '#2A1018', fog: '#3A1A1A', fogStart: 10, fogEnd: 60,
     hemiSky: '#A04A30', hemiGround: '#1A0E0E', hemiIntensity: 0.45,
     sun: '#FF7A3A', sunIntensity: 0.55, sunDirection: [-0.3, -0.5, -0.8],
+  },
+  /** The wizard's sorcery: a sick green over everything. */
+  deadLight: {
+    sky: '#22382C', fog: '#2E4A3A', fogStart: 20, fogEnd: 100,
+    hemiSky: '#B0E0C0', hemiGround: '#2A3A30', hemiIntensity: 0.75,
+    sun: '#C8F0D4', sunIntensity: 0.6, sunDirection: [0.3, -0.7, 0.5],
+  },
+  /** An overcast morning: no sun, no shadows to speak of, nobody cheering. */
+  grey: {
+    sky: '#9AA4AE', fog: '#A4ACB4', fogStart: 30, fogEnd: 130,
+    hemiSky: '#C8D0D8', hemiGround: '#6A6A62', hemiIntensity: 0.78,
+    sun: '#E0E4E8', sunIntensity: 0.45, sunDirection: [-0.4, -0.85, -0.3],
   },
   rain: {
     sky: '#5A6470', fog: '#5E6872', fogStart: 8, fogEnd: 55,

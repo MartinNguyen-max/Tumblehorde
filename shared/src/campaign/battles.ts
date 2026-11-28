@@ -1,4 +1,4 @@
-import { CAPITAL_POINTS, DUEL_POINTS, FOREST_POINTS, FORT_POINTS, FORTRESS_POINTS, type MapPoint, NORTH_POINTS, RIVER_POINTS, SEWER_POINTS, STEPPE_POINTS, VILLAGE_POINTS } from '../maps.ts';
+import { CAPITAL_POINTS, DUEL_POINTS, FOREST_POINTS, FORT_POINTS, FORTRESS_POINTS, LONGSHIP_POINTS, type MapPoint, NORTH_POINTS, RIVER_POINTS, SEWER_POINTS, STEPPE_POINTS, VILLAGE_POINTS } from '../maps.ts';
 import { declareVictory } from '../match.ts';
 import type { ArmySetup, BotStyle, Faction, Formation, MatchSettings, MatchState, Order } from '../types.ts';
 import { type ChapterId, isAtOrAfter } from './chapters.ts';
@@ -12,7 +12,8 @@ import type { CampaignSave } from './save.ts';
 
 /** Rout: beat every enemy. Hold: last out the clock (or beat them sooner). Last stand: it cannot be won. */
 /** `warlord`: the battle is won when the enemy's leader (`CampaignBattle.warlordArmy`'s commander) falls. */
-export type BattleGoal = { kind: 'rout' } | { kind: 'hold'; seconds: number; label: string } | { kind: 'lastStand' } | { kind: 'warlord' };
+/** `lastStand`: cannot be won; it ends when the player's commander falls, or after `seconds`. */
+export type BattleGoal = { kind: 'rout' } | { kind: 'hold'; seconds: number; label: string } | { kind: 'lastStand'; seconds?: number } | { kind: 'warlord' };
 
 export type TimeOfDay = 'day' | 'dusk' | 'night';
 
@@ -146,10 +147,16 @@ export const STORY_BATTLE = {
   sewerVikings: 8,
   sewerWatch: 9,
   sewerGuards: { hp: 0.45, damage: 0.45 },
-  /** The risen: the Greeks' dead, raised again and again while the wizard lives. */
-  risenFirst: 40,
-  risenWave: { every: 8, count: 7 },
-  wizardToughness: 3,
+  /** The risen: only a few of the Greeks' dead, but nothing a living man can stop. */
+  risenFew: 12,
+  risenStrength: { hp: 9, damage: 2.5 },
+  /** A few more climb out of the dark while the fight goes on, so the dead are never all down. */
+  risenWave: { every: 12, count: 3 },
+  /** How long they hold before the retreat is sounded. */
+  risenStand: 70,
+  /** The ship: the wizard alone, hard to kill but not unkillable, and the son's old companion. */
+  wizardKit: { hp: 2600, damage: 2.4, block: 0.4 },
+  companionKit: { hp: 500, damage: 1.2, block: 0.3 },
   /** After the feast: what is left of the three peoples. */
   survivors: 16,
 } as const;
@@ -170,7 +177,8 @@ const BATTLE_OBJECTIVES: Partial<Record<ChapterId, string>> = {
   'the-duel': 'Defeat Hrolf the Red',
   'border-fort': 'Storm the fort: through the gate!',
   sewers: 'Fight your way through the sewers',
-  'the-risen': 'Kill the wizard: the dead fall with him',
+  'the-risen': 'Hold them as long as you can',
+  'the-ship': 'Kill the wizard'
 };
 
 function at(point: MapPoint): ArmySetup['spawn'] {
@@ -307,6 +315,8 @@ function raiders(name: string, faction: Faction, soldiers: number, spawn: MapPoi
 
 /** The hints of each battle: the first fights teach the orders the story needs. */
 const TUTORIALS: Partial<Record<ChapterId, readonly TutorialStep[]>> = {
+  'the-risen': [{ text: 'They cannot be killed. Keep 2 held down for a tight formation and hold as long as you can.', points: 'hold', done: { seconds: 10 } }],
+  'the-ship': [{ text: 'Two against one. Rufus draws the wizard; strike when he turns his back.', points: null, done: { seconds: 8 } }],
   'forest-road': [
     { text: 'Press 1: Follow. Varro comes with you wherever you go.', points: 'follow', done: { order: 'follow' } },
     { text: 'Run to the villagers! Left click strikes, right click raises your shield.', points: null, done: { seconds: 9 } },
@@ -534,6 +544,8 @@ function buildBattle(chapter: ChapterId, save: CampaignSave): CampaignBattle | n
       return sewerFight(save, base);
     case 'the-risen':
       return theRisen(save, base);
+    case 'the-ship':
+      return theShip(save, base);
     default:
       return null;
   }
@@ -708,21 +720,31 @@ function sewerFight(save: CampaignSave, base: Omit<CampaignBattle, 'settings' | 
 }
 
 function theRisen(save: CampaignSave, base: Omit<CampaignBattle, 'settings' | 'legionNames'>): CampaignBattle {
-  const me = sonsArmy(save, CAPITAL_POINTS.feastSouth, STORY_BATTLE.survivors + 4);
+  // Everyone on foot in the square; the wizard stays out of reach on the temple steps.
+  const me = sonsArmy(save, CAPITAL_POINTS.feastSouth, STORY_BATTLE.survivors + 4, true);
   const dead = army({
     name: 'The Risen',
     team: 1,
     faction: 'zombie',
-    soldiers: STORY_BATTLE.risenFirst,
+    soldiers: STORY_BATTLE.risenFew,
     spawn: CAPITAL_POINTS.feast,
-    commander: true,
-    commanderToughness: STORY_BATTLE.wizardToughness,
-    style: 'charge',
+    style: 'rush',
+    horde: STORY_BATTLE.risenStrength,
     reinforce: STORY_BATTLE.risenWave,
-    looks: { commander: STORY_LOOKS.wizard, soldier: STORY_LOOKS.risen },
+    looks: { soldier: STORY_LOOKS.risen },
   });
-  const armies = [me, ...allies(save, [CAPITAL_POINTS.feastEast, CAPITAL_POINTS.feastWest], STORY_BATTLE.survivors), dead];
-  return { ...base, goal: { kind: 'warlord' }, time: 'night', onLoss: 'retryOrLeave', settings: settings('city', armies), legionNames: [], commanders: { 3: 'The Wizard' }, warlordArmy: 3 };
+  const armies = [me, ...allies(save, [CAPITAL_POINTS.feastEast, CAPITAL_POINTS.feastWest], STORY_BATTLE.survivors, true), dead];
+  return { ...base, goal: { kind: 'lastStand', seconds: STORY_BATTLE.risenStand }, time: 'night', onLoss: 'continue', settings: settings('city', armies, 0), legionNames: [] };
+}
+
+/** On the deck: the son and Rufus against the wizard, while the others hold the dead off at both ends. */
+function theShip(save: CampaignSave, base: Omit<CampaignBattle, 'settings' | 'legionNames'>): CampaignBattle {
+  const me = sonsArmy(save, LONGSHIP_POINTS.son, 0, true);
+  const rufus = army({ name: 'Rufus', team: 0, faction: 'roman', soldiers: 1, spawn: LONGSHIP_POINTS.companion, style: 'charge', startOrder: 'attack', looks: { soldier: STORY_LOOKS.rufusOld } });
+  rufus.kit = STORY_BATTLE.companionKit;
+  const wizard = army({ name: 'The Wizard', team: 1, faction: 'zombie', soldiers: 1, spawn: LONGSHIP_POINTS.wizard, style: 'charge', startOrder: 'attack', looks: { soldier: STORY_LOOKS.wizard } });
+  wizard.kit = STORY_BATTLE.wizardKit;
+  return { ...base, time: 'dusk', onLoss: 'retry', settings: { ...settings('longship', [me, rufus, wizard], 3), arena: true }, legionNames: [] };
 }
 
 /** How a battle went for the story, read from the finished (or abandoned) match. */
@@ -760,7 +782,7 @@ export function checkStoryGoal(state: MatchState, battle: CampaignBattle): 'won'
     declareVictory(state, mine.team);
     return 'won';
   }
-  if (battle.goal.kind === 'lastStand' && (mine.stats.commanderDeaths > 0 || state.time > STORY_BATTLE.lastStandMax)) {
+  if (battle.goal.kind === 'lastStand' && (mine.stats.commanderDeaths > 0 || state.time > (battle.goal.seconds ?? STORY_BATTLE.lastStandMax))) {
     const enemy = state.armies.find((a) => a.team !== mine.team);
     declareVictory(state, enemy?.team ?? mine.team);
     state.endTimer = STORY_BATTLE.lastStandAftermath;

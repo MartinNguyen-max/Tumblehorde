@@ -85,8 +85,10 @@ heroes other than Cassian are knocked out instead of dying, until the story says
 | 28 | **Into Greece** | Cutscene | The three peoples on the march; the Greek city of marble at dusk, bigger than Rome; in through the sewers at midnight (Rufus and the smell); up a ladder into an alley. |
 | 28b | **The Sewers** | Battle (dark, narrow) | Fewer men now, down in the tunnels under the Greek city, against the watch that walks them. |
 | 29 | **The Feast of the Greeks** | Battle (hardest) | The Greeks drunk at their feast notice too late, grab their shields and stand in a tight ring that never breaks; the three peoples close in from every side. |
-| 29b | **The Risen** | Battle | The wizard on the temple steps: the Greeks paid him, and every Greek they killed gets up again. The dead keep coming until the wizard falls. |
-| 30 | **The End** | Cutscene | Home in the spring with the Greeks in chains; the whole city cheering; Livia by the statue. |
+| 29b | **The Risen** | Battle (last stand) | The wizard on the temple steps, the fires gone cold and green: the Greeks paid him, and the Greeks they killed climb out of the stones. Only a dozen, but they cannot be killed: hold as long as you can (70 s, or until the son falls), then flee. |
+| 30 | **The Ship** | Battle (two against one) | The flight to the shore at dawn, the Viking ship, the dead walking into the sea after it and climbing aboard, the wizard on the dragon's head. A shouted council at the mast; the Vikings and the East hold bow and stern, Rufus ("seventy-one") goes with the son. On the deck, the son and Rufus against the wizard. After: the wizard strikes the son down, Rufus takes the blow and holds him, the son kills him; every dead man on the ship and in the sea lies down. Rufus dies telling his joke ("I never knew the end. Make one up"). |
+| 31 | **Homecoming** | Cutscene | Home in the spring with far fewer men and Rufus on a shield; no cheering; the son tells the city about the dead army; a woman asks what if they come here; "then they will find walls". Everyone builds: a second, higher wall, towers with ballistae, a crane; Sigurd's crooked wall; a laughing statue of Rufus. The End. |
+| 32 | **The New Capital** | Free roam | After the end: walk the strengthened capital as the son for as long as you like: Felix at Rufus's statue, Livia, Sigurd laying stones, masons, frightened citizens, the doubled watch. |
 
 ## Army through the campaign
 

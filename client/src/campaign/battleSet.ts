@@ -1,7 +1,8 @@
 import { Color3, Color4, Mesh, MeshBuilder, type Scene, StandardMaterial, TransformNode } from '../render/babylon.ts';
-import { CASTLE, type MapId, mapStructures, SEWERS, terrainHeightAt, type TimeOfDay, type UnitView } from '@tumblehorde/shared';
+import { CASTLE, LONGSHIP, type MapId, mapStructures, SEWERS, terrainHeightAt, type TimeOfDay, type UnitView } from '@tumblehorde/shared';
 import type { ArmyPalette } from '../visualConfig.ts';
-import { animatePerson, createPersonRig, type PersonRig, startCheer } from '../render/rigs.ts';
+import { animatePerson, createPersonRig, type PersonRig, startCheer, startSwing } from '../render/rigs.ts';
+import { buildLongship, buildSea, LONGSHIP_LOOK } from '../render/longship.ts';
 import { FIRE, LIGHTING, MAP_THEMES, TIME_OF_DAY } from '../visualConfig.ts';
 import type { World } from '../render/world.ts';
 
@@ -32,6 +33,9 @@ const SET_DECOR = {
   sewerFog: '#2A2018',
   sewerFogStart: 30,
   sewerFogEnd: 80,
+  swingRate: 0.8,
+  climbRate: 1.3,
+  climbHeight: 1.4,
   cheerRate: 0.9,
   cheerThreshold: 0.92,
   wood: '#8A5A32',
@@ -58,7 +62,9 @@ export class BattleSet {
   private readonly world: World;
   private time = 0;
 
-  private readonly watchers: { rig: PersonRig; x: number; y: number; z: number; yaw: number; front: boolean; phase: number; still?: boolean }[] = [];
+  private readonly watchers: { rig: PersonRig; x: number; y: number; z: number; yaw: number; front: boolean; phase: number; still?: boolean; fights?: boolean; climbs?: boolean }[] = [];
+  /** Map meshes hidden under a set that replaces them (the sea under the longship). */
+  private readonly hidden: { isVisible: boolean }[] = [];
   private nextFigureId = SET_DECOR.figureFirstId;
 
   /**
@@ -75,6 +81,7 @@ export class BattleSet {
       ring?: { x: number; z: number; radius: number };
       siege?: boolean;
       sewers?: boolean;
+      longship?: boolean;
     },
   ) {
     this.world = world;
@@ -85,6 +92,7 @@ export class BattleSet {
     if (options.ring) this.addRing(map, options.ring);
     if (options.siege) this.addSiege(map);
     if (options.sewers) this.addSewers();
+    if (options.longship) this.addLongship();
   }
 
   /** Cassian's own legionaries shoulder to shoulder round the duel, shields up, cheering him on. */
@@ -109,15 +117,66 @@ export class BattleSet {
     for (const w of this.watchers) {
       const view = standingView(w.x, w.y, w.z, w.yaw, w.front);
       if (!w.still && w.rig.cheerAge === null && Math.sin(this.time * SET_DECOR.cheerRate + w.phase) > SET_DECOR.cheerThreshold) startCheer(w.rig, 0, 0);
+      // Fighters on the ship's ends strike again and again; the dead heave themselves over the rail.
+      const beat = Math.floor(this.time * SET_DECOR.swingRate + w.phase);
+      if (w.fights && beat !== Math.floor((this.time - dt) * SET_DECOR.swingRate + w.phase)) startSwing(w.rig, 'sword', false);
+      if (w.climbs) view.y = w.y + Math.abs(Math.sin(this.time * SET_DECOR.climbRate + w.phase)) * SET_DECOR.climbHeight;
       animatePerson(w.rig, view, { dt, now: this.time, mounted: false, feasting: false, displayYaw: w.yaw });
     }
   }
 
   /** A soldier set into the scenery (on a ladder, on the wall): a real battle body, standing still. */
-  private addFigure(map: MapId, look: string, x: number, y: number, z: number, yaw: number, palette: ArmyPalette, shieldUp: boolean): void {
+  private addFigure(map: MapId, look: string, x: number, y: number, z: number, yaw: number, palette: ArmyPalette, shieldUp: boolean, act: { fights?: boolean; climbs?: boolean } = {}): void {
     const rig = createPersonRig(this.world.scene, this.world.parts, 'swordsman', palette, 'roman', this.nextFigureId++, look);
     rig.root.parent = this.root;
-    this.watchers.push({ rig, x, y: terrainHeightAt(map, x, z) + y, z, yaw, front: shieldUp, phase: this.nextFigureId * 0.7, still: true });
+    this.watchers.push({ rig, x, y: terrainHeightAt(map, x, z) + y, z, yaw, front: shieldUp, phase: this.nextFigureId * 0.7, still: true, ...act });
+  }
+
+  /**
+   * The longship at sea. The map's own ground is hidden: the deck is the ground. Beyond the shield
+   * walls at bow and stern the Vikings and the Mongols (or the legion) hold off the dead, who keep
+   * dragging themselves over the rails.
+   */
+  private addLongship(): void {
+    for (const mesh of this.world.mapRoot?.getChildMeshes() ?? []) {
+      if (!mesh.isVisible) continue;
+      mesh.isVisible = false;
+      this.hidden.push(mesh);
+    }
+    const g = new TransformNode('longship', this.world.scene);
+    g.parent = this.root;
+    buildLongship(this.world.parts, g);
+    buildSea(this.world.parts, g);
+    const { halfLength: L, halfWidth: W } = LONGSHIP;
+    const parts = this.world.parts;
+    for (const dir of [-1, 1]) {
+      // The shield wall across the deck.
+      for (let z = -W + 0.5; z < W; z += 0.9) {
+        parts.part('disc', LONGSHIP_LOOK.shields[Math.round(z + W) % LONGSHIP_LOOK.shields.length] ?? LONGSHIP_LOOK.shields[0], g, [1.1, 0.12, 1.1], [dir * (L + 0.3), 0.6, z]).rotation.z = Math.PI / 2;
+      }
+      // Our men behind it, facing out, and the dead coming at them from the end of the ship.
+      for (let i = 0; i < 8; i++) {
+        const x = dir * (L + 1.6 + (i % 2) * 1.5);
+        const z = -W + 1 + Math.floor(i / 2) * ((W * 2 - 2) / 3);
+        const look = i % 3 === 0 ? 'mongol' : 'viking';
+        this.addFigure('longship', look, x, 0, z, dir * (Math.PI / 2), SET_DECOR.legion, i % 2 === 0, { fights: true });
+      }
+      for (let i = 0; i < 6; i++) {
+        const z = -W + 1.2 + i * ((W * 2 - 2.4) / 5);
+        this.addFigure('longship', 'risen', dir * (L + 5 + (i % 2)), 0, z, -dir * (Math.PI / 2), SET_DECOR.legion, false, { fights: true });
+      }
+      // More of them hauling themselves up the hull out of the sea.
+      for (let i = 0; i < 4; i++) {
+        const side = i % 2 === 0 ? 1 : -1;
+        this.addFigure('longship', 'risen', dir * (L + 2 + i * 1.6), LONGSHIP_LOOK.seaLevel, side * (W + 0.9), side * Math.PI, SET_DECOR.legion, false, { climbs: true });
+      }
+    }
+    // The dead in the water all round, swimming for the ship.
+    for (let i = 0; i < 10; i++) {
+      const x = -L + (i * 7.3) % (L * 2);
+      const side = i % 2 === 0 ? 1 : -1;
+      this.addFigure('longship', 'risen', x, LONGSHIP_LOOK.seaLevel - 1.1, side * (W + 4 + (i % 3) * 2.5), side * Math.PI, SET_DECOR.legion, false, { climbs: true });
+    }
   }
 
   /**
@@ -293,6 +352,7 @@ export class BattleSet {
   }
 
   dispose(): void {
+    for (const mesh of this.hidden) mesh.isVisible = true;
     this.root.dispose(false, true);
     this.flames.length = 0;
     setTimeOfDay(this.world, this.world.map, 'day');

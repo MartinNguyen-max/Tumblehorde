@@ -343,6 +343,14 @@ export const MAP_THEMES: Record<MapId, MapTheme> = {
     path: { hue: 0.3, saturation: 0.15, lightMin: 0.18, lightMax: 0.2 },
     stone: '#5A4A3E',
   },
+  longship: {
+    ...BATTLE_THEMES.meadow,
+    sky: '#E3946A',
+    fog: '#B07A68',
+    // The sea, under the deck: only seen at the very edge of the world.
+    ground: { hue: 0.56, saturation: 0.45, lightMin: 0.26, lightMax: 0.3 },
+    path: { hue: 0.56, saturation: 0.45, lightMin: 0.26, lightMax: 0.3 },
+  },
 };
 
 export const MAP_NAMES: Record<MapId, string> = {
@@ -357,6 +365,7 @@ export const MAP_NAMES: Record<MapId, string> = {
   fortress: 'The Northern Fortress',
   steppe: 'The Open Field',
   sewers: 'The Sewers',
+  longship: 'The Longship',
 };
 
 /** Falling snow: flakes in a box around the camera, drifting down and sideways. */
@@ -550,6 +559,8 @@ export const MINIMAP_GROUND: Partial<Record<MapId, string>> = {
   north: 'rgba(120, 135, 150, 0.6)',
   fortress: 'rgba(120, 135, 150, 0.6)',
   forest: 'rgba(26, 48, 28, 0.6)',
+  longship: 'rgba(40, 80, 110, 0.6)',
+  sewers: 'rgba(40, 30, 24, 0.6)',
 };
 
 export const MINIMAP = {

@@ -253,6 +253,35 @@ describe('the siege', () => {
   });
 });
 
+describe('the risen and the ship', () => {
+  it('a handful of dead who cannot be beaten: the stand ends in a loss, and the story goes on', async () => {
+    const { checkStoryGoal } = await import('../src/campaign/battles.ts');
+    const battle = campaignBattle('the-risen', saveAt('the-risen'))!;
+    expect(battle.goal).toEqual({ kind: 'lastStand', seconds: STORY_BATTLE.risenStand });
+    expect(battle.onLoss).toBe('continue');
+    const state = createMatch(battle.settings);
+    const dead = state.armies.find((a) => a.team === 1)!;
+    expect(dead.soldierIds.length).toBe(STORY_BATTLE.risenFew);
+    const ours = state.armies.filter((a) => a.team === 0);
+    expect(ours.reduce((n, a) => n + a.soldierIds.length, 0)).toBeGreaterThan(STORY_BATTLE.risenFew * 3);
+    state.time = STORY_BATTLE.risenStand + 1;
+    expect(checkStoryGoal(state, battle)).toBe('lost');
+  });
+
+  it('on the deck: the son and Rufus against the wizard alone, nobody else', () => {
+    const battle = campaignBattle('the-ship', saveAt('the-ship'))!;
+    expect(battle.settings.map).toBe('longship');
+    expect(battle.settings.arena).toBe(true);
+    const state = createMatch(battle.settings);
+    expect(state.armies.length).toBe(3);
+    const wizard = state.armies[2]!;
+    expect(wizard.team).toBe(1);
+    expect(wizard.soldierIds.length).toBe(1);
+    expect(state.units[wizard.soldierIds[0]!]!.maxHp).toBe(STORY_BATTLE.wizardKit.hp);
+    expect(state.armies[1]!.team).toBe(0);
+  });
+});
+
 describe('the story maps', () => {
   it('every place a story battle starts an army is open, dry ground', async () => {
     const { CAMPAIGN_MAP_IDS, MAPS } = await import('../src/maps.ts');

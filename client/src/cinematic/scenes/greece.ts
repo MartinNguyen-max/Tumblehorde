@@ -16,7 +16,7 @@ import type { Stage } from '../stage.ts';
  */
 
 const TORCH_HEAD = 0.5;
-const GREEK = {
+export const GREEK = {
   plaster: '#F2EEE4',
   shutter: '#2E6AB0',
   roof: '#C8643A',
@@ -29,16 +29,16 @@ const GREEK = {
   table: '#6A4A2A',
 } as const;
 
-function sonOf(story: StoryContext): 'marcus' | 'lucius' {
+export function sonOf(story: StoryContext): 'marcus' | 'lucius' {
   return story.save.choices.son === 'marcus' ? 'marcus' : 'lucius';
 }
 
 /** The son the player follows, as the scenes show him. */
-function castSon(stage: Stage, story: StoryContext, x: number, z: number, yaw: number): Actor {
+export function castSon(stage: Stage, story: StoryContext, x: number, z: number, yaw: number): Actor {
   return sonOf(story) === 'marcus' ? cast(stage, 'marcusMongol', 'Marcus').place(x, z, yaw) : cast(stage, 'lucius', 'Lucius').place(x, z, yaw);
 }
 
-function ringCrowd(stage: Stage, cx: number, cz: number, inner: number, rows: number, excitement: number): Crowd {
+export function ringCrowd(stage: Stage, cx: number, cz: number, inner: number, rows: number, excitement: number): Crowd {
   const scale = 1.5;
   const seats: Seat[] = [];
   for (let r = 0; r < rows; r++) {
@@ -185,7 +185,7 @@ export const theSpy: Cutscene = {
 };
 
 /** A city of marble on a hill: white walls, towers, houses with blue shutters, a temple on top. */
-function greekCityFar(stage: Stage): void {
+export function greekCityFar(stage: Stage): void {
   const b = new CityBuilder(stage);
   const g = b.group(0, -70);
   // The wall and its towers, in a great ring.
@@ -603,13 +603,27 @@ export const wizardReturns: Cutscene = {
     stage.world.parts.part('box', '#3A2A1E', staff, [0.08, 2.2, 0.08], [0, 0.4, 0]);
     stage.world.parts.part('sphere', '#7AF0C8', staff, [0.3, 0.3, 0.3], [0, 1.55, 0], { glow: true });
     staff.parent = wizard.grips[0];
-    const dead = Array.from({ length: 20 }, (_, i) => {
-      const a = (i / 20) * Math.PI * 2;
+    const dead = Array.from({ length: 12 }, (_, i) => {
+      const a = (i / 12) * Math.PI * 2;
       const d = cast(stage, 'risen', `Risen ${i}`).place(Math.sin(a) * (3 + (i % 3)), -2 + Math.cos(a) * (3 + (i % 3)), a + Math.PI).setPose('lie', true);
       d.eyesClosed = true;
       return d;
     });
     const meName = son === 'marcus' ? 'Marcus' : 'Lucius';
+    const east = son === 'marcus' ? cast(stage, 'luciusBare', 'Lucius').place(3.6, 8.4, Math.PI) : cast(stage, 'khan', 'Toghan', { helmet: false }).place(3.6, 8.4, Math.PI);
+    // A ring of green fire on the temple steps, unlit until he comes.
+    const ring = stage.group('witch-ring', 0, 0.05, -18);
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      stage.world.parts.part('box', '#7AF0C8', ring, [0.3, 0.6, 0.3], [Math.sin(a) * 2.4, 0.3, Math.cos(a) * 2.4], { glow: true, castShadow: false });
+    }
+    ring.setEnabled(false);
+    // Hands breaking out of the ground between the tables, before the bodies follow.
+    const hands = Array.from({ length: 10 }, (_, i) => {
+      const hand = stage.keepMoving(stage.box('#7A847A', [0.16, 0.5, 0.16], [-6 + (i * 1.37) % 12, -0.4, -6 + (i * 2.3) % 10]));
+      hand.rotation.z = (i % 3) * 0.2 - 0.2;
+      return hand;
+    });
 
     return [
       {
@@ -618,6 +632,12 @@ export const wizardReturns: Cutscene = {
         music: 'warm',
         shot: { from: [8, 4, 14], at: [0, 0.6, -2], to: [6, 3, 11], fov: FOV.wide },
         narrate: 'When it was over, the square was full of Greeks who would never drink again. We had won.',
+      },
+      {
+        duration: 3.4,
+        shot: () => portrait(sigurd, { angle: 0.4, distance: 2.4 }),
+        run: () => sigurd.setMood('happy').setPose('cheer'),
+        say: { who: 'Sigurd', text: 'A feast with no one left to eat it. A shame. A great shame. I will try.', mood: 'happy' },
       },
       {
         duration: 3,
@@ -631,10 +651,19 @@ export const wizardReturns: Cutscene = {
         sound: 'thunder',
         shot: { from: [0, 2.2, -8], at: wizard, fov: FOV.normal },
         run: () => {
-          stage.light('fireNight');
+          stage.light('deadLight');
+          stage.weather('motes');
+          ring.setEnabled(true);
           wizard.setPose('cheer').setMood('happy');
+          for (const a of [me, sigurd, rufus, east]) a.lookAt(wizard.headPosition()).setMood('afraid');
         },
-        narrate: 'Then a green light on the temple steps. And a voice we had all hoped never to hear again.',
+        narrate: 'Then a green light on the temple steps. The fires went cold, all at once. And a voice we had all hoped never to hear again.',
+      },
+      {
+        shot: () => portrait(east, { angle: -0.3, distance: 2.4 }),
+        say: son === 'marcus'
+          ? { who: 'Lucius', text: 'Brother. That is your wizard. The one from the hills.', mood: 'afraid' }
+          : { who: 'Toghan', text: 'I know him. He rode with Marcus once. Nobody who rode with him slept well again.', mood: 'afraid' },
       },
       {
         shot: () => portrait(wizard, { angle: 0.2, distance: 2.8, rise: -0.2 }),
@@ -652,89 +681,27 @@ export const wizardReturns: Cutscene = {
             d.setPose('reach').setMood('angry');
           }
         },
-        during: (_s, p) => dead.forEach((d, i) => d.root.position.y = -0.4 + Math.min(1, p * 2 - i * 0.04) * 0.4),
-        narrate: 'And every Greek we had killed got up again.',
+        during: (_s, p) => {
+          hands.forEach((h, i) => h.position.y = -0.4 + Math.min(1, p * 3 - i * 0.1) * 0.6);
+          dead.forEach((d, i) => d.root.position.y = -0.4 + Math.min(1, Math.max(0, p * 2 - 0.4 - i * 0.04)) * 0.4);
+        },
+        narrate: 'First the hands, out of the stones of the square. Then the rest of them. Every Greek we had killed got up again.',
+      },
+      {
+        shot: () => portrait(wizard, { angle: -0.2, distance: 2.6, rise: -0.2 }),
+        say: { who: 'The Wizard', text: 'Only a few. I only need a few. They do not tire, they do not bleed, and they do not stay down. Run, if you like.', mood: 'happy' },
+      },
+      {
+        duration: 3,
+        shot: () => portrait(rufus, { angle: -0.4, distance: 2.2 }),
+        run: () => rufus.setMood('afraid').setPose('cower'),
+        say: { who: 'Rufus', text: 'I take it back about the wine.', mood: 'afraid' },
       },
       {
         shot: () => portrait(me, { angle: 0.3, distance: 2.2, rise: -0.2 }),
         run: () => me.setPose('raiseSword').setMood('shout'),
-        say: { who: meName, text: 'The wizard! Get to the wizard! While he lives, they will never stay down!', mood: 'shout' },
+        say: { who: meName, text: 'Shields! Together, all of you! Hold them!', mood: 'shout' },
         fade: { to: 1, time: 2.4 },
-      },
-    ];
-  },
-};
-
-/** Home: the capital cheering, the Greeks in chains, Livia waiting by the statue. */
-export const homeInChains: Cutscene = {
-  id: 'home-in-chains',
-  create(stage: Stage, story: StoryContext): Beat[] {
-    stage.light('goldenMorning');
-    CAPITAL.build(stage);
-    stage.weather('petals');
-    const crowd = ringCrowd(stage, 0, 8, 9, 3, 1);
-    const son = sonOf(story);
-    const me = castSon(stage, story, 0, 26, Math.PI);
-    const sigurd = cast(stage, 'sigurd', 'Sigurd').place(-1.6, 27.4, Math.PI);
-    const east = son === 'marcus' ? cast(stage, 'luciusBare', 'Lucius').place(1.6, 27.4, Math.PI) : cast(stage, 'khan', 'Toghan', { helmet: false }).place(1.6, 27.4, Math.PI);
-    const rufus = cast(stage, 'rufusOld', 'Rufus').place(-0.8, 28.8, Math.PI);
-    const felix = cast(stage, 'felixOld', 'Felix').place(0.8, 28.8, Math.PI);
-    const prisoners = Array.from({ length: 10 }, (_, i) => cast(stage, 'hoplite', `Prisoner ${i}`, { helmet: false }).place((i % 2 === 0 ? -0.7 : 0.7), 31 + Math.floor(i / 2) * 1.5, Math.PI).setPose('slump', true).setMood('sad', true));
-    const chain = stage.box('#3A3A3E', [0.06, 0.06, 8], [0, 1.0, 34], 0, { metal: true, castShadow: false });
-    const livia = cast(stage, 'liviaOld', 'Livia').place(-3, 4, 0);
-    const marchers = [me, sigurd, east, rufus, felix, ...prisoners];
-
-    return [
-      {
-        duration: 6,
-        fade: { from: 1, to: 0, time: 2 },
-        music: 'hope',
-        sound: 'crowd',
-        shot: { from: [0, 18, -6], at: [0, 1, 22], to: [0, 14, -2], fov: FOV.wide },
-        run: () => {
-          for (const a of marchers) a.walkTo(a.root.position.x, a.root.position.z - 18, 1.4);
-          chain.position.z = 16;
-        },
-        narrate: 'We came home in the spring. The whole city was in the streets, and behind us walked the Greeks, in chains.',
-      },
-      {
-        shot: () => portrait(rufus, { angle: 0.4, distance: 2.4 }),
-        run: () => {
-          for (const a of marchers) a.finishWalk();
-          rufus.setPose('cheer').setMood('happy');
-        },
-        say: { who: 'Rufus', text: 'Felix! They love us! Again! Forty years later, they still love us! Hehehe!', mood: 'happy' },
-      },
-      {
-        duration: 3,
-        shot: () => portrait(felix, { angle: -0.4, distance: 2.4 }),
-        run: () => felix.setMood('happy'),
-        say: { who: 'Felix', text: 'Mind the cabbage, Rufus.', mood: 'happy' },
-      },
-      {
-        shot: () => overShoulder(livia, me),
-        run: () => {
-          me.place(-1.6, 5.6, Math.atan2(-1.4, -1.6));
-          livia.lookAt(me.headPosition()).setMood('crying');
-          me.lookAt(livia.headPosition()).setMood('warm');
-        },
-        say: { who: 'Livia', text: 'Your father would have been proud. And he would have pretended not to be, and then cried behind the stable.', mood: 'warm' },
-      },
-      {
-        duration: 5,
-        music: 'monastery',
-        shot: { from: [-14, 3, 2], at: [-12, 7, 10], to: [-15, 2.2, 4], fov: FOV.normal },
-        narrate: 'Monk. Prisoner. Smith. Legate. Emperor. Father. It started with a crooked little cross, and a bell, and a man who walked towards the fire with nothing in his hands.',
-      },
-      {
-        duration: 7,
-        shot: { from: [0, 6, 22], at: [0, 2, 4], to: [0, 18, 34], fov: FOV.wide },
-        run: () => {
-          crowd.excitement = 1;
-          for (const a of [me, sigurd, east, rufus, felix, livia]) a.setPose('cheer').setMood('happy');
-        },
-        title: { text: 'Tumblehorde', sub: 'The End. Thank you for playing.' },
-        fade: { to: 1, time: 6.5 },
       },
     ];
   },

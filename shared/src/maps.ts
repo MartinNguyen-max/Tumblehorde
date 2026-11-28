@@ -2,7 +2,7 @@ import { ARENA_MAP } from './campaign/arena.ts';
 /** The battlefields offered for battles. Each has its own terrain shape, its own obstacles and its own way of starting. */
 export const MAP_IDS = ['meadow', 'castle', 'city', 'north'] as const;
 /** Places only the story goes to; never offered (or picked at random) for a battle. */
-export const CAMPAIGN_MAP_IDS = ['forest', 'village', 'river', 'fortress', 'arena', 'steppe', 'sewers'] as const;
+export const CAMPAIGN_MAP_IDS = ['forest', 'village', 'river', 'fortress', 'arena', 'steppe', 'sewers', 'longship'] as const;
 export type MapId = (typeof MAP_IDS)[number] | (typeof CAMPAIGN_MAP_IDS)[number];
 export const ALL_MAP_IDS: readonly MapId[] = [...MAP_IDS, ...CAMPAIGN_MAP_IDS];
 
@@ -387,6 +387,38 @@ function sewers(): Structure[] {
   return out;
 }
 
+/**
+ * A Viking longship at sea: the deck between the rails, closed at both ends by a wall of shields
+ * where the Vikings and the Mongols hold back the dead climbing aboard. The fight is in between.
+ */
+export const LONGSHIP = {
+  /** The open deck between the shield walls, along x. */
+  halfLength: 16,
+  /** Between the rails, along z. */
+  halfWidth: 4.6,
+  railHeight: 1.2,
+  /** The mast in the middle of the deck. */
+  mast: 0.8,
+} as const;
+
+function longship(): Structure[] {
+  const { halfLength: L, halfWidth: W, railHeight: h, mast } = LONGSHIP;
+  return [
+    wall(0, W + 0.3, L * 2 + 6, 0, h, 0.6),
+    wall(0, -W - 0.3, L * 2 + 6, 0, h, 0.6),
+    // The shield walls across the deck at both ends.
+    { kind: 'fence', x: -L - 0.3, z: 0, width: W * 2, depth: 0.6, height: h, yaw: Math.PI / 2 },
+    { kind: 'fence', x: L + 0.3, z: 0, width: W * 2, depth: 0.6, height: h, yaw: Math.PI / 2 },
+    { kind: 'pillar', x: 0, z: 0, width: mast, depth: mast, height: 9, yaw: 0 },
+  ];
+}
+
+export const LONGSHIP_POINTS = {
+  son: { x: -11, z: -1.2, yaw: Math.PI / 2 },
+  companion: { x: -11, z: 1.6, yaw: Math.PI / 2 },
+  wizard: { x: 10, z: 0, yaw: -Math.PI / 2 },
+} satisfies Record<string, MapPoint>;
+
 export const SEWER_POINTS = {
   entry: { x: -40, z: 0, yaw: Math.PI / 2 },
   guardsNear: { x: -10, z: 6, yaw: -Math.PI / 2 },
@@ -579,6 +611,19 @@ export const MAPS: Record<MapId, MapDefinition> = {
     scenery: [],
     sceneryCount: 0,
     structures: sewers(),
+  },
+  longship: {
+    id: 'longship',
+    name: 'The Longship',
+    layout: 'open',
+    hills: { amplitude: 0, frequencyX: 0.05, frequencyZ: 0.05 },
+    ripples: { amplitude: 0, frequencyX: 0.1, frequencyZ: 0.1 },
+    flatRadius: 110,
+    points: LONGSHIP_POINTS,
+    inside: [],
+    scenery: [],
+    sceneryCount: 0,
+    structures: longship(),
   },
   steppe: {
     id: 'steppe',
